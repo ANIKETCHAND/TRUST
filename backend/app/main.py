@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import async_session_maker, init_db
@@ -37,12 +39,16 @@ app.add_middleware(
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-
-@app.get("/", tags=["System"])
-async def root():
-    return {
-        "platform": settings.PROJECT_NAME,
-        "version": settings.VERSION,
-        "docs": "/docs",
-        "health": f"{settings.API_V1_STR}/health"
-    }
+# Serve compiled frontend if present
+frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
+else:
+    @app.get("/", tags=["System"])
+    async def root():
+        return {
+            "platform": settings.PROJECT_NAME,
+            "version": settings.VERSION,
+            "docs": "/docs",
+            "health": f"{settings.API_V1_STR}/health"
+        }

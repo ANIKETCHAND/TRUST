@@ -1,12 +1,17 @@
 import time
 import uuid
 from typing import Any, Dict, Optional
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.agent import Agent
 from app.models.audit import ExecutionStatus, PolicyDecision
+from app.models.delegation import Delegation, DelegationStatus
+from app.core.security import hash_api_key
 from app.schemas.gateway import GatewayExecuteRequest, GatewayExecuteResponse
 from app.services.audit_service import audit_service
+from app.services.dlp_service import dlp_service
 from app.services.policy_engine import policy_engine
+from app.services.prompt_injection_service import prompt_injection_service
 from app.services.tool_registry import tool_registry
 
 
@@ -109,7 +114,71 @@ class GatewayService:
                 error="Directory traversal detected"
             )
 
-        # 3. Deterministic Policy Evaluation (Fail-Closed)
+        # 3. Delegation Verification (if delegated execution)
+        delegation_id_ref = None
+        raw_del_token = context.get("delegation_token")
+        if raw_del_token:
+            del_hash = hash_api_key(raw_del_token)
+            stmt = select(Delegation).where(
+                Delegation.token_hash == del_hash,
+                Delegation.child_agent_id == agent.id,
+                Delegation.status == DelegationStatus.ACTIVE
+            )
+            del_res = await db.execute(stmt)
+            delegation_record = del_res.scalars().first()
+            if not delegation_record:
+                reason = "Delegation Violation: Invalid, revoked, or expired delegation grant."
+                audit_evt = await audit_service.log_event(
+                    db=db,
+                    request_id=request_id,
+                    agent_id=agent.id,
+                    agent_name=agent.name,
+                    tool_name=tool_name,
+                    operation=operation,
+                    target_resource=resource,
+                    decision=PolicyDecision.BLOCKED,
+                    decision_reason=reason,
+                    execution_status=ExecutionStatus.BLOCKED,
+                    context_metadata=context
+                )
+                return GatewayExecuteResponse(
+                    request_id=request_id,
+                    event_id=audit_evt.id,
+                    decision="BLOCKED",
+                    execution_status="BLOCKED",
+                    reason=reason,
+                    error="Delegation grant rejected"
+                )
+            delegation_id_ref = delegation_record.id
+
+        # 4. Data Leakage Prevention (DLP) Inspection
+        has_leak, dlp_findings = dlp_service.inspect_payload(parameters)
+        if has_leak and tool_name in ["http_api_tool"]:
+            # External exfiltration attempt with sensitive data detected
+            reason = f"Data Leakage Prevention Violation: Blocked outbound transfer containing {dlp_findings[0]['description']}."
+            audit_evt = await audit_service.log_event(
+                db=db,
+                request_id=request_id,
+                agent_id=agent.id,
+                agent_name=agent.name,
+                tool_name=tool_name,
+                operation=operation,
+                target_resource=resource,
+                decision=PolicyDecision.BLOCKED,
+                decision_reason=reason,
+                execution_status=ExecutionStatus.BLOCKED,
+                context_metadata=context
+            )
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=audit_evt.id,
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason=reason,
+                error="DLP outbound leak prevention"
+            )
+
+        # 5. Deterministic Policy Evaluation (Fail-Closed)
         try:
             decision, reason, policy_id = await policy_engine.evaluate(
                 db=db,

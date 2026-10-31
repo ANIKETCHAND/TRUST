@@ -36,6 +36,8 @@ ENV/
 *.log
 .env
 local_secrets/
+sandbox_storage/
+test_sandbox_storage/
 
 # IDE
 .vscode/
