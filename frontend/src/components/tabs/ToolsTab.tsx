@@ -1,74 +1,33 @@
-import React, { useEffect, useState } from 'react';
-import { Wrench, Terminal, Play, CheckCircle2, XCircle, HardDrive, Database, Globe, Network, RefreshCw } from 'lucide-react';
-import { api } from '../api/client';
+import React, { useState } from 'react';
+import { Wrench, Terminal, Play, RefreshCw, HardDrive, Database, Globe, Network } from 'lucide-react';
+import { useTools } from '../../hooks/useTools';
+import { DecisionBadge, StatusBadge } from '../ui/Badge';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { formatLatency, safeJsonParse } from '../../utils/formatters';
 
 export const ToolsTab: React.FC = () => {
-  const [tools, setTools] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { tools, loading, executing, executionResult, refresh, executeTool } = useTools();
 
-  // Live Gateway Tester state
+  // Gateway tester state
   const [agentApiKey, setAgentApiKey] = useState('');
   const [testTool, setTestTool] = useState('filesystem_tool');
   const [testOp, setTestOp] = useState('read_file');
   const [testResource, setTestResource] = useState('reports/audit_2026.txt');
   const [testParams, setTestParams] = useState('{\n  "encoding": "utf-8"\n}');
-  const [executing, setExecuting] = useState(false);
-  const [executionResult, setExecutionResult] = useState<any>(null);
-
-  const fetchToolsAndAgents = async () => {
-    try {
-      setLoading(true);
-      const toolList = await api.listTools();
-      setTools(toolList);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchToolsAndAgents();
-  }, []);
 
   const handleExecuteTool = async (e: React.FormEvent) => {
     e.preventDefault();
-    setExecuting(true);
-    setExecutionResult(null);
-
-    let parsedParams = {};
-    try {
-      if (testParams.trim()) {
-        parsedParams = JSON.parse(testParams);
-      }
-    } catch (err: any) {
-      alert(`Invalid JSON in parameters: ${err.message}`);
-      setExecuting(false);
-      return;
-    }
-
-    try {
-      const res = await api.executeTool(
-        {
-          tool: testTool,
-          operation: testOp,
-          resource: testResource,
-          parameters: parsedParams,
-          context: { source: 'dashboard_tool_tester' },
-        },
-        agentApiKey || undefined
-      );
-      setExecutionResult(res);
-    } catch (err: any) {
-      setExecutionResult({
-        decision: 'BLOCKED',
-        execution_status: 'BLOCKED',
-        reason: err.message,
-        error: err.message,
-      });
-    } finally {
-      setExecuting(false);
-    }
+    const parsedParams = safeJsonParse(testParams, {});
+    await executeTool(
+      {
+        tool: testTool,
+        operation: testOp,
+        resource: testResource,
+        parameters: parsedParams,
+        context: { source: 'dashboard_tool_tester' },
+      },
+      agentApiKey || undefined
+    );
   };
 
   const getToolIcon = (category: string) => {
@@ -98,7 +57,7 @@ export const ToolsTab: React.FC = () => {
           </p>
         </div>
         <button
-          onClick={fetchToolsAndAgents}
+          onClick={refresh}
           className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -106,37 +65,38 @@ export const ToolsTab: React.FC = () => {
         </button>
       </div>
 
-      {/* Tool Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {tools.map((t) => (
-          <div key={t.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between">
-                {getToolIcon(t.category)}
-                <span className="rounded bg-emerald-950/80 px-2 py-0.5 text-[10px] font-bold text-emerald-400 border border-emerald-800/80">
-                  {t.status.toUpperCase()}
-                </span>
-              </div>
-              <h3 className="mt-3 text-sm font-bold text-white">{t.display_name}</h3>
-              <p className="mt-1 text-xs text-slate-400 font-mono">{t.name}</p>
-              <div className="mt-3">
-                <span className="text-[11px] font-semibold text-slate-400">Supported Operations:</span>
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {t.supported_operations.map((op: string) => (
-                    <span key={op} className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-300 border border-slate-700">
-                      {op}
-                    </span>
-                  ))}
+      {loading && tools.length === 0 ? (
+        <LoadingSpinner message="SYNCING SERVER-SIDE TOOLS..." />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {tools.map((t) => (
+            <div key={t.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between">
+                  {getToolIcon(t.category)}
+                  <StatusBadge status={t.status} />
+                </div>
+                <h3 className="mt-3 text-sm font-bold text-white">{t.display_name}</h3>
+                <p className="mt-1 text-xs text-slate-400 font-mono">{t.name}</p>
+                <div className="mt-3">
+                  <span className="text-[11px] font-semibold text-slate-400">Supported Operations:</span>
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {t.supported_operations.map((op: string) => (
+                      <span key={op} className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-300 border border-slate-700">
+                        {op}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
+              <div className="mt-4 border-t border-slate-800/80 pt-3 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Boundary:</span>
+                <span className="font-mono text-cyan-400">Sandboxed Jail</span>
+              </div>
             </div>
-            <div className="mt-4 border-t border-slate-800/80 pt-3 flex items-center justify-between text-[11px] text-slate-400">
-              <span>Boundary:</span>
-              <span className="font-mono text-cyan-400">Sandboxed Jail</span>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Interactive Gateway Execution Tester */}
       <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 backdrop-blur">
@@ -251,22 +211,14 @@ export const ToolsTab: React.FC = () => {
               <div className="mt-3 flex-1 flex flex-col justify-between space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
-                    {executionResult.decision === 'ALLOWED' ? (
-                      <span className="inline-flex items-center gap-1 rounded bg-emerald-950 px-2 py-0.5 text-xs font-bold text-emerald-400 border border-emerald-800">
-                        <CheckCircle2 className="h-4 w-4" /> ALLOWED
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded bg-rose-950 px-2 py-0.5 text-xs font-bold text-rose-400 border border-rose-800">
-                        <XCircle className="h-4 w-4" /> BLOCKED
-                      </span>
-                    )}
+                    <DecisionBadge decision={executionResult.decision} />
                     <span className="font-mono text-xs text-slate-400">
                       Status: {executionResult.execution_status}
                     </span>
                   </div>
                   {executionResult.execution_duration_ms && (
                     <span className="font-mono text-xs text-cyan-400">
-                      Latency: {executionResult.execution_duration_ms.toFixed(2)} ms
+                      Latency: {formatLatency(executionResult.execution_duration_ms)}
                     </span>
                   )}
                 </div>

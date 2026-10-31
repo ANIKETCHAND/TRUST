@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: agenttrust-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - ENVIRONMENT=production
+      - API_PORT=8080
+      - DATABASE_URL=sqlite+aiosqlite:///./agenttrust.db
+      - ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173
+      - JWT_SECRET=agenttrust-production-secret-change-in-production-use
+    volumes:
+      - agenttrust-data:/app/sandbox_storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  agenttrust-data:

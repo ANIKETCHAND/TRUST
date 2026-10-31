@@ -1,12 +1,17 @@
 from contextlib import asynccontextmanager
+import logging
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import async_session_maker, init_db
+from app.core.exceptions import AgentTrustException
 from app.services.tool_registry import tool_registry
+
+logger = logging.getLogger("agenttrust")
 
 
 @asynccontextmanager
@@ -36,6 +41,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(AgentTrustException)
+async def agenttrust_exception_handler(request: Request, exc: AgentTrustException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": exc.code,
+                "message": exc.message,
+                "details": exc.details,
+                "path": request.url.path
+            }
+        }
+    )
+
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 

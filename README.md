@@ -1,12 +1,21 @@
 # AgentTrust: Production-Oriented AI Agent Security Platform
 
-AgentTrust is a deterministic, enterprise-grade cybersecurity platform that sits between autonomous AI agents and protected resources (relational databases, sandboxed filesystems, external APIs, MCP endpoints, and inter-agent communication).
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18.3+-61DAFB.svg?logo=react&logoColor=black)](https://reactjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6+-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4+-38B2AC.svg?logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![Tests Passing](https://img.shields.io/badge/Tests-23%20Passed-brightgreen.svg)]()
+[![Security Model](https://img.shields.io/badge/Security_Model-Fail--Closed_Deny--by--Default-red.svg)]()
 
-It intercepts every agent action, validates credentials, evaluates security policies, prevents unauthorized operations, stops prompt-injection-driven data exfiltration, and logs tamper-evident audit trails.
+**AgentTrust** is a real, deterministic, enterprise-grade cybersecurity platform that sits between autonomous AI agents and protected resources (relational databases, sandboxed filesystems, external APIs, MCP endpoints, and inter-agent communication).
+
+It intercepts every agent action, validates credentials, evaluates security policies, prevents unauthorized operations, stops indirect prompt-injection-driven data exfiltration, and logs tamper-evident audit trails.
+
+> **CRITICAL SECURITY GUARANTEE**: Security enforcement is strictly **deterministic**. An LLM is never the final authority for granting or denying sensitive operations. The platform operates on a **Fail-Closed, Deny-by-Default** architecture.
 
 ---
 
-## 1. System Architecture
+## System Architecture
 
 ```
                                   +------------------------------------+
@@ -48,74 +57,122 @@ It intercepts every agent action, validates credentials, evaluates security poli
 
 ---
 
-## 2. Platform Modules & Dashboard Pages
+## Clean Project Folder Structure
 
-The platform features 11 integrated modules and frontend views:
+AgentTrust is architected with complete separation of concerns:
 
-1. **Overview Dashboard**: Real-time aggregated metrics (Agents, Tools, Allowed, Blocked, Security Incidents), 24h Gateway Enforcement Timeline (Recharts), and Tool Invocation Distribution.
-2. **Agent Registry & Credential Management**: Provision agents, generate cryptographic API keys (`agk_live_...`), inspect identities, assign roles, view granular permissions, and trigger instant revocation.
-3. **Protected Tool Registry & Live Tester**: Server-side tool definitions for Relational DB, Sandboxed Filesystem, Outbound HTTP, and MCP Bridge. Includes an interactive console to test tool calls directly through the gateway.
-4. **Live Monitoring**: Real-time interception telemetry stream with auto-polling (every 3s), decision filters, and a JSON inspector for every request and response.
-5. **Multi-Agent Delegation Graph**: Issue cryptographic parent-to-child delegation tokens with scope constraints, depth limits, and anti-privilege escalation checks.
-6. **Provenance Explorer**: Visual data-flow lineage graph connecting origin sources (prompts, untrusted PDFs, emails), agent transforms, and influenced tool actions with Trust Level badges (`TRUSTED`, `UNTRUSTED`, `SANITIZED`).
-7. **Security Policies & Simulator**: Manage versioned declarative policies with immutable revision tracking, and dry-run access decisions against test agents and resources without side-effects.
-8. **Security Incidents & Alerts**: Triage security alerts generated from blocked tool requests, view severity classifications (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`), update investigation notes, and change resolution states.
-9. **Security Audit Trail & Compliance Export**: Search, filter, and sort all historical gateway decisions, with one-click export to **CSV** or **JSON**.
-10. **Autonomous Agent Workflow Runner**: Execute stateful multi-step agent tasks and simulate indirect prompt injection attacks to verify AgentTrust intercepting and halting data exfiltration.
-11. **Platform Configuration & System Health**: Service health status, OPA connectivity, default deny-by-default rules, and sandbox storage jail information.
-
----
-
-## 3. Database Schema
-
-All models are built with SQLAlchemy 2.0 async engine support:
-- `users`: Administrative operators, auditors, password hashes (bcrypt).
-- `agents`: Registered AI agent identities, roles, and status (`active`, `revoked`, `suspended`).
-- `agent_credentials`: SHA-256 token hashes (`token_hash`), key preview prefix, revocation status, expiration dates.
-- `tools`: Registered tools, categories, supported operations, and protection status.
-- `permissions`: Granular rules mapping agents, tools, operations, resource globs, effects (`ALLOW`/`DENY`), priorities, and expiration.
-- `delegations`: Inter-agent delegation hierarchy, delegation scopes, maximum depths, and validity tokens.
-- `policies` & `policy_versions`: Declarative policy rules with version history.
-- `provenance_nodes` & `provenance_edges`: Graph representation for sources, transformations, and handoffs.
-- `audit_events`: Tamper-evident execution logs storing request IDs, agent IDs, decisions, durations, and context.
-- `security_incidents`: Security incident tracker linking blocked operations with severity and resolution states.
-- `revocation_records`: Formal audit records of revocation actions.
-
----
-
-## 4. Quick Start & Execution
-
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-
-### Setup & Dependencies
-```powershell
-# Backend
-cd "e:\OS PROJECT\backend"
-pip install -r requirements.txt
-
-# Frontend
-cd "e:\OS PROJECT\frontend"
-npm install
-npm run build
+```
+TRUST/
+├── backend/                         # FastAPI Backend Modular Monolith
+│   ├── app/
+│   │   ├── api/v1/                  # Scalable REST API Routers
+│   │   │   ├── router.py            # Central v1 Router Registry
+│   │   │   ├── gateway.py           # Core Interception Entrypoint
+│   │   │   ├── agents.py            # Agent Provisioning & Revocation
+│   │   │   ├── tools.py             # Protected Tool Endpoints
+│   │   │   ├── delegations.py       # Cryptographic Delegation Chain
+│   │   │   ├── provenance.py        # Lineage Graph & Taint Tracking
+│   │   │   ├── policies.py          # Deterministic Policy Engine
+│   │   │   ├── incidents.py         # Incident Alerts & Forensics
+│   │   │   ├── audit.py             # Tamper-Evident Audit Logs
+│   │   │   ├── agent_exec.py        # Autonomous Agent Runner
+│   │   │   ├── overview.py          # Real-Time Telemetry Stats
+│   │   │   └── health.py            # Diagnostic Health Check
+│   │   ├── core/                    # Security, Settings & Async DB
+│   │   ├── models/                  # SQLAlchemy ORM Data Models
+│   │   ├── services/                # Decoupled Business Logic Services
+│   │   └── tools/                   # Hardened Real Tool Implementations
+│   └── tests/                       # 23 Automated Security & Gateway Tests
+├── frontend/                        # React 18 + TypeScript + Vite Dashboard
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── layout/              # Sidebar & TopNavbar Layout
+│   │   │   ├── tabs/                # 11 Dedicated Security Consoles
+│   │   │   └── ui/                  # Reusable UI Primitives (Badges, Modals, Spinners)
+│   │   ├── context/                 # Central State (SecurityPlatform, Toast)
+│   │   ├── hooks/                   # Business Logic Custom Hooks
+│   │   ├── services/                # Typed API Client & Service Layer
+│   │   ├── types/                   # Domain TypeScript Interfaces
+│   │   └── utils/                   # Shared Formatters & Utilities
+├── ARCHITECTURE.md                  # Comprehensive Threat Model & Security Specs
+├── API.md                           # REST API Reference Documentation
+├── Dockerfile.backend               # Container configuration for backend
+├── Dockerfile.frontend              # Multi-stage production container for frontend
+└── docker-compose.yml               # One-click Docker deployment
 ```
 
-### Running All Automated Tests (23/23 Passing)
-```powershell
-cd "e:\OS PROJECT\backend"
+---
+
+## 11 Integrated Security Consoles
+
+1. **Executive Overview**: Real-time aggregated statistics, 24h gateway enforcement timeline (Recharts), and tool usage distribution.
+2. **AI Agent Registry**: Cryptographic agent provisioning, API key management (`agk_live_...`), role assignment, and instant credential revocation.
+3. **Protected Tool Registry & Tester**: Server-side tool catalog (DB, Filesystem, HTTP API, MCP) with interactive in-browser tester.
+4. **Live Monitoring**: Real-time telemetry stream with background polling, decision filters (`ALLOWED` / `BLOCKED`), and deep payload inspection.
+5. **Delegation Graph**: Cryptographic parent-to-child delegation tokens, depth limits, and anti-privilege escalation verification.
+6. **Provenance Explorer**: Visual data-flow lineage graph tracking origin sources, agent transformations, and trust levels (`TRUSTED`, `SANITIZED`, `UNTRUSTED`).
+7. **Security Policies**: Deterministic rule editor with regex resource matching, explicit deny rules, and a dry-run policy simulator.
+8. **Security Alerts & Incidents**: Automated incident generation for blocked attacks, indirect prompt injection attempts, and path traversal detection.
+9. **Compliance Audit Trail**: Paginated, tamper-evident audit logs with microsecond execution latencies and one-click CSV / JSON exports.
+10. **Autonomous Agent Runner**: Live multi-step agent execution playground demonstrating end-to-end gateway interception and prompt injection neutralization.
+11. **Platform Settings & Health**: Gateway diagnostics, fail-closed enforcement mode toggles, and live polling controls.
+
+---
+
+## Quickstart: Running on Localhost
+
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- Git
+
+### 1. Run the Backend & Unified Platform
+```bash
+cd backend
+pip install -r requirements.txt
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8080
+```
+Open **`http://localhost:8080`** in your browser. The backend serves both the complete REST API under `/api/v1` and the compiled production frontend directly at `/`.
+
+### 2. Run Frontend in Development Mode (Optional)
+If you wish to edit frontend code with Vite Hot Module Replacement (HMR):
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open **`http://localhost:5173`**.
+
+---
+
+## Quickstart: Docker Compose
+
+To deploy AgentTrust in a containerized environment:
+```bash
+docker-compose up -d --build
+```
+Navigate to **`http://localhost:8080`**.
+
+---
+
+## Running Automated Security Tests
+
+AgentTrust includes 23 automated integration and security tests validating:
+- Strict path traversal prevention (`../../windows/system32`, `../../etc/passwd`)
+- SSRF protection against private IP ranges and cloud metadata
+- Anti-privilege escalation in multi-agent delegations
+- Safe parameterized SQL queries and DDL blocking
+- Indirect prompt injection data exfiltration blocks
+- Tamper-evident audit completeness and non-side-effect guarantees on denied actions
+
+Run the test suite:
+```bash
+cd backend
 python -m pytest -v
 ```
 
-### Running the End-to-End Security Demonstration
-```powershell
-python "e:\OS PROJECT\backend\scripts\demo_full_platform.py"
-```
+---
 
-### Starting the Platform Server
-```powershell
-cd "e:\OS PROJECT\backend"
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-- **Web Dashboard**: `http://localhost:8000/`
-- **Interactive OpenAPI Documentation**: `http://localhost:8000/docs`
+## License & Security Compliance
+
+Developed under strict Cybersecurity and Zero Trust AI standards. Deterministic enforcement guarantees safety across enterprise LLM deployments.

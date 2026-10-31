@@ -1,41 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { Shield, ShieldAlert, Bot, Wrench, CheckCircle2, XCircle, RefreshCw, Activity } from 'lucide-react';
+import React from 'react';
+import { Shield, ShieldAlert, Bot, Wrench, CheckCircle2, RefreshCw, Activity } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, CartesianGrid } from 'recharts';
-import { api } from '../api/client';
+import { useOverview } from '../../hooks/useOverview';
+import { StatCard } from '../ui/StatCard';
+import { DecisionBadge } from '../ui/Badge';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { formatLatency, formatTimeOnly } from '../../utils/formatters';
 
 export const OverviewTab: React.FC = () => {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchStats = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await api.getOverviewStats();
-      setData(res);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load statistics');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchStats();
-    const interval = setInterval(fetchStats, 10000);
-    return () => clearInterval(interval);
-  }, []);
+  const { data, loading, error, refresh } = useOverview();
 
   if (loading && !data) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="flex items-center gap-3 text-cyan-400">
-          <RefreshCw className="h-6 w-6 animate-spin" />
-          <span className="font-mono text-sm tracking-wider">AGGREGATING CYBERSECURITY TELEMETRY...</span>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="AGGREGATING CYBERSECURITY TELEMETRY..." />;
   }
 
   const metrics = data?.metrics || {
@@ -61,7 +37,7 @@ export const OverviewTab: React.FC = () => {
           </p>
         </div>
         <button
-          onClick={fetchStats}
+          onClick={refresh}
           disabled={loading}
           className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2 text-xs font-medium text-slate-200 transition-colors hover:border-slate-600 hover:bg-slate-800 disabled:opacity-50"
         >
@@ -72,63 +48,44 @@ export const OverviewTab: React.FC = () => {
 
       {error && (
         <div className="rounded-lg border border-rose-800/50 bg-rose-950/30 p-4 text-sm text-rose-300">
-          Error: {error}
+          Telemetry Error: {error}
         </div>
       )}
 
-      {/* Metric Cards Grid */}
+      {/* Metric Cards Grid using reusable StatCard */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Total & Active Agents */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Registered Agents</span>
-            <Bot className="h-5 w-5 text-cyan-400" />
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="font-mono text-3xl font-bold text-white">{metrics.total_agents}</span>
-            <span className="text-xs text-emerald-400 font-medium">({metrics.active_agents} Active)</span>
-          </div>
-          <div className="mt-2 text-xs text-slate-500">Authenticated agent identities</div>
-        </div>
-
-        {/* Protected Tools */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Protected Tools</span>
-            <Wrench className="h-5 w-5 text-purple-400" />
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="font-mono text-3xl font-bold text-white">{metrics.registered_tools}</span>
-            <span className="text-xs text-purple-400 font-medium">Sandboxed</span>
-          </div>
-          <div className="mt-2 text-xs text-slate-500">DB, Filesystem, HTTP & MCP</div>
-        </div>
-
-        {/* Allowed Actions */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Allowed Operations</span>
-            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="font-mono text-3xl font-bold text-emerald-400">{metrics.allowed_operations}</span>
-            <span className="text-xs text-slate-400 font-medium">Verified Calls</span>
-          </div>
-          <div className="mt-2 text-xs text-slate-500">Compliant with active security policies</div>
-        </div>
-
-        {/* Blocked Actions & Incidents */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Blocked Violations</span>
-            <ShieldAlert className="h-5 w-5 text-rose-400" />
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="font-mono text-3xl font-bold text-rose-400">{metrics.blocked_operations}</span>
-            <span className="text-xs text-rose-400 font-medium font-mono">({metrics.security_incidents} Incidents)</span>
-          </div>
-          <div className="mt-2 text-xs text-slate-500">Zero execution side-effects</div>
-        </div>
+        <StatCard
+          label="Registered Agents"
+          value={metrics.total_agents}
+          subValue={`(${metrics.active_agents} Active)`}
+          subValueColor="text-emerald-400"
+          description="Authenticated agent identities"
+          icon={<Bot className="h-5 w-5 text-cyan-400" />}
+        />
+        <StatCard
+          label="Protected Tools"
+          value={metrics.registered_tools}
+          subValue="Sandboxed"
+          subValueColor="text-purple-400"
+          description="DB, Filesystem, HTTP & MCP"
+          icon={<Wrench className="h-5 w-5 text-purple-400" />}
+        />
+        <StatCard
+          label="Allowed Operations"
+          value={metrics.allowed_operations}
+          subValue="Verified Calls"
+          subValueColor="text-emerald-400"
+          description="Compliant with active security policies"
+          icon={<CheckCircle2 className="h-5 w-5 text-emerald-400" />}
+        />
+        <StatCard
+          label="Blocked Violations"
+          value={metrics.blocked_operations}
+          subValue={`(${metrics.security_incidents} Incidents)`}
+          subValueColor="text-rose-400"
+          description="Zero execution side-effects"
+          icon={<ShieldAlert className="h-5 w-5 text-rose-400" />}
+        />
       </div>
 
       {/* Analytics Charts */}
@@ -201,7 +158,7 @@ export const OverviewTab: React.FC = () => {
             <p className="text-xs text-slate-400">Live decision stream recorded by the gateway</p>
           </div>
           <span className="text-xs font-mono text-cyan-400 bg-cyan-950/60 px-2.5 py-1 rounded border border-cyan-800">
-            AUTO-POLLING ACTIVE
+            TELEMETRY ACTIVE
           </span>
         </div>
 
@@ -219,11 +176,9 @@ export const OverviewTab: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              {(data?.recent_events || []).map((ev: any) => (
+              {(data?.recent_events || []).map((ev) => (
                 <tr key={ev.id} className="hover:bg-slate-800/30 transition-colors">
-                  <td className="py-2.5 px-3 font-mono text-slate-400">
-                    {new Date(ev.created_at).toLocaleTimeString()}
-                  </td>
+                  <td className="py-2.5 px-3 font-mono text-slate-400">{formatTimeOnly(ev.created_at)}</td>
                   <td className="py-2.5 px-3 font-medium text-white">{ev.agent_name}</td>
                   <td className="py-2.5 px-3 font-mono text-slate-300">
                     {ev.tool_name}:{ev.operation}
@@ -232,19 +187,9 @@ export const OverviewTab: React.FC = () => {
                     {ev.target_resource}
                   </td>
                   <td className="py-2.5 px-3">
-                    {ev.decision === 'ALLOWED' ? (
-                      <span className="inline-flex items-center gap-1 rounded bg-emerald-950/60 px-2 py-0.5 text-[11px] font-semibold text-emerald-400 border border-emerald-800/60">
-                        <CheckCircle2 className="h-3 w-3" /> ALLOWED
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded bg-rose-950/60 px-2 py-0.5 text-[11px] font-semibold text-rose-400 border border-rose-800/60">
-                        <XCircle className="h-3 w-3" /> BLOCKED
-                      </span>
-                    )}
+                    <DecisionBadge decision={ev.decision} />
                   </td>
-                  <td className="py-2.5 px-3 font-mono text-slate-400">
-                    {ev.execution_duration_ms ? `${ev.execution_duration_ms.toFixed(2)} ms` : '-'}
-                  </td>
+                  <td className="py-2.5 px-3 font-mono text-slate-400">{formatLatency(ev.execution_duration_ms)}</td>
                   <td className="py-2.5 px-3 text-slate-400 max-w-[250px] truncate" title={ev.decision_reason}>
                     {ev.decision_reason}
                   </td>

@@ -1,37 +1,62 @@
-import React, { useEffect, useState } from 'react';
-import { Bot, Play, CheckCircle2, ShieldAlert, Terminal, Layers } from 'lucide-react';
-import { api } from '../api/client';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Bot, Play, Terminal, Layers } from 'lucide-react';
+import { api } from '../../services/api.client';
+import type { Agent } from '../../types';
+import { DecisionBadge } from '../ui/Badge';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { useToast } from '../../context/ToastContext';
+
+interface WorkflowStep {
+  step: number;
+  action: string;
+  tool: string;
+  decision: 'ALLOWED' | 'BLOCKED' | 'REQUIRES_APPROVAL';
+  reason: string;
+  execution_status: string;
+  result_preview?: any;
+}
+
+interface WorkflowResult {
+  status: 'COMPLETED' | 'HALTED_BY_GATEWAY' | 'ERROR';
+  agent_id: string;
+  steps: WorkflowStep[];
+}
 
 export const AgentRunnerTab: React.FC = () => {
-  const [agents, setAgents] = useState<any[]>([]);
+  const { showToast } = useToast();
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loadingAgents, setLoadingAgents] = useState(true);
   const [selectedAgentId, setSelectedAgentId] = useState('');
   const [taskPrompt, setTaskPrompt] = useState(
     'Query enterprise database for active clients, compute client volume, and write summary report to reports/'
   );
   const [simulateInjection, setSimulateInjection] = useState(false);
   const [running, setRunning] = useState(false);
-  const [workflowOutput, setWorkflowOutput] = useState<any>(null);
+  const [workflowOutput, setWorkflowOutput] = useState<WorkflowResult | null>(null);
 
-  const fetchAgents = async () => {
+  const fetchAgents = useCallback(async () => {
     try {
+      setLoadingAgents(true);
       const res = await api.listAgents('active');
-      setAgents(res);
+      setAgents(res as Agent[]);
       if (res.length > 0 && !selectedAgentId) {
         setSelectedAgentId(res[0].id);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to load active agents', 'error');
+    } finally {
+      setLoadingAgents(false);
     }
-  };
+  }, [selectedAgentId, showToast]);
 
   useEffect(() => {
     fetchAgents();
-  }, []);
+  }, [fetchAgents]);
 
   const handleRunWorkflow = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAgentId) {
-      alert('Please select an active agent.');
+      showToast('Please select an active agent before executing.', 'warning');
       return;
     }
     setRunning(true);
@@ -43,9 +68,14 @@ export const AgentRunnerTab: React.FC = () => {
         task_prompt: taskPrompt,
         simulate_injection_attack: simulateInjection,
       });
-      setWorkflowOutput(res);
+      setWorkflowOutput(res as WorkflowResult);
+      if (res.status === 'COMPLETED') {
+        showToast('Autonomous agent task completed successfully.', 'success');
+      } else {
+        showToast(`Workflow halted by AgentTrust gateway: ${res.status}`, 'warning');
+      }
     } catch (err: any) {
-      alert(`Agent workflow execution error: ${err.message}`);
+      showToast(`Agent workflow execution error: ${err.message}`, 'error');
     } finally {
       setRunning(false);
     }
@@ -77,17 +107,25 @@ export const AgentRunnerTab: React.FC = () => {
           <form onSubmit={handleRunWorkflow} className="space-y-4 text-xs">
             <div>
               <label className="font-semibold text-slate-300">Target Agent</label>
-              <select
-                value={selectedAgentId}
-                onChange={(e) => setSelectedAgentId(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-cyan-500 focus:outline-none"
-              >
-                {agents.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} ({a.role})
-                  </option>
-                ))}
-              </select>
+              {loadingAgents ? (
+                <div className="mt-1 py-2">
+                  <LoadingSpinner size="sm" message="Loading agents..." />
+                </div>
+              ) : (
+                <select
+                  value={selectedAgentId}
+                  onChange={(e) => setSelectedAgentId(e.target.value)}
+                  aria-label="Select target agent"
+                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-cyan-500 focus:outline-none"
+                >
+                  {agents.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} ({a.role})
+                    </option>
+                  ))}
+                  {agents.length === 0 && <option value="">No active agents registered</option>}
+                </select>
+              )}
             </div>
 
             <div>
@@ -121,8 +159,8 @@ export const AgentRunnerTab: React.FC = () => {
 
             <button
               type="submit"
-              disabled={running}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-600 px-4 py-2.5 font-semibold text-white shadow-lg shadow-cyan-600/20 hover:bg-cyan-500 disabled:opacity-50"
+              disabled={running || agents.length === 0}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-600 px-4 py-2.5 font-semibold text-white shadow-lg shadow-cyan-600/20 hover:bg-cyan-500 disabled:opacity-50 transition-colors"
             >
               <Play className="h-4 w-4" />
               {running ? 'Agent Dispatched & Running...' : 'Execute Agent Workflow'}
@@ -139,15 +177,25 @@ export const AgentRunnerTab: React.FC = () => {
                 Interception & Security Guardrail Timeline
               </h2>
               {workflowOutput && (
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${workflowOutput.status === 'COMPLETED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}`}>
+                <span
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
+                    workflowOutput.status === 'COMPLETED'
+                      ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                      : 'bg-rose-950 text-rose-400 border border-rose-800'
+                  }`}
+                >
                   {workflowOutput.status}
                 </span>
               )}
             </div>
 
-            {workflowOutput ? (
+            {running ? (
+              <div className="py-24">
+                <LoadingSpinner size="lg" message="Agent execution dispatched. Intercepting operations via Security Gateway..." />
+              </div>
+            ) : workflowOutput ? (
               <div className="mt-4 space-y-4">
-                {workflowOutput.steps.map((st: any) => (
+                {workflowOutput.steps.map((st) => (
                   <div key={st.step} className="rounded-lg border border-slate-800 bg-slate-950 p-4 text-xs space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -157,20 +205,13 @@ export const AgentRunnerTab: React.FC = () => {
                         <span className="font-bold text-white">{st.action}</span>
                       </div>
                       <div>
-                        {st.decision === 'ALLOWED' ? (
-                          <span className="inline-flex items-center gap-1 rounded bg-emerald-950 px-2 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-800">
-                            <CheckCircle2 className="h-3 w-3" /> ALLOWED
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded bg-rose-950 px-2 py-0.5 text-[11px] font-bold text-rose-400 border border-rose-800">
-                            <ShieldAlert className="h-3 w-3" /> BLOCKED BY AGENTTRUST
-                          </span>
-                        )}
+                        <DecisionBadge decision={st.decision} />
                       </div>
                     </div>
 
                     <div className="font-mono text-slate-400 text-[11px]">
-                      Tool: <span className="text-cyan-300">{st.tool}</span> | Status: <span className="text-slate-300">{st.execution_status}</span>
+                      Tool: <span className="text-cyan-300">{st.tool}</span> | Status:{' '}
+                      <span className="text-slate-300">{st.execution_status}</span>
                     </div>
 
                     <div className="text-slate-300 text-[11px]">
@@ -190,8 +231,9 @@ export const AgentRunnerTab: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="flex h-64 items-center justify-center text-xs text-slate-500">
-                Click "Execute Agent Workflow" on the left to watch AgentTrust intercept each step.
+              <div className="flex h-64 flex-col items-center justify-center text-xs text-slate-500 space-y-2">
+                <Bot className="h-10 w-10 text-slate-600 mb-1" />
+                <p>Click &quot;Execute Agent Workflow&quot; on the left to watch AgentTrust intercept each step in real time.</p>
               </div>
             )}
           </div>
