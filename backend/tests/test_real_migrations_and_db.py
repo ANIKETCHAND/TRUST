@@ -19,12 +19,24 @@ def test_alembic_full_migration_lifecycle():
     temp_db_path = os.path.join(temp_dir, "migration_test.db")
     temp_db_url = f"sqlite+aiosqlite:///{temp_db_path.replace(os.sep, '/')}"
 
-    alembic_ini_path = os.path.abspath("backend/alembic.ini")
+    test_dir = os.path.dirname(os.path.abspath(__file__))
+    backend_dir = os.path.dirname(test_dir)
+
+    if os.path.exists("backend/alembic.ini"):
+        alembic_ini_path = os.path.abspath("backend/alembic.ini")
+        script_loc = os.path.abspath("backend/alembic")
+    elif os.path.exists("alembic.ini"):
+        alembic_ini_path = os.path.abspath("alembic.ini")
+        script_loc = os.path.abspath("alembic")
+    else:
+        alembic_ini_path = os.path.join(backend_dir, "alembic.ini")
+        script_loc = os.path.join(backend_dir, "alembic")
+
     assert os.path.exists(alembic_ini_path), f"alembic.ini not found at {alembic_ini_path}"
 
     cfg = Config(alembic_ini_path)
     cfg.set_main_option("sqlalchemy.url", temp_db_url)
-    cfg.set_main_option("script_location", os.path.abspath("backend/alembic"))
+    cfg.set_main_option("script_location", script_loc)
 
     try:
         # 2. Run Alembic upgrade head
