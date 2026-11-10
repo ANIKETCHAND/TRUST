@@ -20,6 +20,7 @@ KNOWN_INSECURE_SECRETS: Set[str] = {
 class Settings(BaseSettings):
     PROJECT_NAME: str = "AgentTrust AI Security Platform"
     VERSION: str = "0.2.0"
+    API_PORT: int = 8080
     API_V1_STR: str = "/api/v1"
 
     ENVIRONMENT: str = "development"

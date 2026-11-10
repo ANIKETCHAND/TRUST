@@ -13,7 +13,8 @@ from app.models.endpoint import (
     EndpointStatus,
     EndpointTelemetryEvent,
     EndpointContainmentAction,
-    ContainmentScope
+    ContainmentScope,
+    BrowserShieldExtension
 )
 
 __all__ = [
@@ -51,4 +52,5 @@ __all__ = [
     "EndpointTelemetryEvent",
     "EndpointContainmentAction",
     "ContainmentScope",
+    "BrowserShieldExtension",
 ]

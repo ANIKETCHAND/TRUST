@@ -89,3 +89,17 @@ class EndpointContainmentAction(Base):
     release_notes = Column(Text, nullable=True)
 
     device = relationship("EndpointDevice", back_populates="containment_actions")
+
+
+class BrowserShieldExtension(Base):
+    __tablename__ = "browser_shield_extensions"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    browser_name = Column(String(64), nullable=False, default="Chrome")
+    browser_version = Column(String(64), nullable=True)
+    extension_version = Column(String(32), nullable=False, default="0.2.0")
+    token_hash = Column(String(64), unique=True, nullable=False, index=True)
+    token_prefix = Column(String(24), nullable=False)
+    status = Column(String(32), default="ACTIVE", nullable=False)
+    last_seen_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    enrolled_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

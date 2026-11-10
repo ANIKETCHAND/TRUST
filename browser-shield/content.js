@@ -61,8 +61,68 @@
     }, 8000);
   }
 
-  // Intercept Keydown (Enter without Shift) on textareas / contenteditable
-  document.addEventListener("keydown", async (e) => {
+  let activeBlockedState = {
+    isBlocked: false,
+    reason: "",
+    findings: [],
+    lastScannedText: "",
+  };
+
+  let debounceTimer = null;
+
+  async function performPreflightCheck(promptText, element) {
+    if (!promptText || promptText.trim().length <= 3) {
+      activeBlockedState.isBlocked = false;
+      return;
+    }
+    if (promptText === activeBlockedState.lastScannedText) {
+      return;
+    }
+    activeBlockedState.lastScannedText = promptText;
+
+    try {
+      const check = await chrome.runtime.sendMessage({
+        type: "CHECK_ACTION",
+        payload: {
+          target_url: window.location.href,
+          prompt_text: promptText,
+          action_type: "submit_prompt",
+        },
+      });
+
+      if (check && check.decision === "BLOCKED") {
+        activeBlockedState.isBlocked = true;
+        activeBlockedState.reason = check.reason;
+        activeBlockedState.findings = check.findings || [];
+        showSecurityNotice(check.reason, check.findings);
+      } else {
+        activeBlockedState.isBlocked = false;
+        const banner = document.getElementById("agenttrust-security-banner");
+        if (banner) banner.remove();
+      }
+    } catch (err) {
+      console.error("[AgentTrust Browser Shield] Scan error:", err);
+    }
+  }
+
+  // Continuous debounced DLP scanning on input / paste
+  document.addEventListener("input", (e) => {
+    const target = e.target;
+    if (
+      target.tagName === "TEXTAREA" ||
+      target.getAttribute("contenteditable") === "true" ||
+      target.getAttribute("role") === "textbox"
+    ) {
+      const text = target.value || target.innerText || "";
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        performPreflightCheck(text, target);
+      }, 200);
+    }
+  }, true);
+
+  // Synchronous Keydown Interceptor
+  document.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       const target = e.target;
       if (
@@ -71,29 +131,36 @@
         target.getAttribute("role") === "textbox"
       ) {
         const promptText = target.value || target.innerText || "";
-        if (promptText.trim().length > 3) {
-          // Pre-flight check via background service worker
-          try {
-            const check = await chrome.runtime.sendMessage({
-              type: "CHECK_ACTION",
-              payload: {
-                target_url: window.location.href,
-                prompt_text: promptText,
-                action_type: "submit_prompt",
-              },
-            });
-
-            if (check && check.decision === "BLOCKED") {
-              e.preventDefault();
-              e.stopPropagation();
-              e.stopImmediatePropagation();
-              showSecurityNotice(check.reason, check.findings);
-            }
-          } catch (err) {
-            console.error("[AgentTrust Browser Shield] Check error:", err);
-          }
+        if (activeBlockedState.isBlocked) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          showSecurityNotice(activeBlockedState.reason, activeBlockedState.findings);
+        } else if (promptText.trim().length > 3 && promptText !== activeBlockedState.lastScannedText) {
+          // Immediately trigger check
+          performPreflightCheck(promptText, target);
         }
       }
     }
   }, true);
+
+  // Synchronous Click Interceptor for Send / Submit Buttons
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest('button, [role="button"], input[type="submit"]');
+    if (btn) {
+      const isSubmitBtn =
+        btn.getAttribute("data-testid")?.includes("send") ||
+        btn.getAttribute("aria-label")?.toLowerCase().includes("send") ||
+        btn.type === "submit" ||
+        btn.querySelector('svg[data-testid*="send"]') !== null;
+
+      if (isSubmitBtn && activeBlockedState.isBlocked) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        showSecurityNotice(activeBlockedState.reason, activeBlockedState.findings);
+      }
+    }
+  }, true);
 })();
+

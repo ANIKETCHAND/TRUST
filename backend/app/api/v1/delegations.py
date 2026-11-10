@@ -18,6 +18,7 @@ class DelegationCreateRequest(BaseModel):
     scope: Dict[str, Any]
     expires_at: datetime
     max_depth: int = Field(1, ge=1, le=5)
+    parent_delegation_id: Optional[str] = None
 
 
 class DelegationRevokeRequest(BaseModel):
@@ -36,13 +37,15 @@ async def create_delegation(
             child_agent_id=req.child_agent_id,
             scope=req.scope,
             expires_at=req.expires_at,
-            max_depth=req.max_depth
+            max_depth=req.max_depth,
+            parent_delegation_id=req.parent_delegation_id
         )
         return {
             "delegation": {
                 "id": delegation.id,
                 "parent_agent_id": delegation.parent_agent_id,
                 "child_agent_id": delegation.child_agent_id,
+                "parent_delegation_id": delegation.parent_delegation_id,
                 "scope": delegation.scope,
                 "max_depth": delegation.max_depth,
                 "current_depth": delegation.current_depth,

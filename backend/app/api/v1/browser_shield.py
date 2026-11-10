@@ -64,8 +64,47 @@ async def get_browser_shield_status():
     }
 
 
+from sqlalchemy import select
+from app.api.deps import get_current_user_optional
+from app.models.endpoint import BrowserShieldExtension
+from app.models.user import User
+
+
+async def authenticate_extension_or_user(
+    x_extension_token: Optional[str] = Header(None, alias="X-Extension-Token"),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db)
+) -> Optional[BrowserShieldExtension]:
+    if current_user:
+        return None
+
+    if x_extension_token:
+        token = x_extension_token.strip()
+        if token.lower().startswith("bearer "):
+            token = token[7:].strip()
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        stmt = select(BrowserShieldExtension).where(BrowserShieldExtension.token_hash == token_hash)
+        res = await db.execute(stmt)
+        ext = res.scalars().first()
+        if not ext or ext.status != "ACTIVE":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or revoked browser extension token."
+            )
+        ext.last_seen_at = datetime.now(timezone.utc)
+        await db.commit()
+        return ext
+
+    if settings.ENVIRONMENT == "production":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required: Provide a valid X-Extension-Token header or user session."
+        )
+    return None
+
+
 @router.post("/enroll", tags=["Browser Shield"])
-async def enroll_browser_shield(req: ExtensionEnrollRequest):
+async def enroll_browser_shield(req: ExtensionEnrollRequest, db: AsyncSession = Depends(get_db)):
     """Securely enrolls an AgentTrust Browser Shield extension instance."""
     if req.enrollment_secret != settings.ENROLLMENT_SECRET:
         raise HTTPException(
@@ -74,12 +113,31 @@ async def enroll_browser_shield(req: ExtensionEnrollRequest):
         )
 
     extension_token = f"absk_live_{secrets.token_urlsafe(32)}"
+    token_hash = hashlib.sha256(extension_token.encode("utf-8")).hexdigest()
+    token_prefix = f"absk_live_{extension_token[10:16]}..."
+    now = datetime.now(timezone.utc)
+
+    instance = BrowserShieldExtension(
+        id=str(uuid.uuid4()),
+        browser_name=req.browser_name,
+        browser_version=req.browser_version,
+        extension_version=req.extension_version,
+        token_hash=token_hash,
+        token_prefix=token_prefix,
+        status="ACTIVE",
+        last_seen_at=now,
+        enrolled_at=now
+    )
+    db.add(instance)
+    await db.commit()
+
     return {
         "status": "ENROLLED",
+        "instance_id": instance.id,
         "extension_token": extension_token,
-        "token_prefix": f"absk_live_{extension_token[10:16]}...",
-        "gateway_url": f"http://localhost:{settings.API_V1_STR}",
-        "enrolled_at": datetime.now(timezone.utc),
+        "token_prefix": token_prefix,
+        "gateway_url": f"http://localhost:{settings.API_PORT}{settings.API_V1_STR}",
+        "enrolled_at": now,
         "supported_workflows": [w["domain"] for w in SUPPORTED_AI_WORKFLOWS]
     }
 
@@ -87,7 +145,7 @@ async def enroll_browser_shield(req: ExtensionEnrollRequest):
 @router.post("/check-action", tags=["Browser Shield"])
 async def check_browser_action(
     req: ActionCheckRequest,
-    x_extension_token: Optional[str] = Header(None, alias="X-Extension-Token"),
+    _auth: Optional[BrowserShieldExtension] = Depends(authenticate_extension_or_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -136,6 +194,7 @@ async def check_browser_action(
 @router.post("/events", tags=["Browser Shield"])
 async def report_shield_event(
     req: ShieldEventReportRequest,
+    _auth: Optional[BrowserShieldExtension] = Depends(authenticate_extension_or_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Logs browser shield security detections as central security incidents."""
@@ -154,3 +213,4 @@ async def report_shield_event(
     db.add(incident)
     await db.commit()
     return {"status": "RECORDED", "incident_id": incident.id}
+

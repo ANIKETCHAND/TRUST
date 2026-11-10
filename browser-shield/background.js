@@ -87,7 +87,11 @@ async function handleActionCheck(payload) {
     });
 
     if (!res.ok) {
-      return { decision: "ALLOWED", reason: "AgentTrust gateway check non-200; permitted with warning." };
+      return {
+        decision: "BLOCKED",
+        reason: `AgentTrust Gateway returned status ${res.status}: Policy enforcement unavailable (failed closed to protect data).`,
+        findings: [{ description: "Policy Service Unavailable", count: 1 }],
+      };
     }
 
     const result = await res.json();

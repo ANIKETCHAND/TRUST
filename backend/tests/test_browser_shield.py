@@ -72,3 +72,45 @@ async def test_browser_shield_preflight_dlp_checks(client: AsyncClient):
     assert inc_res.status_code == 200
     incidents = inc_res.json()
     assert any("Browser Shield" in inc["title"] for inc in incidents)
+
+
+@pytest.mark.asyncio
+async def test_browser_shield_token_authentication(client: AsyncClient):
+    # 1. Enroll to receive valid token
+    enroll_res = await client.post(
+        "/api/v1/browser-shield/enroll",
+        json={
+            "browser_name": "Brave",
+            "extension_version": "0.2.0",
+            "enrollment_secret": settings.ENROLLMENT_SECRET
+        }
+    )
+    assert enroll_res.status_code == 200
+    valid_token = enroll_res.json()["extension_token"]
+
+    # 2. Pre-flight check with valid token succeeds
+    auth_check = await client.post(
+        "/api/v1/browser-shield/check-action",
+        headers={"X-Extension-Token": valid_token},
+        json={
+            "target_url": "https://chatgpt.com/c/work-session",
+            "prompt_text": "Safe benign query to LLM",
+            "action_type": "submit_prompt"
+        }
+    )
+    assert auth_check.status_code == 200
+    assert auth_check.json()["decision"] == "ALLOWED"
+
+    # 3. Forged / invalid extension token is strictly rejected with 401
+    bad_check = await client.post(
+        "/api/v1/browser-shield/check-action",
+        headers={"X-Extension-Token": "absk_live_forged_unregistered_token_12345678"},
+        json={
+            "target_url": "https://chatgpt.com/c/work-session",
+            "prompt_text": "Safe query",
+            "action_type": "submit_prompt"
+        }
+    )
+    assert bad_check.status_code == 401
+    assert "Invalid or revoked" in bad_check.json()["detail"]
+

@@ -18,9 +18,16 @@ class AgentTaskRequest(BaseModel):
     simulate_injection_attack: bool = Field(False, description="Whether to simulate an indirect prompt injection attack attempting data exfiltration")
 
 
+from fastapi import Header
+from app.core.config import settings
+from app.services.agent_service import agent_service
+
+
 @router.post("/run", tags=["Agent Integration"])
 async def run_agent_workflow(
     req: AgentTaskRequest,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    x_agent_key: Optional[str] = Header(None, alias="X-Agent-Key"),
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ):
@@ -29,6 +36,21 @@ async def run_agent_workflow(
     Every step's tool call is intercepted and strictly authorized by the AgentTrust Security Gateway.
     Simulations use safe synthetic internal sinks and never initiate unmediated outbound connections.
     """
+    caller_principal = "anonymous_runner"
+    if current_user:
+        caller_principal = current_user.username
+    else:
+        api_key = x_agent_key or authorization
+        if api_key:
+            auth_agent = await agent_service.authenticate_agent(db, api_key)
+            if auth_agent:
+                caller_principal = f"agent:{auth_agent.name}"
+        elif settings.ENVIRONMENT == "production":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required: Provide a valid user session or agent credentials."
+            )
+
     agent = await db.get(Agent, req.agent_id)
     if not agent:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
@@ -49,7 +71,7 @@ async def run_agent_workflow(
         context={
             "task": req.task_prompt,
             "step": 1,
-            "invoker": current_user.username if current_user else "authorized_runner"
+            "invoker": caller_principal
         }
     )
     res1 = await gateway_service.execute_tool_request(db=db, agent=agent, req=step1_req)
@@ -87,7 +109,7 @@ async def run_agent_workflow(
         context={
             "task": req.task_prompt,
             "step": 2,
-            "invoker": current_user.username if current_user else "authorized_runner"
+            "invoker": caller_principal
         }
     )
     res2 = await gateway_service.execute_tool_request(db=db, agent=agent, req=step2_req)

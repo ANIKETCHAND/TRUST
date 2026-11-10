@@ -146,10 +146,36 @@ class GatewayService:
                 error="Null byte detected"
             )
 
-        normalized_resource = resource.replace("\\", "/")
-        resource_segments = normalized_resource.split("/")
-        if ".." in resource_segments or normalized_resource.startswith("/"):
-            reason = f"Security Violation: Directory traversal or unanchored path detected in resource '{resource}'."
+        # Defense-in-depth: Prohibit path traversal tokens, null bytes, and Windows drive roots
+        import re
+        import urllib.parse
+        unquoted = urllib.parse.unquote(resource)
+        if "\x00" in resource or "\x00" in unquoted:
+            reason = f"Security Violation: Null byte detected in resource identifier '{resource}'."
+            audit_evt = await audit_service.log_event(
+                db=db,
+                request_id=request_id,
+                agent_id=agent.id,
+                agent_name=agent.name,
+                tool_name=tool_name,
+                operation=operation,
+                target_resource=resource,
+                decision=PolicyDecision.BLOCKED,
+                decision_reason=reason,
+                execution_status=ExecutionStatus.BLOCKED,
+                context_metadata=context
+            )
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=audit_evt.id,
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason=reason,
+                error="Null byte detected"
+            )
+
+        if re.search(r"(?:^|[/\\])\.\.(?:[/\\]|$)", resource) or re.search(r"(?:^|[/\\])\.\.(?:[/\\]|$)", unquoted):
+            reason = f"Security Violation: Directory traversal detected in resource '{resource}'."
             audit_evt = await audit_service.log_event(
                 db=db,
                 request_id=request_id,
@@ -171,6 +197,62 @@ class GatewayService:
                 reason=reason,
                 error="Directory traversal detected"
             )
+
+        if tool_name == "filesystem_tool":
+            normalized = unquoted.replace("\\", "/")
+            if normalized.startswith("/") or re.match(r"^[a-zA-Z]:", unquoted):
+                reason = f"Security Violation: Directory traversal or unanchored path detected in resource '{resource}'."
+                audit_evt = await audit_service.log_event(
+                    db=db,
+                    request_id=request_id,
+                    agent_id=agent.id,
+                    agent_name=agent.name,
+                    tool_name=tool_name,
+                    operation=operation,
+                    target_resource=resource,
+                    decision=PolicyDecision.BLOCKED,
+                    decision_reason=reason,
+                    execution_status=ExecutionStatus.BLOCKED,
+                    context_metadata=context
+                )
+                return GatewayExecuteResponse(
+                    request_id=request_id,
+                    event_id=audit_evt.id,
+                    decision="BLOCKED",
+                    execution_status="BLOCKED",
+                    reason=reason,
+                    error="Unanchored path detected"
+                )
+
+        # Prompt Injection & Instruction Override Detection
+        param_str = str(parameters)
+        is_injection, threat_lvl, injection_findings = prompt_injection_service.analyze_content(param_str)
+        if is_injection:
+            context["prompt_injection_detected"] = True
+            context["prompt_injection_findings"] = injection_findings
+            if threat_lvl == "HIGH" or any("exfiltrate" in f.get("pattern", "").lower() for f in injection_findings):
+                reason = f"Prompt Injection Violation: High-risk instruction override detected ({injection_findings[0]['pattern']})."
+                audit_evt = await audit_service.log_event(
+                    db=db,
+                    request_id=request_id,
+                    agent_id=agent.id,
+                    agent_name=agent.name,
+                    tool_name=tool_name,
+                    operation=operation,
+                    target_resource=resource,
+                    decision=PolicyDecision.BLOCKED,
+                    decision_reason=reason,
+                    execution_status=ExecutionStatus.BLOCKED,
+                    context_metadata=context
+                )
+                return GatewayExecuteResponse(
+                    request_id=request_id,
+                    event_id=audit_evt.id,
+                    decision="BLOCKED",
+                    execution_status="BLOCKED",
+                    reason=reason,
+                    error="Prompt injection blocked"
+                )
 
         # 3. Delegation Verification & Boundary Enforcement (if delegated execution)
         delegation_id_ref = None
@@ -240,6 +322,31 @@ class GatewayService:
                     error="Delegation expired"
                 )
 
+            # Check delegation depth constraints
+            if delegation_record.current_depth > delegation_record.max_depth:
+                reason = f"Delegation Violation: Current depth {delegation_record.current_depth} exceeds max_depth {delegation_record.max_depth}."
+                audit_evt = await audit_service.log_event(
+                    db=db,
+                    request_id=request_id,
+                    agent_id=agent.id,
+                    agent_name=agent.name,
+                    tool_name=tool_name,
+                    operation=operation,
+                    target_resource=resource,
+                    decision=PolicyDecision.BLOCKED,
+                    decision_reason=reason,
+                    execution_status=ExecutionStatus.BLOCKED,
+                    context_metadata=context
+                )
+                return GatewayExecuteResponse(
+                    request_id=request_id,
+                    event_id=audit_evt.id,
+                    decision="BLOCKED",
+                    execution_status="BLOCKED",
+                    reason=reason,
+                    error="Delegation depth exceeded"
+                )
+
             # Check delegator parent status
             parent_agent = await db.get(Agent, delegation_record.parent_agent_id)
             if not parent_agent or parent_agent.status != AgentStatus.ACTIVE:
@@ -265,6 +372,61 @@ class GatewayService:
                     reason=reason,
                     error="Parent agent revoked"
                 )
+
+            # Lineage verification: Walk up the ancestor delegation chain
+            ancestor_id = delegation_record.parent_delegation_id
+            while ancestor_id:
+                ancestor_del = await db.get(Delegation, ancestor_id)
+                if not ancestor_del:
+                    break
+                if ancestor_del.status != DelegationStatus.ACTIVE:
+                    reason = f"Delegation Lineage Violation: Ancestor delegation '{ancestor_id}' is {ancestor_del.status.value.upper()}."
+                    audit_evt = await audit_service.log_event(
+                        db=db,
+                        request_id=request_id,
+                        agent_id=agent.id,
+                        agent_name=agent.name,
+                        tool_name=tool_name,
+                        operation=operation,
+                        target_resource=resource,
+                        decision=PolicyDecision.BLOCKED,
+                        decision_reason=reason,
+                        execution_status=ExecutionStatus.BLOCKED,
+                        context_metadata=context
+                    )
+                    return GatewayExecuteResponse(
+                        request_id=request_id,
+                        event_id=audit_evt.id,
+                        decision="BLOCKED",
+                        execution_status="BLOCKED",
+                        reason=reason,
+                        error="Delegation ancestor revoked"
+                    )
+                anc_expires = ancestor_del.expires_at if ancestor_del.expires_at.tzinfo else ancestor_del.expires_at.replace(tzinfo=timezone.utc)
+                if anc_expires <= now_utc:
+                    reason = f"Delegation Lineage Violation: Ancestor delegation '{ancestor_id}' has expired."
+                    audit_evt = await audit_service.log_event(
+                        db=db,
+                        request_id=request_id,
+                        agent_id=agent.id,
+                        agent_name=agent.name,
+                        tool_name=tool_name,
+                        operation=operation,
+                        target_resource=resource,
+                        decision=PolicyDecision.BLOCKED,
+                        decision_reason=reason,
+                        execution_status=ExecutionStatus.BLOCKED,
+                        context_metadata=context
+                    )
+                    return GatewayExecuteResponse(
+                        request_id=request_id,
+                        event_id=audit_evt.id,
+                        decision="BLOCKED",
+                        execution_status="BLOCKED",
+                        reason=reason,
+                        error="Delegation ancestor expired"
+                    )
+                ancestor_id = ancestor_del.parent_delegation_id
 
             # Check scope boundaries: does the delegation permit this tool & operation?
             del_scope = delegation_record.scope

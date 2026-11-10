@@ -151,7 +151,16 @@ class FileScannerService:
         Restores a previously quarantined file back to its original location.
         Requires explicit administrative authorization.
         """
-        meta_path = self.meta_dir / f"{quarantine_id}.json"
+        import re
+        if not re.match(r"^quar_[a-zA-Z0-9_\-]+$", quarantine_id):
+            raise ValueError(f"Invalid quarantine ID format: '{quarantine_id}'")
+
+        meta_path = (self.meta_dir / f"{quarantine_id}.json").resolve()
+        try:
+            meta_path.relative_to(self.meta_dir.resolve())
+        except ValueError:
+            raise PermissionError("Access denied: Invalid quarantine path outside vault.")
+
         if not meta_path.is_file():
             raise FileNotFoundError(f"Quarantine record '{quarantine_id}' not found.")
 

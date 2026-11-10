@@ -105,16 +105,42 @@ class AgentService:
             cred.is_revoked = True
             cred.revoked_at = now
 
-        # Cascading revocation: revoke all active delegations involving this agent as parent or child
-        del_stmt = select(Delegation).where(
+        # Cascading revocation: transitively revoke all active delegations involving this agent
+        # and all downstream descendant delegations.
+        direct_stmt = select(Delegation).where(
             or_(Delegation.parent_agent_id == agent_id, Delegation.child_agent_id == agent_id),
             Delegation.status == DelegationStatus.ACTIVE
         )
-        del_res = await db.execute(del_stmt)
-        for deleg in del_res.scalars().all():
-            deleg.status = DelegationStatus.REVOKED
-            deleg.revoked_at = now
-            deleg.revocation_reason = f"Cascaded revocation from revoked agent '{agent.name}': {reason}"
+        direct_res = await db.execute(direct_stmt)
+        queue = [d.id for d in direct_res.scalars().all()]
+        visited = set()
+
+        while queue:
+            curr_id = queue.pop(0)
+            if curr_id in visited:
+                continue
+            visited.add(curr_id)
+
+            curr_del = await db.get(Delegation, curr_id)
+            if not curr_del:
+                continue
+
+            if curr_del.status == DelegationStatus.ACTIVE:
+                curr_del.status = DelegationStatus.REVOKED
+                curr_del.revoked_at = now
+                curr_del.revocation_reason = f"Cascaded revocation from revoked agent '{agent.name}': {reason}"
+
+            downstream_stmt = select(Delegation).where(
+                or_(
+                    Delegation.parent_delegation_id == curr_id,
+                    Delegation.parent_agent_id == curr_del.child_agent_id
+                ),
+                Delegation.status == DelegationStatus.ACTIVE
+            )
+            downstream_res = await db.execute(downstream_stmt)
+            for child_del in downstream_res.scalars().all():
+                if child_del.id not in visited:
+                    queue.append(child_del.id)
 
         # Add revocation record
         rev_record = RevocationRecord(
