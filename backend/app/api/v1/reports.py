@@ -11,6 +11,7 @@ from app.services.report_generator import report_generator
 router = APIRouter(prefix="/reports", tags=["Forensic Reports"])
 
 
+@router.get("/incident/{incident_id}/export", summary="Export Forensic Incident Dossier (GET)")
 @router.post("/incident/{incident_id}/export", summary="Export Forensic Incident Dossier (JSON / HTML / CSV)")
 async def export_incident_report(
     incident_id: str,
@@ -47,6 +48,9 @@ async def get_executive_summary(
     Returns platform-wide posture metrics, block ratios, and executive recommendations.
     """
     summary = await report_generator.get_executive_summary(db)
+    if format == "html":
+        html_content = report_generator.export_executive_summary_html(summary)
+        return Response(content=html_content, media_type="text/html")
     return summary
 
 

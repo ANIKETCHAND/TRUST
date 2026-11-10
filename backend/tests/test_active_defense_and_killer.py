@@ -158,3 +158,93 @@ async def test_gateway_enforces_active_defense_sinkhole(client: AsyncClient):
 
     # Release sinkhole
     active_defense_service.release_sinkhole(sinkhole_ip)
+
+
+def test_active_defense_cidr_subnet_sinkhole():
+    subnet = "198.51.100.0/24"
+    active_defense_service.sinkhole_ip(subnet, reason="Subnet probe containment")
+
+    # Member of CIDR subnet should be sinkholed
+    is_blocked, rec = active_defense_service.is_ip_sinkholed("198.51.100.42")
+    assert is_blocked is True
+    assert rec["ip"] == subnet
+
+    # Non-member should not be sinkholed
+    is_blocked_other, _ = active_defense_service.is_ip_sinkholed("198.51.101.42")
+    assert is_blocked_other is False
+
+    active_defense_service.release_sinkhole(subnet)
+
+
+def test_active_defense_malformed_ip_rejection():
+    with pytest.raises(ValueError, match="Invalid IP address or CIDR range"):
+        active_defense_service.sinkhole_ip("1.2.3.4 & calc.exe")
+
+    with pytest.raises(ValueError, match="Invalid IP address or CIDR range"):
+        active_defense_service.sinkhole_ip("not_an_ip; rm -rf /")
+
+
+def test_active_defense_protected_pid_rejection():
+    import os
+    # Backend server PID
+    res_self = active_defense_service.kill_process(pid=os.getpid())
+    assert res_self["success"] is False
+    assert "Protected system or platform PID" in res_self["error"]
+
+    # System PIDs (0, 1, 4)
+    for sys_pid in [0, 1, 4]:
+        res_sys = active_defense_service.kill_process(pid=sys_pid)
+        assert res_sys["success"] is False
+        assert "Protected" in res_sys["error"]
+
+
+@pytest.mark.asyncio
+async def test_gateway_enforces_deception_tarpit(client: AsyncClient):
+    # Register test agent
+    reg = await client.post("/api/v1/agents", json={"name": "TarpitProbeAgent", "role": "scanner"})
+    ag_data = reg.json()
+    api_key = ag_data["raw_api_key"]
+
+    trap_ip = "203.0.113.99"
+    active_defense_service.add_tarpit_target(trap_ip, reason="Automated tool probing")
+
+    # Gateway execution from trap IP should return synthetic canary decoy
+    res = await client.post(
+        "/api/v1/gateway/execute",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "X-Forwarded-For": trap_ip
+        },
+        json={
+            "tool": "postgres_tool",
+            "operation": "query_select",
+            "resource": "table:customer_records",
+            "parameters": {"sql": "SELECT * FROM customer_records"}
+        }
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["decision"] == "ALLOWED"
+    assert "Deception Tarpit" in data["reason"]
+    assert "canary_tk_" in data["result"]["synthetic_telemetry"]["token_id"]
+
+    active_defense_service.remove_tarpit_target(trap_ip)
+
+
+def test_endpoint_connector_process_and_ip_safety():
+    import os
+    import sys
+    from pathlib import Path
+    connector_dir = str(Path(__file__).resolve().parent.parent.parent / "endpoint-connector")
+    if connector_dir not in sys.path:
+        sys.path.insert(0, connector_dir)
+    import connector
+    endpoint_conn = connector.endpoint_connector
+
+    # Refuses to kill self
+    res_self = endpoint_conn.kill_process(os.getpid())
+    assert res_self["success"] is False
+
+    # Rejects malformed IP
+    res_ip = endpoint_conn.block_remote_ip("invalid_ip && whoami")
+    assert res_ip["success"] is False

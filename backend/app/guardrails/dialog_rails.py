@@ -45,6 +45,8 @@ class DialogRails:
         ("db_tool", "drop_table"),
     }
 
+    SESSION_TIMEOUT_SECONDS = 900  # 15 minutes of inactivity resets session
+
     def __init__(self):
         # session_id -> list of (tool_name, operation, timestamp)
         self._session_history: Dict[str, List[Tuple[str, str, float]]] = defaultdict(list)
@@ -59,6 +61,16 @@ class DialogRails:
     def get_session_history(self, session_id: str) -> List[Tuple[str, str, float]]:
         return list(self._session_history.get(session_id, []))
 
+    def _prune_stale_sessions(self):
+        """Removes sessions whose last activity exceeds TTL to prevent memory leaks."""
+        now = time.time()
+        stale = [
+            sid for sid, h in self._session_history.items()
+            if h and (now - h[-1][2] > self.SESSION_TIMEOUT_SECONDS)
+        ]
+        for sid in stale:
+            del self._session_history[sid]
+
     def evaluate_transition(
         self,
         agent_id: str,
@@ -70,8 +82,16 @@ class DialogRails:
         """
         Validates state machine transition for the requested action.
         """
+        now = time.time()
+        if len(self._session_history) > 200:
+            self._prune_stale_sessions()
+
         history = self._session_history[session_id]
-        current_state = self._agent_state[agent_id]
+        if history and (now - history[-1][2] > self.SESSION_TIMEOUT_SECONDS):
+            self.reset_session(session_id)
+            history = self._session_history[session_id]
+
+        current_state = f"{history[-1][0]}:{history[-1][1]}" if history else self._agent_state[agent_id]
         new_state = f"{tool_name}:{operation}"
         history_depth = len(history)
 
@@ -120,7 +140,7 @@ class DialogRails:
                 )
 
         # Record valid transition
-        self._session_history[session_id].append((tool_name, operation, time.time()))
+        self._session_history[session_id].append((tool_name, operation, now))
         self._agent_state[agent_id] = new_state
 
         return DialogRailResult(

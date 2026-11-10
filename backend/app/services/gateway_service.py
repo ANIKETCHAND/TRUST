@@ -44,7 +44,8 @@ class GatewayService:
         tool_name = req.tool
         operation = req.operation
         resource = req.resource
-        parameters = req.parameters or {}
+        raw_parameters = dict(req.parameters or {})
+        parameters = dict(raw_parameters)
         context = dict(req.context or {})
         context["client_ip"] = client_ip
         context["correlation_id"] = request_id
@@ -76,6 +77,32 @@ class GatewayService:
                     reason=reason,
                     error="Attacker IP sinkholed by Active Defense"
                 )
+
+        # -0.5. Check Active Defense Deception Tarpit
+        if client_ip and active_defense_service.is_tarpitted(client_ip):
+            decoy = active_defense_service.generate_tarpit_decoy(tool_name, operation)
+            tarpit_reason = f"Active Defense Deception Tarpit: Automated scanner trapped on IP '{client_ip}'. Synthetic honeypot canary deployed."
+            audit_evt = await audit_service.log_event(
+                db=db,
+                request_id=request_id,
+                agent_id=agent.id,
+                agent_name=agent.name,
+                tool_name=tool_name,
+                operation=operation,
+                target_resource=resource,
+                decision=PolicyDecision.ALLOWED,
+                decision_reason=tarpit_reason,
+                execution_status=ExecutionStatus.SUCCESS,
+                context_metadata=context
+            )
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=audit_evt.id,
+                decision="ALLOWED",
+                execution_status="SUCCESS",
+                result=decoy,
+                reason=tarpit_reason
+            )
 
         # 0. Check Agent Status
         if agent.status != AgentStatus.ACTIVE:
@@ -312,12 +339,14 @@ class GatewayService:
                 error="Input rail blocked"
             )
 
+        # Apply Input Rails parameter sanitization (delimiters neutralized, PII masked)
+        parameters = input_rail_res.sanitized_parameters
         context["sanitized_parameters"] = input_rail_res.sanitized_parameters
         if input_rail_res.findings:
             context["input_rail_findings"] = input_rail_res.findings
 
         # Tier-2: NVIDIA NeMo-style Dialog Rails Evaluation
-        session_id = context.get("session_id") or context.get("correlation_id") or request_id
+        session_id = context.get("session_id") or context.get("correlation_id") or f"agent_session_{agent.id}"
         dialog_res = dialog_rails.evaluate_transition(
             agent_id=agent.id,
             session_id=session_id,
@@ -555,7 +584,9 @@ class GatewayService:
             delegation_id_ref = delegation_record.id
 
         # 4. Data Leakage Prevention (DLP) Inspection
-        has_leak, dlp_findings = dlp_service.inspect_payload(parameters)
+        has_leak, dlp_findings = dlp_service.inspect_payload(raw_parameters)
+        if not has_leak:
+            has_leak, dlp_findings = dlp_service.inspect_payload(parameters)
         if has_leak and tool_name in ["http_api_tool"]:
             reason = f"Data Leakage Prevention Violation: Blocked outbound transfer containing {dlp_findings[0]['description']}."
             audit_evt = await audit_service.log_event(
@@ -662,7 +693,8 @@ class GatewayService:
 
         # Tier-3: NVIDIA NeMo-style Output Rails Evaluation
         if execution_status == ExecutionStatus.SUCCESS and result_payload is not None:
-            output_res = output_rails.inspect_and_sanitize(result_payload, mode="redact")
+            output_mode = context.get("output_rails_mode", "redact")
+            output_res = output_rails.inspect_and_sanitize(result_payload, mode=output_mode)
             if not output_res.allowed:
                 execution_status = ExecutionStatus.BLOCKED
                 error_msg = output_res.reason or "Output Rail: Outbound payload blocked by DLP policy."

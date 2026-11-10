@@ -130,3 +130,34 @@ def test_output_rails_secrets_and_ssn_inspection():
     blocked_res = output_rails.inspect_and_sanitize(payload, mode="block")
     assert blocked_res.allowed is False
     assert "Output Rail Blocked" in blocked_res.reason
+
+
+def test_output_rails_luhn_rejects_zeros():
+    # Degenerate cases: all zeros or leading zeros must NOT be accepted as valid credit cards
+    assert OutputRails.passes_luhn("0000-0000-0000-0000") is False
+    assert OutputRails.passes_luhn("0000000000000000") is False
+    assert OutputRails.passes_luhn("1111111111111111") is False
+
+
+def test_input_rails_edge_cases_and_base64_entropy():
+    # 1. Null / None parameters
+    res_none = input_rails.evaluate(None)
+    assert res_none.allowed is True
+    assert res_none.threat_level == "CLEAN"
+
+    # 2. Obfuscated base64 powershell payload
+    import base64
+    b64_payload = base64.b64encode(b"powershell -nop -enc JAB3AGMAIAA9ACAATgBlAHcALQBPAGIAagBlAGMAdAA=").decode()
+    res_b64 = input_rails.evaluate({"obfuscated_token": b64_payload})
+    assert res_b64.risk_score >= 25.0
+    assert any(f["category"] == "HIGH_ENTROPY_PAYLOAD" for f in res_b64.findings)
+
+
+def test_dialog_rails_default_session_and_inactivity_ttl():
+    # Test session cleanup
+    session_id = "test_ttl_session_99"
+    dialog_rails.reset_session(session_id)
+    assert len(dialog_rails.get_session_history(session_id)) == 0
+
+    # Prune stale sessions works without error
+    dialog_rails._prune_stale_sessions()

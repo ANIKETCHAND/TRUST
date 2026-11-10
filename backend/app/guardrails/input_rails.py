@@ -105,10 +105,12 @@ class InputRails:
             return [self.sanitize_parameter_value(x) for x in val]
         return val
 
-    def evaluate(self, parameters: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> InputRailResult:
+    def evaluate(self, parameters: Optional[Dict[str, Any]] = None, context: Optional[Dict[str, Any]] = None) -> InputRailResult:
         """
         Executes NVIDIA NeMo-style Input Rails on parameters and context.
         """
+        if parameters is None:
+            parameters = {}
         findings: List[Dict[str, Any]] = []
         raw_text_corpus = " ".join(
             str(v) for v in parameters.values() if isinstance(v, (str, int, float, list, dict))
@@ -148,8 +150,9 @@ class InputRails:
         for w in words:
             if len(w) > 40:
                 ent = self.calculate_shannon_entropy(w)
-                # English text has entropy ~3.5-4.5. Random / encoded base64 is typically > 5.2
-                if ent > 5.3:
+                is_base64_charset = bool(re.match(r"^[A-Za-z0-9+/=]{40,}$", w))
+                # English text has entropy ~3.5-4.5. Encoded base64 is typically > 4.6
+                if ent >= 4.7 or (is_base64_charset and ent >= 4.4):
                     findings.append({
                         "category": "HIGH_ENTROPY_PAYLOAD",
                         "pattern": f"Suspicious High-Entropy Token (entropy: {ent})",

@@ -4,6 +4,7 @@ Monitors AI agent execution at the OS layer, detects unauthorized subprocess spa
 provides an instant process kill switch, and dynamic OS firewall sinkholing.
 """
 
+import ipaddress
 import logging
 import os
 import platform
@@ -35,7 +36,11 @@ class EndpointConnector:
     def kill_process(self, pid: int, force: bool = True) -> Dict[str, Any]:
         """
         Instantly terminates a process and all of its spawned child processes.
+        Protects system PIDs and connector/platform processes.
         """
+        if pid <= 4 or pid == os.getpid():
+            return {"success": False, "pid": pid, "error": f"Protected system or platform PID {pid} cannot be terminated."}
+
         try:
             parent = psutil.Process(pid)
             proc_name = parent.name()
@@ -74,23 +79,30 @@ class EndpointConnector:
 
     def block_remote_ip(self, ip: str) -> Dict[str, Any]:
         """
-        Dynamically applies an OS-level firewall drop for the specified remote IP.
+        Dynamically applies an OS-level firewall drop for the specified remote IP / CIDR.
+        Validates IP format and avoids shell interpolation.
         """
-        clean_ip = ip.strip()
-        rule_name = f"AgentTrust_Sentry_Block_{clean_ip.replace('.', '_').replace(':', '_')}"
+        clean_input = ip.strip()
+        try:
+            ip_obj = ipaddress.ip_network(clean_input, strict=False)
+            clean_ip = str(ip_obj.network_address) if ip_obj.num_addresses == 1 else str(ip_obj)
+        except ValueError:
+            return {"success": False, "ip": clean_input, "error": f"Invalid IP or CIDR: '{clean_input}'"}
+
+        rule_name = f"AgentTrust_Sentry_Block_{clean_ip.replace('.', '_').replace(':', '_').replace('/', '_')}"
         applied = False
 
         try:
             if self.os_type == "Windows":
-                cmd_in = f'netsh advfirewall firewall add rule name="{rule_name}_in" dir=in action=block remoteip={clean_ip}'
-                subprocess.run(cmd_in, shell=True, capture_output=True, timeout=5)
-                cmd_out = f'netsh advfirewall firewall add rule name="{rule_name}_out" dir=out action=block remoteip={clean_ip}'
-                subprocess.run(cmd_out, shell=True, capture_output=True, timeout=5)
-                applied = True
+                cmd_in = ["netsh", "advfirewall", "firewall", "add", "rule", f"name={rule_name}_in", "dir=in", "action=block", f"remoteip={clean_ip}"]
+                res_in = subprocess.run(cmd_in, capture_output=True, text=True, timeout=5)
+                cmd_out = ["netsh", "advfirewall", "firewall", "add", "rule", f"name={rule_name}_out", "dir=out", "action=block", f"remoteip={clean_ip}"]
+                res_out = subprocess.run(cmd_out, capture_output=True, text=True, timeout=5)
+                applied = (res_in.returncode == 0 and res_out.returncode == 0)
             elif self.os_type == "Linux":
-                subprocess.run(f"iptables -A INPUT -s {clean_ip} -j DROP", shell=True, capture_output=True, timeout=5)
-                subprocess.run(f"iptables -A OUTPUT -d {clean_ip} -j DROP", shell=True, capture_output=True, timeout=5)
-                applied = True
+                res_in = subprocess.run(["iptables", "-A", "INPUT", "-s", clean_ip, "-j", "DROP"], capture_output=True, text=True, timeout=5)
+                res_out = subprocess.run(["iptables", "-A", "OUTPUT", "-d", clean_ip, "-j", "DROP"], capture_output=True, text=True, timeout=5)
+                applied = (res_in.returncode == 0 and res_out.returncode == 0)
         except Exception as e:
             logger.warning(f"Firewall rule command failed or simulated: {e}")
 
@@ -105,14 +117,14 @@ class EndpointConnector:
     def unblock_remote_ip(self, ip: str) -> Dict[str, Any]:
         """Removes previously added OS firewall block rule."""
         clean_ip = ip.strip()
-        rule_name = f"AgentTrust_Sentry_Block_{clean_ip.replace('.', '_').replace(':', '_')}"
+        rule_name = f"AgentTrust_Sentry_Block_{clean_ip.replace('.', '_').replace(':', '_').replace('/', '_')}"
         try:
             if self.os_type == "Windows":
-                subprocess.run(f'netsh advfirewall firewall delete rule name="{rule_name}_in"', shell=True, capture_output=True, timeout=5)
-                subprocess.run(f'netsh advfirewall firewall delete rule name="{rule_name}_out"', shell=True, capture_output=True, timeout=5)
+                subprocess.run(["netsh", "advfirewall", "firewall", "delete", "rule", f"name={rule_name}_in"], capture_output=True, timeout=5)
+                subprocess.run(["netsh", "advfirewall", "firewall", "delete", "rule", f"name={rule_name}_out"], capture_output=True, timeout=5)
             elif self.os_type == "Linux":
-                subprocess.run(f"iptables -D INPUT -s {clean_ip} -j DROP", shell=True, capture_output=True, timeout=5)
-                subprocess.run(f"iptables -D OUTPUT -d {clean_ip} -j DROP", shell=True, capture_output=True, timeout=5)
+                subprocess.run(["iptables", "-D", "INPUT", "-s", clean_ip, "-j", "DROP"], capture_output=True, timeout=5)
+                subprocess.run(["iptables", "-D", "OUTPUT", "-d", clean_ip, "-j", "DROP"], capture_output=True, timeout=5)
         except Exception:
             pass
         return {"success": True, "ip": clean_ip}

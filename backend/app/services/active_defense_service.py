@@ -8,6 +8,7 @@ Coordinates enterprise active countermeasures:
 - RFC-compliant ISP Abuse incident reporting
 """
 
+import ipaddress
 import logging
 import os
 import platform
@@ -43,6 +44,7 @@ class ActiveDefenseService:
     ) -> Dict[str, Any]:
         """
         Immediately terminates an offending or hijacked AI process and its child processes.
+        Protects critical OS processes and AgentTrust platform process from termination.
         """
         action_id = str(uuid.uuid4())
         record = {
@@ -56,6 +58,13 @@ class ActiveDefenseService:
             "terminated_children_pids": [],
             "process_name": "unknown"
         }
+
+        # Safety boundary: Never kill protected system PIDs, negative PIDs, or AgentTrust backend itself
+        if pid <= 4 or pid == os.getpid():
+            record["success"] = False
+            record["error"] = f"Protected system or platform PID {pid} cannot be terminated."
+            self._countermeasures_log.insert(0, record)
+            return record
 
         try:
             target_proc = psutil.Process(pid)
@@ -137,63 +146,98 @@ class ActiveDefenseService:
         duration_seconds: int = 86400
     ) -> Dict[str, Any]:
         """
-        Dynamically null-routes an offending IP and attempts to enforce an OS-level firewall drop.
+        Dynamically null-routes an offending IP / CIDR and attempts to enforce an OS-level firewall drop.
+        Validates IP / CIDR format and uses secure, non-shell command invocations.
         """
-        ip = ip.strip()
+        clean_input = ip.strip()
+        try:
+            # Validate IP or CIDR network format to prevent command injection
+            ip_obj = ipaddress.ip_network(clean_input, strict=False)
+            target_str = str(ip_obj.network_address) if ip_obj.num_addresses == 1 else str(ip_obj)
+        except ValueError:
+            raise ValueError(f"Invalid IP address or CIDR range: '{clean_input}'")
+
         now = time.time()
         record = {
-            "ip": ip,
+            "ip": target_str,
             "reason": reason,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "expires_at": datetime.fromtimestamp(now + duration_seconds, timezone.utc).isoformat(),
             "duration_seconds": duration_seconds,
             "blocked_hits": 0,
             "firewall_rule_applied": False,
-            "os_rule_name": f"AgentTrust_Sinkhole_{ip.replace(':', '_').replace('.', '_')}"
+            "os_rule_name": f"AgentTrust_Sinkhole_{target_str.replace(':', '_').replace('.', '_').replace('/', '_')}"
         }
 
-        # OS Firewall Injection
+        # OS Firewall Injection using safe argv parameter arrays (shell=False)
         try:
             current_os = platform.system()
+            rule_name = record["os_rule_name"]
             if current_os == "Windows":
-                # Add inbound and outbound block rules via netsh
-                rule_name = record["os_rule_name"]
-                cmd = f'netsh advfirewall firewall add rule name="{rule_name}" dir=in action=block remoteip={ip}'
-                subprocess.run(cmd, shell=True, capture_output=True, timeout=5)
-                cmd_out = f'netsh advfirewall firewall add rule name="{rule_name}_out" dir=out action=block remoteip={ip}'
-                subprocess.run(cmd_out, shell=True, capture_output=True, timeout=5)
-                record["firewall_rule_applied"] = True
+                cmd_in = ["netsh", "advfirewall", "firewall", "add", "rule", f"name={rule_name}", "dir=in", "action=block", f"remoteip={target_str}"]
+                res_in = subprocess.run(cmd_in, capture_output=True, text=True, timeout=5)
+                cmd_out = ["netsh", "advfirewall", "firewall", "add", "rule", f"name={rule_name}_out", "dir=out", "action=block", f"remoteip={target_str}"]
+                res_out = subprocess.run(cmd_out, capture_output=True, text=True, timeout=5)
+                record["firewall_rule_applied"] = (res_in.returncode == 0 and res_out.returncode == 0)
+                if not record["firewall_rule_applied"]:
+                    record["firewall_note"] = "OS firewall rule requires administrative elevation; gateway null-route active."
             elif current_os == "Linux":
-                cmd = f"iptables -I INPUT -s {ip} -j DROP"
-                subprocess.run(cmd, shell=True, capture_output=True, timeout=5)
-                record["firewall_rule_applied"] = True
+                cmd = ["iptables", "-I", "INPUT", "-s", target_str, "-j", "DROP"]
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+                record["firewall_rule_applied"] = (res.returncode == 0)
+                if not record["firewall_rule_applied"]:
+                    record["firewall_note"] = "iptables command requires root elevation; gateway null-route active."
         except Exception as e:
-            logger.info(f"OS firewall invocation noted: {e} (simulated/privileged fallback active)")
+            logger.info(f"OS firewall invocation noted: {e} (gateway-level null-route remains active)")
 
-        self._sinkholed_ips[ip] = record
+        self._sinkholed_ips[target_str] = record
         self._countermeasures_log.insert(0, {
             "action_id": str(uuid.uuid4()),
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "countermeasure": "IP_SINKHOLE",
-            "target_ip": ip,
+            "target_ip": target_str,
             "reason": reason,
             "success": True
         })
-        logger.warning(f"[Active Defense] IP {ip} successfully SINKHOLED. Reason: {reason}")
+        logger.warning(f"[Active Defense] IP {target_str} successfully SINKHOLED. Reason: {reason}")
         return record
 
     def is_ip_sinkholed(self, ip: str) -> Tuple[bool, Optional[Dict[str, Any]]]:
-        """Checks whether an IP is currently null-routed."""
+        """Checks whether an IP is currently null-routed (exact match or CIDR subnet match)."""
         clean_ip = ip.strip() if ip else ""
+        if not clean_ip:
+            return False, None
+
+        now = time.time()
+        # 1. Exact match
         if clean_ip in self._sinkholed_ips:
             rec = self._sinkholed_ips[clean_ip]
-            # Check expiration
             expires_ts = datetime.fromisoformat(rec["expires_at"]).timestamp()
-            if time.time() > expires_ts:
+            if now > expires_ts:
                 self.release_sinkhole(clean_ip)
                 return False, None
             rec["blocked_hits"] += 1
             return True, rec
+
+        # 2. Subnet / CIDR match
+        try:
+            ip_addr = ipaddress.ip_address(clean_ip)
+            for registered_target, rec in list(self._sinkholed_ips.items()):
+                if "/" in registered_target:
+                    try:
+                        net = ipaddress.ip_network(registered_target, strict=False)
+                        if ip_addr in net:
+                            expires_ts = datetime.fromisoformat(rec["expires_at"]).timestamp()
+                            if now > expires_ts:
+                                self.release_sinkhole(registered_target)
+                                continue
+                            rec["blocked_hits"] += 1
+                            return True, rec
+                    except ValueError:
+                        pass
+        except ValueError:
+            pass
+
         return False, None
 
     def release_sinkhole(self, ip: str) -> bool:
@@ -204,10 +248,10 @@ class ActiveDefenseService:
             try:
                 if platform.system() == "Windows":
                     rule_name = rec["os_rule_name"]
-                    subprocess.run(f'netsh advfirewall firewall delete rule name="{rule_name}"', shell=True, capture_output=True, timeout=5)
-                    subprocess.run(f'netsh advfirewall firewall delete rule name="{rule_name}_out"', shell=True, capture_output=True, timeout=5)
+                    subprocess.run(["netsh", "advfirewall", "firewall", "delete", "rule", f"name={rule_name}"], capture_output=True, timeout=5)
+                    subprocess.run(["netsh", "advfirewall", "firewall", "delete", "rule", f"name={rule_name}_out"], capture_output=True, timeout=5)
                 elif platform.system() == "Linux":
-                    subprocess.run(f"iptables -D INPUT -s {clean_ip} -j DROP", shell=True, capture_output=True, timeout=5)
+                    subprocess.run(["iptables", "-D", "INPUT", "-s", clean_ip, "-j", "DROP"], capture_output=True, timeout=5)
             except Exception:
                 pass
             return True

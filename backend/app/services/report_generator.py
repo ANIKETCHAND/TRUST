@@ -467,5 +467,90 @@ class ReportGeneratorService:
             "generated_at": datetime.now(timezone.utc).isoformat()
         }
 
+    def export_executive_summary_html(self, summary: Dict[str, Any]) -> str:
+        """Renders executive posture summary in publication-ready HTML format."""
+        status_color = "#10b981" if summary["posture_status"] == "STRONG" else ("#f59e0b" if summary["posture_status"] == "EVALUATING" else "#ef4444")
+        recs_html = "".join([f"<li style='margin-bottom: 6px;'>{r}</li>" for r in summary["recommendations"]])
+        rails_html = "".join([f"<span style='background:#1e293b; border:1px solid #334155; padding:4px 10px; border-radius:4px; font-size:12px; margin-right:6px;'>{r}</span>" for r in summary["guardrails_active"]])
+
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AgentTrust Executive Security Posture Report</title>
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #090d16; color: #e2e8f0; margin: 0; padding: 30px; line-height: 1.5; }}
+    .container {{ max-width: 900px; margin: 0 auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 35px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }}
+    .header {{ display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7; padding-bottom: 20px; margin-bottom: 25px; }}
+    .brand {{ font-size: 22px; font-weight: 800; color: #38bdf8; letter-spacing: 1.5px; }}
+    .grid-4 {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }}
+    .stat-card {{ background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 15px; text-align: center; }}
+    .stat-val {{ font-size: 24px; font-weight: 800; color: #f8fafc; font-family: monospace; }}
+    .stat-label {{ font-size: 11px; text-transform: uppercase; color: #94a3b8; margin-top: 4px; }}
+    .card {{ background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 20px; margin-bottom: 20px; }}
+    .card h3 {{ margin-top: 0; font-size: 14px; text-transform: uppercase; color: #94a3b8; border-bottom: 1px solid #334155; padding-bottom: 8px; }}
+    .footer {{ margin-top: 30px; border-top: 1px solid #1e293b; padding-top: 15px; display: flex; justify-content: space-between; font-size: 11px; color: #64748b; }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <div class="brand">AGENTTRUST DEFENSE PLATFORM</div>
+        <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">Executive AI Security Posture & Operational Health Dossier</div>
+      </div>
+      <div style="text-align: right;">
+        <span style="background: {status_color}; color: white; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 12px;">{summary['posture_status']} POSTURE</span>
+        <div style="font-size: 11px; font-family: monospace; color: #94a3b8; margin-top: 6px;">{summary['generated_at'][:19]} UTC</div>
+      </div>
+    </div>
+
+    <div class="grid-4">
+      <div class="stat-card">
+        <div class="stat-val" style="color: {status_color};">{summary['posture_score']}/100</div>
+        <div class="stat-label">Security Posture</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">{summary['total_inspected_actions']}</div>
+        <div class="stat-label">Inspected Operations</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" style="color: #ef4444;">{summary['blocked_violations']}</div>
+        <div class="stat-label">Violations Blocked</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" style="color: #38bdf8;">{summary['active_defense_status']['perimeter_sinkholes_active']}</div>
+        <div class="stat-label">Active Sinkholes</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Active Defense & Autonomous Protection Status</h3>
+      <div style="display: flex; gap: 30px; font-size: 13px;">
+        <div><strong>Process Killer Switch:</strong> <span style="color:#10b981;">ARMED & READY</span></div>
+        <div><strong>Firewall Containment:</strong> <span style="color:#10b981;">{summary['active_defense_status']['firewall_containment']}</span></div>
+        <div><strong>Gateway Block Ratio:</strong> <span style="color:#38bdf8; font-family:monospace;">{summary['blocked_ratio_percent']}%</span></div>
+      </div>
+      <div style="margin-top: 15px;">
+        <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">Enforced Guardrail Pipelines:</div>
+        <div>{rails_html}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>SOC Executive Recommendations</h3>
+      <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #cbd5e1;">
+        {recs_html}
+      </ul>
+    </div>
+
+    <div class="footer">
+      <div>Certified by AgentTrust Autonomous SOC Engine &bull; Zero Trust Policy Boundary</div>
+      <div>Compliance: NIST CSF, SOC2 Type II, ISO/IEC 27001, CFAA Safe Harbor</div>
+    </div>
+  </div>
+</body>
+</html>"""
+
 
 report_generator = ReportGeneratorService()

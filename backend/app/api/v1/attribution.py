@@ -59,12 +59,15 @@ async def create_sinkhole(req: SinkholeRequest):
     """
     if not req.ip:
         raise HTTPException(status_code=400, detail="IP address is required")
-    res = active_defense_service.sinkhole_ip(
-        ip=req.ip,
-        reason=req.reason,
-        duration_seconds=req.duration_seconds
-    )
-    return res
+    try:
+        res = active_defense_service.sinkhole_ip(
+            ip=req.ip,
+            reason=req.reason,
+            duration_seconds=req.duration_seconds
+        )
+        return res
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/sinkhole/{ip}", summary="Release Null-Route / Remove Firewall Sinkhole")

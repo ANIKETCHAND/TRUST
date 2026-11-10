@@ -81,7 +81,9 @@ class AttributionService:
 
     @staticmethod
     def is_private_ip(ip: str) -> bool:
-        """Determines if an IP address is internal private RFC1918 or loopback."""
+        """Determines if an IP address is internal private RFC1918, loopback, or link-local."""
+        if ip in ["localhost", "127.0.0.1", "::1"]:
+            return True
         try:
             ip_obj = ipaddress.ip_address(ip)
             if ip_obj.is_loopback:
@@ -90,10 +92,12 @@ class AttributionService:
                 ipaddress.ip_network("10.0.0.0/8"),
                 ipaddress.ip_network("172.16.0.0/12"),
                 ipaddress.ip_network("192.168.0.0/16"),
+                ipaddress.ip_network("fc00::/7"),   # IPv6 Unique Local Address
+                ipaddress.ip_network("fe80::/10"),  # IPv6 Link-Local
             ]
-            return any(ip_obj in net for net in rfc1918)
+            return any(ip_obj.version == net.version and ip_obj in net for net in rfc1918)
         except ValueError:
-            return True if ip in ["localhost", "127.0.0.1", "::1"] else False
+            return False
 
     def get_local_arp_table(self) -> List[Dict[str, Any]]:
         """
@@ -101,8 +105,8 @@ class AttributionService:
         """
         entries = []
         try:
-            cmd = "arp -a"
-            res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=3)
+            cmd = ["arp", "-a"]
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
             lines = res.stdout.splitlines()
 
             # Matches Windows: 192.168.1.1 00-14-22-01-23-45 dynamic
@@ -179,11 +183,12 @@ class AttributionService:
 
         if is_internal:
             mac, vendor = self.resolve_mac_address_for_ip(clean_ip)
+            is_loopback = clean_ip in ["127.0.0.1", "localhost", "::1"]
             dossier["local_layer2"] = {
-                "mac_address": mac or "02:00:4c:4f:43:4c",
-                "vendor": vendor or "Internal LAN Workstation",
-                "interface": "Ethernet / Internal Bridge",
-                "layer_scope": "Layer-2 Subnet (Frame Unrouted)"
+                "mac_address": mac or ("00:00:00:00:00:00" if is_loopback else "02:00:4c:4f:43:4c"),
+                "vendor": vendor or ("Local Loopback Virtual Adapter" if is_loopback else "Internal LAN Workstation"),
+                "interface": "Loopback Pseudo-Interface" if is_loopback else "Ethernet / Internal Bridge",
+                "layer_scope": "Host Loopback" if is_loopback else "Layer-2 Subnet (Frame Unrouted)"
             }
             dossier["geolocation"] = {
                 "country": "Local Corporate Network",
@@ -227,20 +232,30 @@ class AttributionService:
                     lat = round(((octets[1] / 255.0) * 120.0) - 60.0, 4)
                     lon = round(((octets[2] / 255.0) * 360.0) - 180.0, 4)
                     score = min(100, max(20, int((octets[0] + octets[3]) % 90) + 10))
+                    asn_label = f"AS{octets[0] * 100} Global Transit"
+                    isp_label = f"Tier-1 Transit Provider {octets[0]}"
+                    country_label = "External Autonomous System"
+                    city_label = "Remote Node"
                 else:
+                    # Safe fallback for IPv6 addresses or non-standard hosts
                     lat, lon, score = 51.5074, -0.1278, 65
+                    is_v6 = ":" in clean_ip
+                    asn_label = "AS64512 IPv6 Autonomous System" if is_v6 else "AS15169 Global Transit"
+                    isp_label = "IPv6 Global Transit Network" if is_v6 else "Commercial Cloud Host"
+                    country_label = "External Autonomous System (IPv6)" if is_v6 else "External Autonomous System"
+                    city_label = "Global IPv6 Node" if is_v6 else "Remote Node"
 
                 dossier["geolocation"] = {
-                    "country": "External Autonomous System",
+                    "country": country_label,
                     "country_code": "WAN",
-                    "city": "Remote Node",
+                    "city": city_label,
                     "latitude": lat,
                     "longitude": lon,
                     "timezone": "UTC"
                 }
                 dossier["network"] = {
-                    "asn": f"AS{octets[0] * 100} Global Transit",
-                    "isp": f"Tier-1 Transit Provider {octets[0]}",
+                    "asn": asn_label,
+                    "isp": isp_label,
                     "organization": "Commercial Cloud Host"
                 }
                 dossier["threat_score"] = score

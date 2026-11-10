@@ -39,8 +39,9 @@ async def kill_process(req: KillProcessRequest):
     """
     Instantly terminates a malicious process and its child processes via Active Defense.
     """
-    if req.pid <= 4:
-        raise HTTPException(status_code=400, detail="Protected system PID cannot be terminated.")
+    import os
+    if req.pid <= 4 or req.pid == os.getpid():
+        raise HTTPException(status_code=400, detail="Protected system or AgentTrust platform PID cannot be terminated.")
     res = active_defense_service.kill_process(
         pid=req.pid,
         agent_id=req.agent_id,

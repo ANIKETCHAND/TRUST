@@ -45,6 +45,9 @@ class OutputRails:
         clean = re.sub(r"\D", "", card_number_str)
         if len(clean) < 13 or len(clean) > 19:
             return False
+        # Disallow sequences with all identical digits (e.g. 0000000000000000) or leading zero
+        if len(set(clean)) <= 1 or clean.startswith("0"):
+            return False
         digits = [int(d) for d in clean]
         checksum = 0
         reverse_digits = digits[::-1]
@@ -108,9 +111,11 @@ class OutputRails:
             sanitized = self.JWT_REGEX.sub("[REDACTED_JWT_TOKEN]", sanitized)
 
         # 5. Algorithmic Credit Cards (Luhn validated)
+        valid_cards = []
         for match in self.CC_CANDIDATE_REGEX.finditer(sanitized):
             candidate = match.group(0)
             if self.passes_luhn(candidate):
+                valid_cards.append(candidate)
                 findings.append({
                     "type": "PAYMENT_CARD",
                     "description": "Validated Payment Card (Luhn-Verified)",
@@ -118,7 +123,8 @@ class OutputRails:
                     "count": 1,
                     "sample": candidate[:4] + " **** **** " + candidate[-4:]
                 })
-                sanitized = sanitized.replace(candidate, "[REDACTED_CREDIT_CARD]")
+        for c in set(valid_cards):
+            sanitized = sanitized.replace(c, "[REDACTED_CREDIT_CARD]")
 
         # 6. US SSN
         ssn_matches = self.SSN_REGEX.findall(sanitized)

@@ -112,9 +112,47 @@ async def test_forensic_reports_api_endpoints(client: AsyncClient):
     assert "text/csv" in export_csv.headers["content-type"]
     assert "AGENTTRUST INCIDENT FORENSIC REPORT" in export_csv.text
 
-    # 5. Export Incident Dossier in HTML
+    # 5. Export Incident Dossier in HTML (POST)
     export_html = await client.post("/api/v1/reports/incident/incident-test-01/export?format=html")
     assert export_html.status_code == 200
     assert "text/html" in export_html.headers["content-type"]
     assert "<!DOCTYPE html>" in export_html.text
     assert "AGENTTRUST DEFENSE PLATFORM" in export_html.text
+
+    # 6. Export Incident Dossier in HTML via standard browser GET request
+    export_get_html = await client.get("/api/v1/reports/incident/incident-test-01/export?format=html")
+    assert export_get_html.status_code == 200
+    assert "text/html" in export_get_html.headers["content-type"]
+    assert "<!DOCTYPE html>" in export_get_html.text
+
+    # 7. Executive Summary in HTML format
+    exec_html_res = await client.get("/api/v1/reports/executive-summary?format=html")
+    assert exec_html_res.status_code == 200
+    assert "text/html" in exec_html_res.headers["content-type"]
+    assert "<!DOCTYPE html>" in exec_html_res.text
+    assert "Executive AI Security Posture" in exec_html_res.text
+
+
+def test_attribution_service_ipv6_and_loopback_handling():
+    # Public IPv6 address
+    v6_dossier = attribution_service.trace_ip("2607:f8b0:4005:805::200e")
+    assert v6_dossier["origin_type"] == "EXTERNAL_WAN"
+    assert "IPv6" in v6_dossier["network"]["asn"]
+    assert v6_dossier["geolocation"]["latitude"] is not None
+
+    # Loopback address
+    loop_dossier = attribution_service.trace_ip("127.0.0.1")
+    assert loop_dossier["origin_type"] == "INTRANET_INSIDER"
+    assert loop_dossier["local_layer2"]["mac_address"] == "00:00:00:00:00:00"
+    assert "Loopback" in loop_dossier["local_layer2"]["vendor"]
+
+
+@pytest.mark.asyncio
+async def test_attribution_sinkhole_validation(client: AsyncClient):
+    # Reject malformed IP with 400
+    res = await client.post(
+        "/api/v1/attribution/sinkhole",
+        json={"ip": "1.2.3.4 & calc.exe", "reason": "Attack"}
+    )
+    assert res.status_code == 400
+    assert "Invalid IP" in res.json()["detail"]
