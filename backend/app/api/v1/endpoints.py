@@ -256,10 +256,15 @@ async def get_endpoint_policies(device: EndpointDevice = Depends(authenticate_de
     }
 
 
+from app.api.deps import get_current_user
+from app.models.user import User
+
+
 @router.get("", tags=["Endpoints"])
 async def list_endpoints(
     status_filter: Optional[str] = Query(None, alias="status"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Lists all enrolled endpoint devices."""
     stmt = select(EndpointDevice)
@@ -294,7 +299,11 @@ async def list_endpoints(
 
 
 @router.get("/{device_id}", tags=["Endpoints"])
-async def get_endpoint_detail(device_id: str, db: AsyncSession = Depends(get_db)):
+async def get_endpoint_detail(
+    device_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Retrieves full device details, recent telemetry, and containment actions."""
     device = await db.get(EndpointDevice, device_id)
     if not device:
@@ -369,7 +378,7 @@ async def get_endpoint_detail(device_id: str, db: AsyncSession = Depends(get_db)
     }
 
 
-from app.api.deps import get_current_user_optional
+from app.api.deps import get_current_admin_user
 from app.models.user import User
 
 
@@ -377,19 +386,14 @@ from app.models.user import User
 async def contain_endpoint(
     device_id: str,
     req: ContainmentRequest,
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Applies controlled endpoint containment with explicit human safeguards.
     No destructive deletion or arbitrary process termination.
+    Requires administrative role.
     """
-    if settings.ENVIRONMENT == "production" and not current_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required: Administrative session required for containment actions."
-        )
-
     device = await db.get(EndpointDevice, device_id)
     if not device:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Endpoint not found")
@@ -441,16 +445,10 @@ async def contain_endpoint(
 async def release_endpoint_containment(
     device_id: str,
     req: ReleaseContainmentRequest,
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Releases containment on an enrolled endpoint, returning it to ONLINE state."""
-    if settings.ENVIRONMENT == "production" and not current_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required: Administrative session required for containment release."
-        )
-
+    """Releases containment on an enrolled endpoint, returning it to ONLINE state. Requires administrative role."""
     device = await db.get(EndpointDevice, device_id)
     if not device:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Endpoint not found")

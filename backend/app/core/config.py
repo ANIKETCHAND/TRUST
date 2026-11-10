@@ -32,15 +32,15 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours in dev, should be shorter in prod
 
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./agenttrust.db"
+    DATABASE_URL: str = f"sqlite+aiosqlite:///{Path(__file__).resolve().parent.parent.parent / 'agenttrust.db'}"
     DB_POOL_SIZE: int = 20
     DB_MAX_OVERFLOW: int = 10
     DB_POOL_TIMEOUT: int = 30
     DB_POOL_RECYCLE: int = 1800
 
     # Storage Paths
-    SANDBOX_STORAGE_PATH: str = "./sandbox_storage"
-    QUARANTINE_STORAGE_PATH: str = "./sandbox_storage/quarantine"
+    SANDBOX_STORAGE_PATH: str = str(Path(__file__).resolve().parent.parent.parent / "sandbox_storage")
+    QUARANTINE_STORAGE_PATH: str = str(Path(__file__).resolve().parent.parent.parent / "sandbox_storage" / "quarantine")
 
     # Open Policy Agent (OPA) Integration
     OPA_ENABLED: bool = False
@@ -66,6 +66,8 @@ class Settings(BaseSettings):
     BROWSER_SHIELD_ENABLED: bool = True
     ENDPOINT_CONNECTOR_ENABLED: bool = True
     ENROLLMENT_SECRET: str = "agenttrust-enrollment-secret-key-32chars-minimum"
+    TRUSTED_PROXY_IPS: List[str] = ["127.0.0.1", "::1"]
+    DEFAULT_OUTPUT_RAILS_MODE: str = "block"
 
     # CORS
     ALLOWED_ORIGINS: Union[List[str], str] = ["http://localhost:5173", "http://localhost:3000"]
@@ -98,13 +100,24 @@ class Settings(BaseSettings):
                     f"Production Security Fatal: SECRET_KEY length ({len(self.SECRET_KEY)}) is insufficient for production. "
                     "Must be at least 32 characters."
                 )
-            # 2. Database validation warning or enforcement
+            # 2. Enforce strong production ENROLLMENT_SECRET (SEC-10)
+            if self.ENROLLMENT_SECRET in KNOWN_INSECURE_SECRETS:
+                raise ValueError(
+                    "Production Security Fatal: Insecure, default, or placeholder ENROLLMENT_SECRET detected in production environment. "
+                    "A high-entropy secret of at least 32 characters must be provided via the ENROLLMENT_SECRET environment variable."
+                )
+            if len(self.ENROLLMENT_SECRET) < 32:
+                raise ValueError(
+                    f"Production Security Fatal: ENROLLMENT_SECRET length ({len(self.ENROLLMENT_SECRET)}) is insufficient for production. "
+                    "Must be at least 32 characters."
+                )
+            # 3. Database validation warning or enforcement
             if self.DATABASE_URL.startswith("sqlite"):
                 logger.warning(
                     "PRODUCTION WARNING: Running SQLite in production is not recommended for concurrent multi-tenant workloads. "
                     "Configure PostgreSQL via DATABASE_URL."
                 )
-            # 3. Restrict debug mode in production
+            # 4. Restrict debug mode in production
             if self.DEBUG:
                 logger.warning("PRODUCTION NOTICE: DEBUG is enabled in production environment; disabling DEBUG.")
                 object.__setattr__(self, "DEBUG", False)

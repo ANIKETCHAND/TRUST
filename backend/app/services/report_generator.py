@@ -9,6 +9,7 @@ Generates industrial-grade SOC Incident Dossiers & Executive Posture Reports:
 """
 
 import csv
+import html
 import io
 import json
 import uuid
@@ -222,7 +223,9 @@ class ReportGeneratorService:
     def export_as_html(self, dossier: Dict[str, Any]) -> str:
         """
         Renders a publication-grade HTML Forensic Dossier suitable for executive review and PDF printing.
+        Auto-escapes all user-supplied data to prevent Stored XSS (SEC-05).
         """
+        he = html.escape
         inc = dossier["incident"]
         mitre = dossier["mitre_attack"]
         geo = dossier["attribution"]["geolocation"]
@@ -232,21 +235,23 @@ class ReportGeneratorService:
         timeline_rows = "".join([
             f"""
             <tr style="border-bottom: 1px solid #1e293b;">
-              <td style="padding: 10px; font-family: monospace; color: #38bdf8;">{t['timestamp'][:19]}</td>
-              <td style="padding: 10px; font-weight: 600; color: #f1f5f9;">{t['phase']}</td>
-              <td style="padding: 10px; color: #cbd5e1;">{t['event']}</td>
-              <td style="padding: 10px;"><span style="background: rgba(239,68,68,0.2); color: #f87171; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">{t['status']}</span></td>
-              <td style="padding: 10px; color: #94a3b8; font-size: 12px;">{t['details']}</td>
+              <td style="padding: 10px; font-family: monospace; color: #38bdf8;">{he(str(t['timestamp'][:19]))}</td>
+              <td style="padding: 10px; font-weight: 600; color: #f1f5f9;">{he(str(t['phase']))}</td>
+              <td style="padding: 10px; color: #cbd5e1;">{he(str(t['event']))}</td>
+              <td style="padding: 10px;"><span style="background: rgba(239,68,68,0.2); color: #f87171; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">{he(str(t['status']))}</span></td>
+              <td style="padding: 10px; color: #94a3b8; font-size: 12px;">{he(str(t['details']))}</td>
             </tr>
             """
             for t in dossier["timeline"]
         ])
 
-        html = f"""<!DOCTYPE html>
+        mac_html = f'<div class="data-row"><span class="data-label">Intranet MAC:</span><span class="data-value">{he(str(l2.get("mac_address")))} ({he(str(l2.get("vendor")))})</span></div>' if l2 else ''
+
+        html_doc = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AgentTrust Forensic Incident Dossier — {dossier['report_id']}</title>
+  <title>AgentTrust Forensic Incident Dossier — {he(str(dossier['report_id']))}</title>
   <style>
     body {{
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -354,28 +359,28 @@ class ReportGeneratorService:
         <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">Forensic Incident Investigation & Countermeasure Dossier</div>
       </div>
       <div style="text-align: right;">
-        <span class="badge-critical">{inc['severity']} SEVERITY</span>
-        <div style="font-size: 12px; font-family: monospace; color: #94a3b8; margin-top: 6px;">{dossier['report_id']}</div>
+        <span class="badge-critical">{he(str(inc['severity']))} SEVERITY</span>
+        <div style="font-size: 12px; font-family: monospace; color: #94a3b8; margin-top: 6px;">{he(str(dossier['report_id']))}</div>
       </div>
     </div>
 
     <div class="grid-2">
       <div class="card">
         <h3>Incident Identification</h3>
-        <div class="data-row"><span class="data-label">Incident ID:</span><span class="data-value">{inc['id']}</span></div>
-        <div class="data-row"><span class="data-label">Agent ID:</span><span class="data-value">{inc['agent_id']}</span></div>
-        <div class="data-row"><span class="data-label">Agent Name:</span><span class="data-value">{inc['agent_name']}</span></div>
-        <div class="data-row"><span class="data-label">Status:</span><span class="data-value">{inc['status']}</span></div>
-        <div class="data-row"><span class="data-label">Detected At:</span><span class="data-value">{inc['created_at'][:19]} UTC</span></div>
+        <div class="data-row"><span class="data-label">Incident ID:</span><span class="data-value">{he(str(inc['id']))}</span></div>
+        <div class="data-row"><span class="data-label">Agent ID:</span><span class="data-value">{he(str(inc['agent_id']))}</span></div>
+        <div class="data-row"><span class="data-label">Agent Name:</span><span class="data-value">{he(str(inc['agent_name']))}</span></div>
+        <div class="data-row"><span class="data-label">Status:</span><span class="data-value">{he(str(inc['status']))}</span></div>
+        <div class="data-row"><span class="data-label">Detected At:</span><span class="data-value">{he(str(inc['created_at'][:19]))} UTC</span></div>
       </div>
 
       <div class="card">
         <h3>Attacker Attribution & Origin</h3>
-        <div class="data-row"><span class="data-label">Target IP:</span><span class="data-value">{inc['client_ip']}</span></div>
-        <div class="data-row"><span class="data-label">Origin Scope:</span><span class="data-value">{dossier['attribution']['origin_type']}</span></div>
-        <div class="data-row"><span class="data-label">Location:</span><span class="data-value">{geo.get('city')}, {geo.get('country')}</span></div>
-        <div class="data-row"><span class="data-label">ASN / Transit:</span><span class="data-value">{net.get('asn')}</span></div>
-        {f'<div class="data-row"><span class="data-label">Intranet MAC:</span><span class="data-value">{l2.get("mac_address")} ({l2.get("vendor")})</span></div>' if l2 else ''}
+        <div class="data-row"><span class="data-label">Target IP:</span><span class="data-value">{he(str(inc['client_ip']))}</span></div>
+        <div class="data-row"><span class="data-label">Origin Scope:</span><span class="data-value">{he(str(dossier['attribution']['origin_type']))}</span></div>
+        <div class="data-row"><span class="data-label">Location:</span><span class="data-value">{he(str(geo.get('city')))}, {he(str(geo.get('country')))}</span></div>
+        <div class="data-row"><span class="data-label">ASN / Transit:</span><span class="data-value">{he(str(net.get('asn')))}</span></div>
+        {mac_html}
       </div>
     </div>
 
@@ -383,11 +388,11 @@ class ReportGeneratorService:
       <h3>MITRE ATT&CK Framework Mapping</h3>
       <div style="display: flex; gap: 15px; align-items: center;">
         <div style="background: #0284c7; color: white; padding: 10px 16px; border-radius: 8px; font-weight: 800; font-size: 16px;">
-          {mitre['id']}
+          {he(str(mitre['id']))}
         </div>
         <div>
-          <div style="font-weight: 700; color: #f8fafc; font-size: 15px;">{mitre['name']} (Tactic: {mitre['tactic']})</div>
-          <div style="color: #94a3b8; font-size: 12px; margin-top: 3px;">{mitre['description']}</div>
+          <div style="font-weight: 700; color: #f8fafc; font-size: 15px;">{he(str(mitre['name']))} (Tactic: {he(str(mitre['tactic']))})</div>
+          <div style="color: #94a3b8; font-size: 12px; margin-top: 3px;">{he(str(mitre['description']))}</div>
         </div>
       </div>
     </div>
@@ -430,7 +435,7 @@ class ReportGeneratorService:
   </div>
 </body>
 </html>"""
-        return html
+        return html_doc
 
     async def get_executive_summary(self, db: AsyncSession) -> Dict[str, Any]:
         """
@@ -469,9 +474,10 @@ class ReportGeneratorService:
 
     def export_executive_summary_html(self, summary: Dict[str, Any]) -> str:
         """Renders executive posture summary in publication-ready HTML format."""
+        he = html.escape
         status_color = "#10b981" if summary["posture_status"] == "STRONG" else ("#f59e0b" if summary["posture_status"] == "EVALUATING" else "#ef4444")
-        recs_html = "".join([f"<li style='margin-bottom: 6px;'>{r}</li>" for r in summary["recommendations"]])
-        rails_html = "".join([f"<span style='background:#1e293b; border:1px solid #334155; padding:4px 10px; border-radius:4px; font-size:12px; margin-right:6px;'>{r}</span>" for r in summary["guardrails_active"]])
+        recs_html = "".join([f"<li style='margin-bottom: 6px;'>{he(str(r))}</li>" for r in summary["recommendations"]])
+        rails_html = "".join([f"<span style='background:#1e293b; border:1px solid #334155; padding:4px 10px; border-radius:4px; font-size:12px; margin-right:6px;'>{he(str(r))}</span>" for r in summary["guardrails_active"]])
 
         return f"""<!DOCTYPE html>
 <html lang="en">
@@ -500,8 +506,8 @@ class ReportGeneratorService:
         <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">Executive AI Security Posture & Operational Health Dossier</div>
       </div>
       <div style="text-align: right;">
-        <span style="background: {status_color}; color: white; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 12px;">{summary['posture_status']} POSTURE</span>
-        <div style="font-size: 11px; font-family: monospace; color: #94a3b8; margin-top: 6px;">{summary['generated_at'][:19]} UTC</div>
+        <span style="background: {status_color}; color: white; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 12px;">{he(str(summary['posture_status']))} POSTURE</span>
+        <div style="font-size: 11px; font-family: monospace; color: #94a3b8; margin-top: 6px;">{he(str(summary['generated_at'][:19]))} UTC</div>
       </div>
     </div>
 

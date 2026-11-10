@@ -14,8 +14,12 @@ export class ApiError extends Error {
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${ENV.API_BASE_URL}${endpoint}`;
+  const token = typeof window !== 'undefined' ? (localStorage.getItem('agenttrust_token') || localStorage.getItem('access_token')) : null;
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
   const headers = {
     'Content-Type': 'application/json',
+    ...authHeader,
     ...(options.headers || {}),
   };
 
@@ -73,6 +77,31 @@ export const apiClient = {
 
 // Complete API interface
 export const api = {
+  login: async (credentials: { username: string; password: string }) => {
+    const params = new URLSearchParams();
+    params.append('username', credentials.username);
+    params.append('password', credentials.password);
+    const res = await fetch(`${ENV.API_BASE_URL}/auth/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+    if (!res.ok) {
+      throw new ApiError(`Authentication failed: HTTP ${res.status}`, res.status);
+    }
+    const data = await res.json();
+    if (data.access_token && typeof window !== 'undefined') {
+      localStorage.setItem('agenttrust_token', data.access_token);
+    }
+    return data;
+  },
+  getCurrentUser: () => apiClient.get<any>('/auth/me'),
+  logout: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('agenttrust_token');
+      localStorage.removeItem('access_token');
+    }
+  },
   getHealth: () => apiClient.get<any>('/health'),
   getOverviewStats: () => apiClient.get<any>('/overview/stats'),
   listAgents: (status?: string) => apiClient.get<any[]>(`/agents${status ? `?status=${status}` : ''}`),

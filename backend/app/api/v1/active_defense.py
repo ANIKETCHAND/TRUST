@@ -3,8 +3,10 @@ Active Defense & OS Process Killer API Endpoints
 """
 
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from app.api.deps import get_current_admin_user, get_current_user
+from app.models.user import User
 from app.services.active_defense_service import active_defense_service
 from app.services.file_scanner_service import file_scanner_service
 
@@ -27,7 +29,7 @@ class AbuseReportRequest(BaseModel):
 
 
 @router.get("/processes", summary="Enumerate Monitored AI & Agent Processes")
-async def list_agent_processes():
+async def list_agent_processes(current_user: User = Depends(get_current_user)):
     """
     Lists running agent runtimes, Python workers, and LLM runner processes with resource usage.
     """
@@ -35,13 +37,26 @@ async def list_agent_processes():
 
 
 @router.post("/kill-process", summary="1-Click Malicious Process Kill Switch")
-async def kill_process(req: KillProcessRequest):
+async def kill_process(
+    req: KillProcessRequest,
+    current_user: User = Depends(get_current_admin_user)
+):
     """
-    Instantly terminates a malicious process and its child processes via Active Defense.
+    Terminates a registered agent runner process via Active Defense. Requires Administrator privileges (SEC-01).
+    Disallows terminating arbitrary host processes outside monitored agent runtimes.
     """
     import os
     if req.pid <= 4 or req.pid == os.getpid():
         raise HTTPException(status_code=400, detail="Protected system or AgentTrust platform PID cannot be terminated.")
+
+    # Restrict termination strictly to monitored agent runner processes
+    monitored = {p["pid"] for p in active_defense_service.list_running_agent_processes()}
+    if monitored and req.pid not in monitored:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Target PID {req.pid} is not an enrolled agent process. Terminating arbitrary host processes is strictly prohibited."
+        )
+
     res = active_defense_service.kill_process(
         pid=req.pid,
         agent_id=req.agent_id,
@@ -54,7 +69,7 @@ async def kill_process(req: KillProcessRequest):
 
 
 @router.get("/countermeasures", summary="Active Defense Countermeasures History")
-async def get_countermeasures_history():
+async def get_countermeasures_history(current_user: User = Depends(get_current_user)):
     """
     Returns the real-time audit ledger of all executed active defense countermeasures.
     """
@@ -62,7 +77,7 @@ async def get_countermeasures_history():
 
 
 @router.get("/quarantine", summary="List Quarantined Malware Vault Files")
-async def list_quarantine_files():
+async def list_quarantine_files(current_user: User = Depends(get_current_user)):
     """
     Returns all files isolated in the secure quarantine storage vault.
     """
@@ -70,7 +85,10 @@ async def list_quarantine_files():
 
 
 @router.post("/quarantine/{quarantine_id}/restore", summary="Restore Quarantined File")
-async def restore_quarantined_file(quarantine_id: str):
+async def restore_quarantined_file(
+    quarantine_id: str,
+    current_user: User = Depends(get_current_user)
+):
     """
     Restores a quarantined file back to its original location.
     """
@@ -84,7 +102,10 @@ async def restore_quarantined_file(quarantine_id: str):
 
 
 @router.delete("/quarantine/{quarantine_id}", summary="Permanently Purge Quarantined File")
-async def purge_quarantined_file(quarantine_id: str):
+async def purge_quarantined_file(
+    quarantine_id: str,
+    current_user: User = Depends(get_current_user)
+):
     """
     Permanently purges a file from the quarantine vault after forensic verification.
     """
@@ -98,7 +119,10 @@ async def purge_quarantined_file(quarantine_id: str):
 
 
 @router.post("/abuse-report", summary="Generate RFC-Compliant ISP Abuse Notice")
-async def generate_abuse_report(req: AbuseReportRequest):
+async def generate_abuse_report(
+    req: AbuseReportRequest,
+    current_user: User = Depends(get_current_user)
+):
     """
     Compiles an RFC-compliant network abuse report for external transit providers and cloud hosts.
     """

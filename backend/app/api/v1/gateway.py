@@ -30,11 +30,16 @@ async def execute_tool(
     Intercepts the tool request, authenticates the agent, deterministically evaluates
     applicable policies, logs the audit trail, and dispatches only authorized executions.
     """
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        client_ip = forwarded.split(",")[0].strip()
+    direct_ip = request.client.host if request.client else "127.0.0.1"
+    from app.core.config import settings
+    if direct_ip in settings.TRUSTED_PROXY_IPS:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            client_ip = forwarded.split(",")[0].strip()
+        else:
+            client_ip = request.headers.get("x-real-ip") or direct_ip
     else:
-        client_ip = request.headers.get("x-real-ip") or (request.client.host if request.client else "127.0.0.1")
+        client_ip = direct_ip
     response = await gateway_service.execute_tool_request(
         db=db,
         agent=agent,

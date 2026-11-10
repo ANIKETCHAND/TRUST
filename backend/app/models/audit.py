@@ -49,3 +49,7 @@ class AuditEvent(TimeStampedModel):
     # Context Metadata (sanitized: NO tokens, passwords, or raw secrets)
     context_metadata: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Cryptographic Audit Hash Chain (HMAC-SHA256)
+    previous_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    hmac_signature: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)

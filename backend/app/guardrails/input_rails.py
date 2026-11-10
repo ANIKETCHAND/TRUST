@@ -182,7 +182,7 @@ class InputRails:
         reason = None
         if not allowed:
             top_finding = findings[0]["pattern"] if findings else "Unspecified input hazard"
-            reason = f"Input Rail Blocked: {top_finding} (Threat Level: {threat_level}, Risk: {risk_score:.1f})"
+            reason = f"Input Rail Blocked: Prompt Injection - {top_finding} (Threat Level: {threat_level}, Risk: {risk_score:.1f})"
 
         return InputRailResult(
             allowed=allowed,

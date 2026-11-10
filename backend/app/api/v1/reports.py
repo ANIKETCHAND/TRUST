@@ -5,7 +5,9 @@ Forensic Incident & Compliance Reports API Endpoints
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.models.user import User
 from app.services.report_generator import report_generator
 
 router = APIRouter(prefix="/reports", tags=["Forensic Reports"])
@@ -16,7 +18,8 @@ router = APIRouter(prefix="/reports", tags=["Forensic Reports"])
 async def export_incident_report(
     incident_id: str,
     format: str = Query("html", pattern="^(html|json|csv)$"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Compiles an industrial-grade incident response dossier with MITRE ATT&CK mapping,
@@ -42,7 +45,8 @@ async def export_incident_report(
 @router.get("/executive-summary", summary="Executive Security Posture & Post-Attack Audit")
 async def get_executive_summary(
     format: str = Query("json", pattern="^(json|html)$"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Returns platform-wide posture metrics, block ratios, and executive recommendations.

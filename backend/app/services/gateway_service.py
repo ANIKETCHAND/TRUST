@@ -5,10 +5,12 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.config import settings
 from app.core.security import hash_api_key
 from app.models.agent import Agent, AgentStatus
 from app.models.audit import ExecutionStatus, PolicyDecision
 from app.models.delegation import Delegation, DelegationStatus
+from app.models.provenance import EdgeType, NodeType, ProvenanceEdge, ProvenanceNode, TrustLevel
 from app.schemas.gateway import GatewayExecuteRequest, GatewayExecuteResponse
 from app.services.audit_service import audit_service
 from app.services.delegation_service import delegation_service
@@ -345,6 +347,37 @@ class GatewayService:
         if input_rail_res.findings:
             context["input_rail_findings"] = input_rail_res.findings
 
+        # Data Leakage Prevention (DLP) Inspection
+        has_leak, dlp_findings = dlp_service.inspect_payload(raw_parameters)
+        if not has_leak:
+            has_leak, dlp_findings = dlp_service.inspect_payload(parameters)
+        if has_leak and (
+            tool_name in ["http_api_tool"]
+            or (tool_name in ["filesystem_tool", "postgres_tool", "db_tool"] and operation in ["write_file", "append_file", "query_insert", "query_update"])
+        ):
+            reason = f"Data Leakage Prevention Violation: Blocked {operation} on {tool_name} containing {dlp_findings[0]['description']}."
+            audit_evt = await audit_service.log_event(
+                db=db,
+                request_id=request_id,
+                agent_id=agent.id,
+                agent_name=agent.name,
+                tool_name=tool_name,
+                operation=operation,
+                target_resource=resource,
+                decision=PolicyDecision.BLOCKED,
+                decision_reason=reason,
+                execution_status=ExecutionStatus.BLOCKED,
+                context_metadata=context
+            )
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=audit_evt.id,
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason=reason,
+                error="DLP outbound leak prevention"
+            )
+
         # Tier-2: NVIDIA NeMo-style Dialog Rails Evaluation
         session_id = context.get("session_id") or context.get("correlation_id") or f"agent_session_{agent.id}"
         dialog_res = dialog_rails.evaluate_transition(
@@ -583,34 +616,6 @@ class GatewayService:
 
             delegation_id_ref = delegation_record.id
 
-        # 4. Data Leakage Prevention (DLP) Inspection
-        has_leak, dlp_findings = dlp_service.inspect_payload(raw_parameters)
-        if not has_leak:
-            has_leak, dlp_findings = dlp_service.inspect_payload(parameters)
-        if has_leak and tool_name in ["http_api_tool"]:
-            reason = f"Data Leakage Prevention Violation: Blocked outbound transfer containing {dlp_findings[0]['description']}."
-            audit_evt = await audit_service.log_event(
-                db=db,
-                request_id=request_id,
-                agent_id=agent.id,
-                agent_name=agent.name,
-                tool_name=tool_name,
-                operation=operation,
-                target_resource=resource,
-                decision=PolicyDecision.BLOCKED,
-                decision_reason=reason,
-                execution_status=ExecutionStatus.BLOCKED,
-                context_metadata=context
-            )
-            return GatewayExecuteResponse(
-                request_id=request_id,
-                event_id=audit_evt.id,
-                decision="BLOCKED",
-                execution_status="BLOCKED",
-                reason=reason,
-                error="DLP outbound leak prevention"
-            )
-
         # 5. Deterministic Policy Evaluation (Fail-Closed)
         try:
             decision, reason, policy_id = await policy_engine.evaluate(
@@ -619,7 +624,8 @@ class GatewayService:
                 tool_name=tool_name,
                 operation=operation,
                 resource=resource,
-                context=context
+                context=context,
+                parameters=parameters
             )
         except Exception as eval_err:
             fail_closed_reason = f"Gateway Fail-Closed: Policy evaluation failed unexpectedly: {str(eval_err)}"
@@ -693,7 +699,7 @@ class GatewayService:
 
         # Tier-3: NVIDIA NeMo-style Output Rails Evaluation
         if execution_status == ExecutionStatus.SUCCESS and result_payload is not None:
-            output_mode = context.get("output_rails_mode", "redact")
+            output_mode = getattr(settings, "DEFAULT_OUTPUT_RAILS_MODE", "block")
             output_res = output_rails.inspect_and_sanitize(result_payload, mode=output_mode)
             if not output_res.allowed:
                 execution_status = ExecutionStatus.BLOCKED
@@ -703,6 +709,57 @@ class GatewayService:
                 result_payload = output_res.sanitized_payload
                 if output_res.leaks_detected:
                     context["output_rail_redactions"] = output_res.findings
+
+        # Dynamic Provenance DAG & Taint Propagation Tracking
+        provenance_id = None
+        try:
+            node_type = NodeType.TOOL_EVENT
+            trust_level = TrustLevel.TRUSTED
+            if tool_name == "http_api_tool":
+                node_type = NodeType.API_RESPONSE
+                trust_level = TrustLevel.UNTRUSTED
+            elif tool_name == "filesystem_tool":
+                node_type = NodeType.DOCUMENT
+                if operation in ("read_file", "read_lines") and any(s in resource.lower() for s in ["untrusted", "temp", "external", "incoming"]):
+                    trust_level = TrustLevel.UNTRUSTED
+
+            # Propagate taint if context is already tainted
+            if context.get("tainted") is True:
+                trust_level = TrustLevel.UNTRUSTED
+
+            prov_node = ProvenanceNode(
+                id=str(uuid.uuid4()),
+                node_type=node_type,
+                name=f"{tool_name}:{operation}",
+                source_reference=resource,
+                trust_level=trust_level,
+                metadata_info={
+                    "agent_id": agent.id,
+                    "agent_name": agent.name,
+                    "request_id": request_id,
+                    "execution_status": execution_status.value
+                }
+            )
+            db.add(prov_node)
+            provenance_id = prov_node.id
+
+            parent_prov_id = context.get("parent_provenance_id")
+            if parent_prov_id:
+                prov_edge = ProvenanceEdge(
+                    id=str(uuid.uuid4()),
+                    source_id=parent_prov_id,
+                    target_id=prov_node.id,
+                    edge_type=EdgeType.INFLUENCED_BY
+                )
+                db.add(prov_edge)
+
+            # Update context for downstream chain tracking
+            context["parent_provenance_id"] = prov_node.id
+            if trust_level == TrustLevel.UNTRUSTED:
+                context["tainted"] = True
+            await db.flush()
+        except Exception as prov_err:
+            logger.warning(f"Provenance dynamic tracking exception (non-fatal): {prov_err}")
 
         # 8. Audit Execution Outcome
         audit_evt = await audit_service.log_event(
@@ -716,6 +773,8 @@ class GatewayService:
             decision=PolicyDecision.ALLOWED,
             decision_reason=reason,
             policy_id_triggered=policy_id,
+            provenance_id=provenance_id,
+            delegation_id=delegation_id_ref,
             execution_status=execution_status,
             execution_duration_ms=duration_ms,
             context_metadata=context,

@@ -1,8 +1,8 @@
 """complete_platform_initial_schema
 
-Revision ID: c0c4c1902c20
+Revision ID: 5676b4452e39
 Revises: 
-Create Date: 2026-11-10 14:05:14.074200
+Create Date: 2026-11-10 17:38:05.103395
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'c0c4c1902c20'
+revision: str = '5676b4452e39'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -28,6 +28,7 @@ def upgrade() -> None:
     sa.Column('status', sa.Enum('ACTIVE', 'INACTIVE', 'REVOKED', 'SUSPENDED', name='agentstatus'), nullable=False),
     sa.Column('agent_metadata', sa.JSON(), nullable=True),
     sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('tenant_id', sa.String(length=64), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id')
@@ -35,6 +36,7 @@ def upgrade() -> None:
     with op.batch_alter_table('agents', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_agents_role'), ['role'], unique=False)
         batch_op.create_index(batch_op.f('ix_agents_status'), ['status'], unique=False)
+        batch_op.create_index(batch_op.f('ix_agents_tenant_id'), ['tenant_id'], unique=False)
 
     op.create_table('audit_events',
     sa.Column('request_id', sa.String(length=64), nullable=False),
@@ -52,7 +54,10 @@ def upgrade() -> None:
     sa.Column('execution_duration_ms', sa.Float(), nullable=True),
     sa.Column('context_metadata', sa.JSON(), nullable=False),
     sa.Column('error_message', sa.Text(), nullable=True),
+    sa.Column('previous_hash', sa.String(length=64), nullable=True),
+    sa.Column('hmac_signature', sa.String(length=64), nullable=True),
     sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('tenant_id', sa.String(length=64), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id')
@@ -64,6 +69,7 @@ def upgrade() -> None:
         batch_op.create_index(batch_op.f('ix_audit_events_operation'), ['operation'], unique=False)
         batch_op.create_index(batch_op.f('ix_audit_events_request_id'), ['request_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_audit_events_target_resource'), ['target_resource'], unique=False)
+        batch_op.create_index(batch_op.f('ix_audit_events_tenant_id'), ['tenant_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_audit_events_tool_name'), ['tool_name'], unique=False)
 
     op.create_table('browser_shield_extensions',
@@ -113,6 +119,7 @@ def upgrade() -> None:
     sa.Column('default_effect', sa.Enum('DENY', 'ALLOW', name='policyeffectdefault'), nullable=False),
     sa.Column('rules', sa.JSON(), nullable=False),
     sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('tenant_id', sa.String(length=64), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id')
@@ -120,6 +127,7 @@ def upgrade() -> None:
     with op.batch_alter_table('policies', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_policies_is_active'), ['is_active'], unique=False)
         batch_op.create_index(batch_op.f('ix_policies_name'), ['name'], unique=True)
+        batch_op.create_index(batch_op.f('ix_policies_tenant_id'), ['tenant_id'], unique=False)
 
     op.create_table('provenance_nodes',
     sa.Column('node_type', sa.Enum('USER_INPUT', 'DOCUMENT', 'EMAIL', 'API_RESPONSE', 'AGENT_OUTPUT', 'TOOL_EVENT', name='nodetype'), nullable=False),
@@ -128,12 +136,14 @@ def upgrade() -> None:
     sa.Column('trust_level', sa.Enum('TRUSTED', 'UNTRUSTED', 'SANITIZED', name='trustlevel'), nullable=False),
     sa.Column('metadata_info', sa.JSON(), nullable=False),
     sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('tenant_id', sa.String(length=64), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('provenance_nodes', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_provenance_nodes_node_type'), ['node_type'], unique=False)
+        batch_op.create_index(batch_op.f('ix_provenance_nodes_tenant_id'), ['tenant_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_provenance_nodes_trust_level'), ['trust_level'], unique=False)
 
     op.create_table('revocation_records',
@@ -142,6 +152,7 @@ def upgrade() -> None:
     sa.Column('revoked_by', sa.String(length=64), nullable=False),
     sa.Column('reason', sa.Text(), nullable=False),
     sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('tenant_id', sa.String(length=64), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id')
@@ -149,6 +160,7 @@ def upgrade() -> None:
     with op.batch_alter_table('revocation_records', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_revocation_records_target_id'), ['target_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_revocation_records_target_type'), ['target_type'], unique=False)
+        batch_op.create_index(batch_op.f('ix_revocation_records_tenant_id'), ['tenant_id'], unique=False)
 
     op.create_table('tools',
     sa.Column('name', sa.String(length=64), nullable=False),
@@ -160,12 +172,14 @@ def upgrade() -> None:
     sa.Column('configuration', sa.JSON(), nullable=False),
     sa.Column('is_protected', sa.Boolean(), nullable=False),
     sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('tenant_id', sa.String(length=64), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('tools', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_tools_name'), ['name'], unique=True)
+        batch_op.create_index(batch_op.f('ix_tools_tenant_id'), ['tenant_id'], unique=False)
 
     op.create_table('users',
     sa.Column('username', sa.String(length=64), nullable=False),
@@ -174,12 +188,14 @@ def upgrade() -> None:
     sa.Column('role', sa.Enum('ADMIN', 'AUDITOR', 'OPERATOR', name='userrole'), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('tenant_id', sa.String(length=64), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('users', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_users_email'), ['email'], unique=True)
+        batch_op.create_index(batch_op.f('ix_users_tenant_id'), ['tenant_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_users_username'), ['username'], unique=True)
 
     op.create_table('agent_credentials',
@@ -190,6 +206,7 @@ def upgrade() -> None:
     sa.Column('expires_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('tenant_id', sa.String(length=64), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['agent_id'], ['agents.id'], ondelete='CASCADE'),
@@ -198,6 +215,7 @@ def upgrade() -> None:
     with op.batch_alter_table('agent_credentials', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_agent_credentials_agent_id'), ['agent_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_agent_credentials_is_revoked'), ['is_revoked'], unique=False)
+        batch_op.create_index(batch_op.f('ix_agent_credentials_tenant_id'), ['tenant_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_agent_credentials_token_hash'), ['token_hash'], unique=True)
 
     op.create_table('delegations',
@@ -213,6 +231,7 @@ def upgrade() -> None:
     sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('revocation_reason', sa.Text(), nullable=True),
     sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('tenant_id', sa.String(length=64), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['child_agent_id'], ['agents.id'], ondelete='CASCADE'),
@@ -226,6 +245,7 @@ def upgrade() -> None:
         batch_op.create_index(batch_op.f('ix_delegations_parent_agent_id'), ['parent_agent_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_delegations_parent_delegation_id'), ['parent_delegation_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_delegations_status'), ['status'], unique=False)
+        batch_op.create_index(batch_op.f('ix_delegations_tenant_id'), ['tenant_id'], unique=False)
 
     op.create_table('endpoint_containment_actions',
     sa.Column('id', sa.String(length=36), nullable=False),
@@ -278,6 +298,7 @@ def upgrade() -> None:
     sa.Column('expires_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('tenant_id', sa.String(length=64), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['agent_id'], ['agents.id'], ondelete='CASCADE'),
@@ -287,6 +308,7 @@ def upgrade() -> None:
         batch_op.create_index(batch_op.f('ix_permissions_agent_id'), ['agent_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_permissions_is_active'), ['is_active'], unique=False)
         batch_op.create_index(batch_op.f('ix_permissions_operation'), ['operation'], unique=False)
+        batch_op.create_index(batch_op.f('ix_permissions_tenant_id'), ['tenant_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_permissions_tool_name'), ['tool_name'], unique=False)
 
     op.create_table('policy_versions',
@@ -296,6 +318,7 @@ def upgrade() -> None:
     sa.Column('changed_by', sa.String(length=64), nullable=True),
     sa.Column('change_summary', sa.Text(), nullable=True),
     sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('tenant_id', sa.String(length=64), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['policy_id'], ['policies.id'], ondelete='CASCADE'),
@@ -303,12 +326,14 @@ def upgrade() -> None:
     )
     with op.batch_alter_table('policy_versions', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_policy_versions_policy_id'), ['policy_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_policy_versions_tenant_id'), ['tenant_id'], unique=False)
 
     op.create_table('provenance_edges',
     sa.Column('source_id', sa.String(length=36), nullable=False),
     sa.Column('target_id', sa.String(length=36), nullable=False),
     sa.Column('edge_type', sa.Enum('DERIVED_FROM', 'INFLUENCED_BY', 'HANDOFF_TO', name='edgetype'), nullable=False),
     sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('tenant_id', sa.String(length=64), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['source_id'], ['provenance_nodes.id'], ondelete='CASCADE'),
@@ -318,6 +343,7 @@ def upgrade() -> None:
     with op.batch_alter_table('provenance_edges', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_provenance_edges_source_id'), ['source_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_provenance_edges_target_id'), ['target_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_provenance_edges_tenant_id'), ['tenant_id'], unique=False)
 
     op.create_table('security_incidents',
     sa.Column('audit_event_id', sa.String(length=36), nullable=True),
@@ -329,6 +355,7 @@ def upgrade() -> None:
     sa.Column('resolution_notes', sa.Text(), nullable=True),
     sa.Column('incident_metadata', sa.JSON(), nullable=False),
     sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('tenant_id', sa.String(length=64), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['audit_event_id'], ['audit_events.id'], ondelete='SET NULL'),
@@ -339,6 +366,7 @@ def upgrade() -> None:
         batch_op.create_index(batch_op.f('ix_security_incidents_audit_event_id'), ['audit_event_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_security_incidents_severity'), ['severity'], unique=False)
         batch_op.create_index(batch_op.f('ix_security_incidents_status'), ['status'], unique=False)
+        batch_op.create_index(batch_op.f('ix_security_incidents_tenant_id'), ['tenant_id'], unique=False)
 
     # ### end Alembic commands ###
 
@@ -347,6 +375,7 @@ def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
     with op.batch_alter_table('security_incidents', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_security_incidents_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_security_incidents_status'))
         batch_op.drop_index(batch_op.f('ix_security_incidents_severity'))
         batch_op.drop_index(batch_op.f('ix_security_incidents_audit_event_id'))
@@ -354,16 +383,19 @@ def downgrade() -> None:
 
     op.drop_table('security_incidents')
     with op.batch_alter_table('provenance_edges', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_provenance_edges_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_provenance_edges_target_id'))
         batch_op.drop_index(batch_op.f('ix_provenance_edges_source_id'))
 
     op.drop_table('provenance_edges')
     with op.batch_alter_table('policy_versions', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_policy_versions_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_policy_versions_policy_id'))
 
     op.drop_table('policy_versions')
     with op.batch_alter_table('permissions', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_permissions_tool_name'))
+        batch_op.drop_index(batch_op.f('ix_permissions_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_permissions_operation'))
         batch_op.drop_index(batch_op.f('ix_permissions_is_active'))
         batch_op.drop_index(batch_op.f('ix_permissions_agent_id'))
@@ -380,6 +412,7 @@ def downgrade() -> None:
 
     op.drop_table('endpoint_containment_actions')
     with op.batch_alter_table('delegations', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_delegations_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_delegations_status'))
         batch_op.drop_index(batch_op.f('ix_delegations_parent_delegation_id'))
         batch_op.drop_index(batch_op.f('ix_delegations_parent_agent_id'))
@@ -388,30 +421,36 @@ def downgrade() -> None:
     op.drop_table('delegations')
     with op.batch_alter_table('agent_credentials', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_agent_credentials_token_hash'))
+        batch_op.drop_index(batch_op.f('ix_agent_credentials_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_agent_credentials_is_revoked'))
         batch_op.drop_index(batch_op.f('ix_agent_credentials_agent_id'))
 
     op.drop_table('agent_credentials')
     with op.batch_alter_table('users', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_users_username'))
+        batch_op.drop_index(batch_op.f('ix_users_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_users_email'))
 
     op.drop_table('users')
     with op.batch_alter_table('tools', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_tools_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_tools_name'))
 
     op.drop_table('tools')
     with op.batch_alter_table('revocation_records', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_revocation_records_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_revocation_records_target_type'))
         batch_op.drop_index(batch_op.f('ix_revocation_records_target_id'))
 
     op.drop_table('revocation_records')
     with op.batch_alter_table('provenance_nodes', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_provenance_nodes_trust_level'))
+        batch_op.drop_index(batch_op.f('ix_provenance_nodes_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_provenance_nodes_node_type'))
 
     op.drop_table('provenance_nodes')
     with op.batch_alter_table('policies', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_policies_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_policies_name'))
         batch_op.drop_index(batch_op.f('ix_policies_is_active'))
 
@@ -427,6 +466,7 @@ def downgrade() -> None:
     op.drop_table('browser_shield_extensions')
     with op.batch_alter_table('audit_events', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_audit_events_tool_name'))
+        batch_op.drop_index(batch_op.f('ix_audit_events_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_audit_events_target_resource'))
         batch_op.drop_index(batch_op.f('ix_audit_events_request_id'))
         batch_op.drop_index(batch_op.f('ix_audit_events_operation'))
@@ -436,6 +476,7 @@ def downgrade() -> None:
 
     op.drop_table('audit_events')
     with op.batch_alter_table('agents', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_agents_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_agents_status'))
         batch_op.drop_index(batch_op.f('ix_agents_role'))
 

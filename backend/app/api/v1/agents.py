@@ -2,8 +2,10 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.agent import Agent, AgentStatus
+from app.models.user import User
 from app.schemas.agent import (
     AgentCreate,
     AgentRegistrationResponse,
@@ -17,7 +19,11 @@ router = APIRouter()
 
 
 @router.post("", response_model=AgentRegistrationResponse, status_code=status.HTTP_201_CREATED, tags=["Agents"])
-async def register_agent(req: AgentCreate, db: AsyncSession = Depends(get_db)):
+async def register_agent(
+    req: AgentCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Registers a new AI agent and returns its cryptographic API key."""
     registration = await agent_service.register_agent(db, req)
     return registration
@@ -26,7 +32,8 @@ async def register_agent(req: AgentCreate, db: AsyncSession = Depends(get_db)):
 @router.get("", response_model=List[AgentResponse], tags=["Agents"])
 async def list_agents(
     status_filter: Optional[AgentStatus] = Query(None, alias="status"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Lists all registered AI agents with optional status filtering."""
     query = select(Agent)
@@ -37,7 +44,11 @@ async def list_agents(
 
 
 @router.get("/{agent_id}", response_model=AgentResponse, tags=["Agents"])
-async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def get_agent(
+    agent_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Retrieves identity and configuration for a specific AI agent."""
     stmt = select(Agent).where(Agent.id == agent_id)
     result = await db.execute(stmt)
@@ -48,7 +59,12 @@ async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.patch("/{agent_id}", response_model=AgentResponse, tags=["Agents"])
-async def update_agent(agent_id: str, req: AgentUpdate, db: AsyncSession = Depends(get_db)):
+async def update_agent(
+    agent_id: str,
+    req: AgentUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Updates agent attributes (name, description, role, metadata, status)."""
     stmt = select(Agent).where(Agent.id == agent_id)
     result = await db.execute(stmt)
@@ -73,7 +89,12 @@ async def update_agent(agent_id: str, req: AgentUpdate, db: AsyncSession = Depen
 
 
 @router.post("/{agent_id}/revoke", tags=["Agents"])
-async def revoke_agent(agent_id: str, req: AgentRevokeRequest, db: AsyncSession = Depends(get_db)):
+async def revoke_agent(
+    agent_id: str,
+    req: AgentRevokeRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Immediately revokes an agent and invalidates all associated credentials."""
     success = await agent_service.revoke_agent(db, agent_id, reason=req.reason)
     if not success:

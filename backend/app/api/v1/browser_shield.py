@@ -75,9 +75,6 @@ async def authenticate_extension_or_user(
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db)
 ) -> Optional[BrowserShieldExtension]:
-    if current_user:
-        return None
-
     if x_extension_token:
         token = x_extension_token.strip()
         if token.lower().startswith("bearer "):
@@ -94,6 +91,9 @@ async def authenticate_extension_or_user(
         ext.last_seen_at = datetime.now(timezone.utc)
         await db.commit()
         return ext
+
+    if current_user:
+        return None
 
     if settings.ENVIRONMENT == "production":
         raise HTTPException(

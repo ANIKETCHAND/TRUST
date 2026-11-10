@@ -21,6 +21,8 @@ class AuditEventResponse(BaseModel):
     execution_duration_ms: Optional[float] = None
     context_metadata: Dict[str, Any]
     error_message: Optional[str] = None
+    previous_hash: Optional[str] = None
+    hmac_signature: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

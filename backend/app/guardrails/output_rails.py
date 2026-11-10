@@ -33,7 +33,7 @@ class OutputRails:
 
     CC_CANDIDATE_REGEX = re.compile(r"\b(?:\d[ -]?){13,19}\b")
     SSN_REGEX = re.compile(r"\b(?!000|666|9\d{2})\d{3}-(?!00)\d{2}-(?!0000)\d{4}\b")
-    PRIVATE_KEY_REGEX = re.compile(r"-----BEGIN (?:RSA|EC|DSA|OPENSSH|PGP|PRIVATE) KEY-----[\s\S]*?-----END (?:RSA|EC|DSA|OPENSSH|PGP|PRIVATE) KEY-----")
+    PRIVATE_KEY_REGEX = re.compile(r"-----BEGIN (?:[A-Z0-9_-]+\s+)?(?:PRIVATE\s+)?KEY-----[\s\S]*?-----END (?:[A-Z0-9_-]+\s+)?(?:PRIVATE\s+)?KEY-----")
     AWS_KEY_REGEX = re.compile(r"\bAKIA[0-9A-Z]{16}\b")
     API_SECRET_REGEX = re.compile(r"\b(?:sk-[a-zA-Z0-9_-]{24,}|ghp_[a-zA-Z0-9]{36}|agk_live_[a-zA-Z0-9_-]{32,}|xox[baprs]-[a-zA-Z0-9]{10,})\b")
     JWT_REGEX = re.compile(r"\beyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\b")
@@ -149,20 +149,24 @@ class OutputRails:
 
         return findings, sanitized
 
-    def inspect_and_sanitize(self, payload: Any, mode: str = "redact") -> OutputRailResult:
+    def inspect_and_sanitize(self, payload: Any, mode: str = "block") -> OutputRailResult:
         """
         Recursively inspects a response payload.
         Args:
             payload: Any JSON-serializable structure or string.
-            mode: "redact" (mask secrets in place) or "block" (fail closed if critical secrets found).
+            mode: "block" (fail closed if sensitive secrets found) or "redact" (mask secrets in place).
+                  Any unrecognized mode strictly defaults to "block" to prevent bypass.
         """
+        if mode not in ("redact", "block"):
+            mode = "block"
+
         all_findings: List[Dict[str, Any]] = []
 
         def _traverse(obj: Any) -> Any:
             if isinstance(obj, str):
                 findings, sanitized = self.scan_string(obj)
                 all_findings.extend(findings)
-                return sanitized if mode == "redact" else obj
+                return sanitized
             elif isinstance(obj, dict):
                 return {k: _traverse(v) for k, v in obj.items()}
             elif isinstance(obj, (list, tuple)):
@@ -184,10 +188,12 @@ class OutputRails:
         reason = None
         if leaks_detected:
             top_desc = all_findings[0]["description"]
-            if mode == "block" and severity in ["CRITICAL", "HIGH"]:
+            if mode == "block":
                 allowed = False
+                sanitized_payload = None
                 reason = f"Output Rail Blocked: Outbound exfiltration containing {top_desc} ({severity} severity)."
             else:
+                allowed = True
                 reason = f"Output Rail Redacted: Sanitized {len(all_findings)} sensitive token(s) ({top_desc})."
 
         return OutputRailResult(

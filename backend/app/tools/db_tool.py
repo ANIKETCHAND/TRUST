@@ -72,8 +72,11 @@ class SandboxedDatabaseTool(BaseTool):
             raise ValueError("Operation 'query_select' only permits SELECT statements.")
         elif expected_type == "query_insert" and first_word != "INSERT":
             raise ValueError("Operation 'query_insert' only permits INSERT statements.")
-        elif expected_type == "query_update" and first_word != "UPDATE":
-            raise ValueError("Operation 'query_update' only permits UPDATE statements.")
+        elif expected_type == "query_update":
+            if first_word != "UPDATE":
+                raise ValueError("Operation 'query_update' only permits UPDATE statements.")
+            if not re.search(r"\bWHERE\b", clean_sql, re.IGNORECASE):
+                raise ValueError("Destructive UPDATE without WHERE clause is prohibited by safety policy.")
 
     async def execute(self, operation: str, resource: str, parameters: Dict[str, Any]) -> Any:
         if operation not in self.supported_operations:

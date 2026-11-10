@@ -3,10 +3,12 @@ Attribution & Geolocation Threat Intelligence Endpoints
 """
 
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from app.services.attribution_service import attribution_service
+from app.api.deps import get_current_admin_user, get_current_user
+from app.models.user import User
 from app.services.active_defense_service import active_defense_service
+from app.services.attribution_service import attribution_service
 
 router = APIRouter(prefix="/attribution", tags=["Attribution & Forensics"])
 
@@ -18,7 +20,7 @@ class SinkholeRequest(BaseModel):
 
 
 @router.get("/trace/{ip}", summary="Trace Attacker IP & Local Layer-2 Forensics")
-async def trace_attacker_ip(ip: str):
+async def trace_attacker_ip(ip: str, current_user: User = Depends(get_current_user)):
     """
     Returns full forensic attribution dossier for an IP address:
     Autonomous System (ASN), ISP, country, city, coordinates, threat score,
@@ -29,7 +31,7 @@ async def trace_attacker_ip(ip: str):
 
 
 @router.get("/threat-map", summary="Aggregated Global Threat Map Data")
-async def get_threat_map():
+async def get_threat_map(current_user: User = Depends(get_current_user)):
     """
     Returns global attack coordinates, origin nodes, SOC destination, and active attack rays.
     """
@@ -37,15 +39,16 @@ async def get_threat_map():
 
 
 @router.get("/local-arp", summary="Scan Local Subnet ARP Table for Layer-2 Forensics")
-async def get_local_arp():
+async def get_local_arp(current_user: User = Depends(get_current_admin_user)):
     """
     Scans the local OS ARP cache to discover connected intranet hosts, MAC addresses, and hardware vendors.
+    Requires Administrator privileges (SEC-09).
     """
     return attribution_service.get_local_arp_table()
 
 
 @router.get("/sinkholes", summary="List All Dynamically Sinkholed IPs")
-async def list_sinkholed_ips():
+async def list_sinkholed_ips(current_user: User = Depends(get_current_user)):
     """
     Returns all currently active firewall and perimeter null-routes.
     """
@@ -53,9 +56,13 @@ async def list_sinkholed_ips():
 
 
 @router.post("/sinkhole", status_code=status.HTTP_201_CREATED, summary="Dynamically Null-Route / Sinkhole an Offending IP")
-async def create_sinkhole(req: SinkholeRequest):
+async def create_sinkhole(
+    req: SinkholeRequest,
+    current_user: User = Depends(get_current_admin_user)
+):
     """
     Applies an OS-level firewall drop and gateway-level null-route for the offending IP.
+    Requires Administrator privileges.
     """
     if not req.ip:
         raise HTTPException(status_code=400, detail="IP address is required")
@@ -71,9 +78,13 @@ async def create_sinkhole(req: SinkholeRequest):
 
 
 @router.delete("/sinkhole/{ip}", summary="Release Null-Route / Remove Firewall Sinkhole")
-async def release_sinkhole(ip: str):
+async def release_sinkhole(
+    ip: str,
+    current_user: User = Depends(get_current_admin_user)
+):
     """
     Releases an IP from perimeter sinkholing and removes the OS firewall rule.
+    Requires Administrator privileges.
     """
     released = active_defense_service.release_sinkhole(ip)
     if not released:

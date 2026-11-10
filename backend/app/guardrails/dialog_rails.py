@@ -50,6 +50,8 @@ class DialogRails:
     def __init__(self):
         # session_id -> list of (tool_name, operation, timestamp)
         self._session_history: Dict[str, List[Tuple[str, str, float]]] = defaultdict(list)
+        # agent_id -> list of (tool_name, operation, timestamp)
+        self._agent_history: Dict[str, List[Tuple[str, str, float]]] = defaultdict(list)
         # agent_id -> current state
         self._agent_state: Dict[str, str] = defaultdict(lambda: "INITIAL")
 
@@ -57,6 +59,13 @@ class DialogRails:
         """Clears execution history for a given session."""
         if session_id in self._session_history:
             del self._session_history[session_id]
+
+    def reset_agent(self, agent_id: str):
+        """Clears execution history for a given agent."""
+        if agent_id in self._agent_history:
+            del self._agent_history[agent_id]
+        if agent_id in self._agent_state:
+            del self._agent_state[agent_id]
 
     def get_session_history(self, session_id: str) -> List[Tuple[str, str, float]]:
         return list(self._session_history.get(session_id, []))
@@ -71,6 +80,13 @@ class DialogRails:
         for sid in stale:
             del self._session_history[sid]
 
+        stale_agents = [
+            aid for aid, h in self._agent_history.items()
+            if h and (now - h[-1][2] > self.SESSION_TIMEOUT_SECONDS)
+        ]
+        for aid in stale_agents:
+            del self._agent_history[aid]
+
     def evaluate_transition(
         self,
         agent_id: str,
@@ -81,9 +97,10 @@ class DialogRails:
     ) -> DialogRailResult:
         """
         Validates state machine transition for the requested action.
+        Evaluates both session-scoped history and authenticated agent history to prevent session evasion.
         """
         now = time.time()
-        if len(self._session_history) > 200:
+        if len(self._session_history) > 200 or len(self._agent_history) > 200:
             self._prune_stale_sessions()
 
         history = self._session_history[session_id]
@@ -91,7 +108,13 @@ class DialogRails:
             self.reset_session(session_id)
             history = self._session_history[session_id]
 
-        current_state = f"{history[-1][0]}:{history[-1][1]}" if history else self._agent_state[agent_id]
+        agent_hist = self._agent_history[agent_id]
+        if agent_hist and (now - agent_hist[-1][2] > self.SESSION_TIMEOUT_SECONDS):
+            self.reset_agent(agent_id)
+            agent_hist = self._agent_history[agent_id]
+
+        effective_history = history if history else agent_hist
+        current_state = f"{effective_history[-1][0]}:{effective_history[-1][1]}" if effective_history else self._agent_state[agent_id]
         new_state = f"{tool_name}:{operation}"
         history_depth = len(history)
 
@@ -107,14 +130,14 @@ class DialogRails:
                 violation_code="MAX_EXECUTION_DEPTH_EXCEEDED"
             )
 
-        # 2. Check disallowed tool chaining
-        if history:
-            last_tool, last_op, _ = history[-1]
+        # 2. Check disallowed tool chaining across session history AND agent history (SEC-08)
+        checked_histories = [h for h in [history, agent_hist] if h]
+        for h in checked_histories:
+            last_tool, last_op, _ = h[-1]
             disallowed_key = (last_tool, tool_name)
             
             # Check if direct chain is prohibited
             if disallowed_key in self.DISALLOWED_DIRECT_CHAINS:
-                # If bypass context is explicitly provided and approved, allow
                 if not (context and context.get("bypass_dialog_rails") is True):
                     return DialogRailResult(
                         allowed=False,
@@ -128,7 +151,7 @@ class DialogRails:
 
         # 3. Check destructive operations without prior inspection
         if (tool_name, operation) in self.DESTRUCTIVE_OPERATIONS:
-            if not history:
+            if not effective_history:
                 return DialogRailResult(
                     allowed=False,
                     current_state=current_state,
@@ -139,8 +162,9 @@ class DialogRails:
                     violation_code="UNPREPARED_DESTRUCTIVE_ACTION"
                 )
 
-        # Record valid transition
+        # Record valid transition in both session and agent-level ledgers
         self._session_history[session_id].append((tool_name, operation, now))
+        self._agent_history[agent_id].append((tool_name, operation, now))
         self._agent_state[agent_id] = new_state
 
         return DialogRailResult(
