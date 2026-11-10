@@ -25,9 +25,9 @@ class UserCreate(BaseModel):
 class UserResponse(BaseModel):
     id: str
     username: str
-    email: EmailStr
+    email: str
     role: UserRole
     is_active: bool
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

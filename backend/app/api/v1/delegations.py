@@ -8,7 +8,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.agent import Agent
 from app.models.delegation import Delegation, DelegationStatus
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.services.agent_service import agent_service
 from app.services.delegation_service import delegation_service
 
@@ -37,9 +37,21 @@ async def create_delegation(
 ):
     """
     Issues a scoped delegation grant from parent agent to child agent.
-    Requires authentication: if agent key is supplied, verifies parent identity (SEC-12).
+    Requires authentication: non-admins must supply parent agent X-Agent-Key (SEC-12).
     """
-    if x_agent_key:
+    if current_user.role != UserRole.ADMIN:
+        if not x_agent_key:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Parent agent authentication required: Supply parent agent's X-Agent-Key header."
+            )
+        parent_agent = await agent_service.authenticate_agent(db, x_agent_key)
+        if not parent_agent or parent_agent.id != req.parent_agent_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Parent agent authentication mismatch: credential does not match parent_agent_id '{req.parent_agent_id}'"
+            )
+    elif x_agent_key:
         parent_agent = await agent_service.authenticate_agent(db, x_agent_key)
         if not parent_agent or parent_agent.id != req.parent_agent_id:
             raise HTTPException(

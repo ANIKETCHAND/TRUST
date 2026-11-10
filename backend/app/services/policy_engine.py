@@ -139,6 +139,16 @@ class PolicyEngine:
 
         allow_rule = matching_allows[0]
 
+        # Dynamic Taint Containment Policy Enforcement
+        if context and context.get("tainted") is True:
+            # Tainted context cannot perform external egress (prevents indirect injection exfiltration)
+            if tool_name == "http_api_tool" and not context.get("allow_tainted_egress", False):
+                return (
+                    PolicyDecision.BLOCKED,
+                    f"Taint Policy Violation: Agent '{agent.name}' execution context is tainted by untrusted data. Outbound network egress is strictly blocked to prevent data exfiltration.",
+                    "taint_containment_policy"
+                )
+
         # 6. Evaluate Active Enterprise Policies (SEC-04 Unification)
         stmt_policies = select(Policy).where(Policy.is_active == True)
         res_policies = await db.execute(stmt_policies)

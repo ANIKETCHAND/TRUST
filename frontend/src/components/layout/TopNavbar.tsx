@@ -1,6 +1,7 @@
 import React from 'react';
 import { RefreshCw, Activity, ShieldCheck } from 'lucide-react';
 import { useSecurityPlatform } from '../../context/SecurityPlatformContext';
+import { useAuth } from '../../context/AuthContext';
 
 const tabLabels: Record<string, string> = {
   overview: 'Executive Security Overview',
@@ -23,6 +24,7 @@ const tabLabels: Record<string, string> = {
 
 export const TopNavbar: React.FC = () => {
   const { activeTab, autoRefresh, setAutoRefresh, triggerGlobalRefresh } = useSecurityPlatform();
+  const { user, logout } = useAuth();
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-slate-800 bg-slate-950/40 px-6 backdrop-blur shrink-0">
@@ -58,8 +60,24 @@ export const TopNavbar: React.FC = () => {
 
         <div className="hidden sm:flex items-center gap-1.5 rounded bg-slate-900 px-2.5 py-1 text-slate-400 border border-slate-800 text-[11px]">
           <ShieldCheck className="h-3.5 w-3.5 text-cyan-400" />
-          Deterministic Security Engine
+          {user ? (
+            <span>
+              <strong className="text-slate-200">{user.username}</strong> ({user.role?.toUpperCase() || 'OPERATOR'})
+            </span>
+          ) : (
+            <span>Deterministic Security Engine</span>
+          )}
         </div>
+
+        {user && (
+          <button
+            onClick={logout}
+            className="flex items-center gap-1.5 rounded border border-rose-900/40 bg-rose-950/30 px-2.5 py-1 text-[11px] text-rose-300 hover:bg-rose-900/40 hover:text-rose-200 transition-colors"
+            title="Terminate session"
+          >
+            Sign Out
+          </button>
+        )}
       </div>
     </header>
   );

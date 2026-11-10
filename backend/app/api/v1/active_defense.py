@@ -51,7 +51,7 @@ async def kill_process(
 
     # Restrict termination strictly to monitored agent runner processes
     monitored = {p["pid"] for p in active_defense_service.list_running_agent_processes()}
-    if monitored and req.pid not in monitored:
+    if req.pid not in monitored:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Target PID {req.pid} is not an enrolled agent process. Terminating arbitrary host processes is strictly prohibited."

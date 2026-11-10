@@ -81,14 +81,17 @@ from app.api.deps import (
 )
 from app.models.user import User, UserRole
 
+from datetime import datetime, timezone
+
 mock_test_admin = User(
     id="test-admin-uuid",
     username="test_admin",
-    email="testadmin@agenttrust.local",
+    email="testadmin@example.com",
     hashed_password="hashed_test_password",
     role=UserRole.ADMIN,
     is_active=True,
-    tenant_id="default_tenant"
+    tenant_id="default_tenant",
+    created_at=datetime.now(timezone.utc)
 )
 
 

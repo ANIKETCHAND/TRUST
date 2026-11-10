@@ -27,6 +27,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateUI(data);
 
   toggle.addEventListener("change", () => {
+    if (data.enrolled && !toggle.checked) {
+      const confirmDeactivate = confirm(
+        "Enterprise Security Notice: Disabling AgentTrust Browser Shield requires Administrator authorization. Proceeding will trigger an unmanaged compliance alert."
+      );
+      if (!confirmDeactivate) {
+        toggle.checked = true;
+        return;
+      }
+    }
     chrome.storage.local.set({ protectionEnabled: toggle.checked });
   });
 

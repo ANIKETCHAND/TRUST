@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Set, Union
+from typing import List, Optional, Set, Union
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     # Pipelock Sidecar / Proxy Integration
     PIPELOCK_ENABLED: bool = False
     PIPELOCK_PROXY_URL: str = "http://localhost:8090/v1/inspect"
+
+    # Redis Centralized State & Cache Store (for multi-worker deployment)
+    REDIS_URL: Optional[str] = None
+
 
     # File Scanning Engine (ClamAV / YARA)
     CLAMAV_ENABLED: bool = False

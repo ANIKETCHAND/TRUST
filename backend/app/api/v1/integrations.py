@@ -2,7 +2,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
+from app.api.deps import get_current_admin_user, get_current_user
 from app.core.config import settings
+from app.models.user import User
 from app.services.file_scanner_service import file_scanner_service
 from app.services.opa_service import opa_service
 from app.services.pipelock_service import pipelock_service
@@ -27,7 +29,7 @@ class ThreatIntelQueryRequest(BaseModel):
 
 
 @router.get("", tags=["Integrations"])
-async def get_integrations_status():
+async def get_integrations_status(current_user: User = Depends(get_current_user)):
     """Returns runtime status and configurations for all open-source integrations."""
     opa_health = await opa_service.check_health()
     pipelock_health = await pipelock_service.check_health()
@@ -77,7 +79,10 @@ async def get_integrations_status():
 
 
 @router.post("/scan-file", tags=["Integrations"])
-async def scan_file_endpoint(req: FileScanRequest):
+async def scan_file_endpoint(
+    req: FileScanRequest,
+    current_user: User = Depends(get_current_user)
+):
     """Scans a file in the sandbox storage using antivirus and heuristic engines."""
     # Resolve safe path inside sandbox
     target_path = Path(req.file_path)
@@ -115,14 +120,17 @@ async def scan_file_endpoint(req: FileScanRequest):
 
 
 @router.get("/quarantine", tags=["Integrations"])
-async def list_quarantine_items():
+async def list_quarantine_items(current_user: User = Depends(get_current_user)):
     """Lists all files currently held in the non-destructive quarantine vault."""
     items = await file_scanner_service.list_quarantine()
     return items
 
 
 @router.post("/quarantine/restore", tags=["Integrations"])
-async def restore_quarantined_item(req: QuarantineRestoreRequest):
+async def restore_quarantined_item(
+    req: QuarantineRestoreRequest,
+    current_user: User = Depends(get_current_admin_user)
+):
     """Safely restores a quarantined file back to its original location."""
     try:
         record = await file_scanner_service.restore_quarantined_file(
@@ -141,7 +149,10 @@ async def restore_quarantined_item(req: QuarantineRestoreRequest):
 
 
 @router.post("/threat-intel", tags=["Integrations"])
-async def query_threat_intel(req: ThreatIntelQueryRequest):
+async def query_threat_intel(
+    req: ThreatIntelQueryRequest,
+    current_user: User = Depends(get_current_user)
+):
     """Queries threat intelligence indicators for IP, domain, or cryptographic hash."""
     q_type = req.query_type.lower()
     val = req.value.strip()

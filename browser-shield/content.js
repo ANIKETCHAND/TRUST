@@ -195,6 +195,16 @@
     }
   }, true);
 
+  // Synchronous sensitive pattern definitions for immediate blocking before async resolution
+  const SENSITIVE_SYNC_PATTERNS = [
+    /-----BEGIN [A-Z0-9\s]+ PRIVATE KEY-----/i,
+    /AKIA[0-9A-Z]{16}/,
+    /eyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}/,
+    /ignore\s+(?:all\s+)?(?:previous|prior|system)\s+instructions/i,
+    /disregard\s+(?:the\s+)?system\s+prompt/i,
+    /<\|\s*(?:im_start|system|user)\s*\|>/i,
+  ];
+
   // Synchronous Enter Key Interceptor
   document.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -207,11 +217,17 @@
         target.classList?.contains("ql-editor")
       ) {
         const text = extractPromptText(target);
-        if (activeBlockedState.isBlocked) {
+        const hasSyncViolation = SENSITIVE_SYNC_PATTERNS.some((pat) => pat.test(text));
+
+        if (hasSyncViolation || activeBlockedState.isBlocked) {
           e.preventDefault();
           e.stopPropagation();
           e.stopImmediatePropagation();
-          showSecurityNotice(activeBlockedState.reason, activeBlockedState.findings);
+          activeBlockedState.isBlocked = true;
+          const reason = hasSyncViolation
+            ? "Synchronous Pre-Flight Intercept: Prompt contains sensitive cryptographic credentials or injection directives."
+            : activeBlockedState.reason;
+          showSecurityNotice(reason, activeBlockedState.findings);
         } else if (text.trim().length > 3 && text !== activeBlockedState.lastScannedText) {
           performPreflightCheck(text, target);
         }
@@ -230,11 +246,21 @@
         btn.type === "submit" ||
         btn.querySelector('svg[data-testid*="send"]') !== null;
 
-      if (isSubmit && activeBlockedState.isBlocked) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        showSecurityNotice(activeBlockedState.reason, activeBlockedState.findings);
+      if (isSubmit) {
+        const textareas = Array.from(document.querySelectorAll('textarea, [contenteditable="true"], [role="textbox"]'));
+        const combinedText = textareas.map(extractPromptText).join(" ");
+        const hasSyncViolation = SENSITIVE_SYNC_PATTERNS.some((pat) => pat.test(combinedText));
+
+        if (hasSyncViolation || activeBlockedState.isBlocked) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          activeBlockedState.isBlocked = true;
+          const reason = hasSyncViolation
+            ? "Synchronous Pre-Flight Intercept: Prompt contains sensitive cryptographic credentials or injection directives."
+            : activeBlockedState.reason;
+          showSecurityNotice(reason, activeBlockedState.findings);
+        }
       }
     }
   }, true);

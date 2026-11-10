@@ -78,20 +78,23 @@ export const apiClient = {
 // Complete API interface
 export const api = {
   login: async (credentials: { username: string; password: string }) => {
-    const params = new URLSearchParams();
-    params.append('username', credentials.username);
-    params.append('password', credentials.password);
-    const res = await fetch(`${ENV.API_BASE_URL}/auth/token`, {
+    const res = await fetch(`${ENV.API_BASE_URL}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: credentials.username, password: credentials.password }),
     });
     if (!res.ok) {
-      throw new ApiError(`Authentication failed: HTTP ${res.status}`, res.status);
+      let errorMsg = `Authentication failed: HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        errorMsg = errJson.detail || errorMsg;
+      } catch {}
+      throw new ApiError(errorMsg, res.status);
     }
     const data = await res.json();
     if (data.access_token && typeof window !== 'undefined') {
       localStorage.setItem('agenttrust_token', data.access_token);
+      localStorage.setItem('access_token', data.access_token);
     }
     return data;
   },

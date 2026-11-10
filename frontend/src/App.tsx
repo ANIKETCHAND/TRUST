@@ -1,9 +1,11 @@
 import React from 'react';
 import { ToastProvider } from './context/ToastContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { SecurityPlatformProvider, useSecurityPlatform } from './context/SecurityPlatformContext';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopNavbar } from './components/layout/TopNavbar';
+import { LoginScreen } from './components/auth/LoginScreen';
 
 import { OverviewTab } from './components/tabs/OverviewTab';
 import { ThreatMapTab } from './components/tabs/ThreatMapTab';
@@ -81,13 +83,35 @@ const DashboardLayout: React.FC = () => {
   );
 };
 
+const AuthenticatedConsole: React.FC = () => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-cyan-400 font-mono text-xs">
+        <span className="animate-pulse">VERIFYING AGENTTRUST SESSION...</span>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
+
+  return (
+    <SecurityPlatformProvider>
+      <DashboardLayout />
+    </SecurityPlatformProvider>
+  );
+};
+
 export function App() {
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <SecurityPlatformProvider>
-          <DashboardLayout />
-        </SecurityPlatformProvider>
+        <AuthProvider>
+          <AuthenticatedConsole />
+        </AuthProvider>
       </ToastProvider>
     </ErrorBoundary>
   );
