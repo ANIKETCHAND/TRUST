@@ -1,10 +1,11 @@
 import uuid
 from datetime import datetime, timezone
 from typing import Optional, Tuple
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import generate_agent_api_key, hash_api_key
 from app.models.agent import Agent, AgentCredential, AgentStatus
+from app.models.delegation import Delegation, DelegationStatus
 from app.models.incident import RevocationRecord
 from app.schemas.agent import AgentCreate, AgentRegistrationResponse, AgentResponse
 
@@ -58,7 +59,7 @@ class AgentService:
             raw_api_key = raw_api_key[7:].strip()
 
         token_hash = hash_api_key(raw_api_key)
-        
+
         stmt = (
             select(AgentCredential)
             .where(
@@ -103,6 +104,17 @@ class AgentService:
         for cred in credentials:
             cred.is_revoked = True
             cred.revoked_at = now
+
+        # Cascading revocation: revoke all active delegations involving this agent as parent or child
+        del_stmt = select(Delegation).where(
+            or_(Delegation.parent_agent_id == agent_id, Delegation.child_agent_id == agent_id),
+            Delegation.status == DelegationStatus.ACTIVE
+        )
+        del_res = await db.execute(del_stmt)
+        for deleg in del_res.scalars().all():
+            deleg.status = DelegationStatus.REVOKED
+            deleg.revoked_at = now
+            deleg.revocation_reason = f"Cascaded revocation from revoked agent '{agent.name}': {reason}"
 
         # Add revocation record
         rev_record = RevocationRecord(

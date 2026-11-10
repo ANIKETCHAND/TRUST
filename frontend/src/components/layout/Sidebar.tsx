@@ -12,6 +12,8 @@ import {
   FileCheck,
   Layers,
   Settings,
+  Monitor,
+  Globe,
 } from 'lucide-react';
 import { useSecurityPlatform, type ActiveTabId } from '../../context/SecurityPlatformContext';
 
@@ -26,6 +28,8 @@ const navItems: NavItem[] = [
   { id: 'agents', label: 'Agents', icon: Bot },
   { id: 'tools', label: 'Tools', icon: Wrench },
   { id: 'monitor', label: 'Live Monitoring', icon: Activity },
+  { id: 'endpoints', label: 'Endpoint Connector', icon: Monitor },
+  { id: 'browser-shield', label: 'Browser Shield', icon: Globe },
   { id: 'delegations', label: 'Delegation Graph', icon: GitFork },
   { id: 'provenance', label: 'Provenance', icon: Network },
   { id: 'policies', label: 'Security Policies', icon: ShieldCheck },

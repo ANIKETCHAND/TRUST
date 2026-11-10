@@ -4,9 +4,12 @@ from app.api.v1 import (
     agents,
     audit,
     auth,
+    browser_shield,
     delegations,
+    endpoints,
     gateway,
     health,
+    integrations,
     overview,
     permissions,
     policies,
@@ -28,3 +31,6 @@ api_router.include_router(policies.router, prefix="/policies")
 api_router.include_router(gateway.router, prefix="/gateway")
 api_router.include_router(audit.router, prefix="/audit")
 api_router.include_router(agent_exec.router, prefix="/agent-exec")
+api_router.include_router(endpoints.router, prefix="/endpoints")
+api_router.include_router(browser_shield.router, prefix="/browser-shield")
+api_router.include_router(integrations.router, prefix="/integrations")

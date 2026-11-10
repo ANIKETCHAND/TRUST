@@ -9,6 +9,8 @@ import { OverviewTab } from './components/tabs/OverviewTab';
 import { AgentsTab } from './components/tabs/AgentsTab';
 import { ToolsTab } from './components/tabs/ToolsTab';
 import { LiveMonitoringTab } from './components/tabs/LiveMonitoringTab';
+import { EndpointsTab } from './components/tabs/EndpointsTab';
+import { BrowserShieldTab } from './components/tabs/BrowserShieldTab';
 import { DelegationTab } from './components/tabs/DelegationTab';
 import { ProvenanceTab } from './components/tabs/ProvenanceTab';
 import { PoliciesTab } from './components/tabs/PoliciesTab';
@@ -29,6 +31,10 @@ const TabRouter: React.FC = () => {
       return <ToolsTab />;
     case 'monitor':
       return <LiveMonitoringTab />;
+    case 'endpoints':
+      return <EndpointsTab />;
+    case 'browser-shield':
+      return <BrowserShieldTab />;
     case 'delegations':
       return <DelegationTab />;
     case 'provenance':

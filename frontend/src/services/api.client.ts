@@ -71,7 +71,7 @@ export const apiClient = {
     request<T>(endpoint, { method: 'DELETE', headers }),
 };
 
-// Legacy compatibility export
+// Complete API interface
 export const api = {
   getHealth: () => apiClient.get<any>('/health'),
   getOverviewStats: () => apiClient.get<any>('/overview/stats'),
@@ -114,4 +114,23 @@ export const api = {
   },
   updateIncident: (id: string, data: any) => apiClient.patch<any>(`/audit/incidents/${id}`, data),
   runAgentWorkflow: (data: any) => apiClient.post<any>('/agent-exec/run', data),
+
+  // Endpoint Connector (Layer 3)
+  listEndpoints: (status?: string) => apiClient.get<any[]>(`/endpoints${status ? `?status=${status}` : ''}`),
+  getEndpoint: (id: string) => apiClient.get<any>(`/endpoints/${id}`),
+  enrollEndpoint: (data: any) => apiClient.post<any>('/endpoints/enroll', data),
+  containEndpoint: (id: string, data: any) => apiClient.post<any>(`/endpoints/${id}/contain`, data),
+  releaseEndpoint: (id: string, data: any) => apiClient.post<any>(`/endpoints/${id}/release`, data),
+
+  // Browser Shield (Layer 2)
+  getBrowserShieldStatus: () => apiClient.get<any>('/browser-shield/status'),
+  checkBrowserAction: (data: any) => apiClient.post<any>('/browser-shield/check-action', data),
+  reportShieldEvent: (data: any) => apiClient.post<any>('/browser-shield/events', data),
+
+  // Open-Source Integrations
+  listIntegrations: () => apiClient.get<any>('/integrations'),
+  scanFile: (data: any) => apiClient.post<any>('/integrations/scan-file', data),
+  listQuarantine: () => apiClient.get<any[]>('/integrations/quarantine'),
+  restoreQuarantine: (data: any) => apiClient.post<any>('/integrations/quarantine/restore', data),
+  queryThreatIntel: (data: any) => apiClient.post<any>('/integrations/threat-intel', data),
 };

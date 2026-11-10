@@ -9,6 +9,8 @@ export type PlatformTab =
   | 'delegations'
   | 'provenance'
   | 'policies'
+  | 'endpoints'
+  | 'browser-shield'
   | 'incidents'
   | 'audit'
   | 'agent-runner'

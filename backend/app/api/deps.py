@@ -38,6 +38,24 @@ async def get_current_user(
     return user
 
 
+async def get_current_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+) -> Optional[User]:
+    if not token:
+        return None
+    payload = decode_access_token(token)
+    if not payload:
+        return None
+    username = payload.get("sub")
+    stmt = select(User).where(User.username == username)
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+    if not user or not user.is_active:
+        return None
+    return user
+
+
 async def get_current_agent(
     authorization: Optional[str] = Header(None, alias="Authorization"),
     x_agent_key: Optional[str] = Header(None, alias="X-Agent-Key"),
