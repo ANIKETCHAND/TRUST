@@ -1,0 +1,113 @@
+"""
+Active Defense & OS Process Killer API Endpoints
+"""
+
+from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
+from app.services.active_defense_service import active_defense_service
+from app.services.file_scanner_service import file_scanner_service
+
+router = APIRouter(prefix="/active-defense", tags=["Active Defense"])
+
+
+class KillProcessRequest(BaseModel):
+    pid: int = Field(..., description="Target process ID to terminate")
+    agent_id: Optional[str] = Field(None, description="Associated agent ID if known")
+    reason: str = Field("Manual Kill Switch Invocation", description="Justification for termination")
+    force: bool = Field(True, description="Force termination (SIGKILL / TerminateProcess)")
+
+
+class AbuseReportRequest(BaseModel):
+    ip: str = Field(..., description="Offending IP address")
+    attack_vector: str = Field("Prompt Injection & Unauthorized Tool Usage", description="Attack vector")
+    severity: str = Field("CRITICAL", description="Severity classification")
+    mitre_id: str = Field("T1059.001", description="MITRE ATT&CK technique")
+    evidence_snippet: str = Field("Malicious shell command injection attempt", description="Forensic evidence")
+
+
+@router.get("/processes", summary="Enumerate Monitored AI & Agent Processes")
+async def list_agent_processes():
+    """
+    Lists running agent runtimes, Python workers, and LLM runner processes with resource usage.
+    """
+    return active_defense_service.list_running_agent_processes()
+
+
+@router.post("/kill-process", summary="1-Click Malicious Process Kill Switch")
+async def kill_process(req: KillProcessRequest):
+    """
+    Instantly terminates a malicious process and its child processes via Active Defense.
+    """
+    if req.pid <= 4:
+        raise HTTPException(status_code=400, detail="Protected system PID cannot be terminated.")
+    res = active_defense_service.kill_process(
+        pid=req.pid,
+        agent_id=req.agent_id,
+        reason=req.reason,
+        force=req.force
+    )
+    if not res.get("success"):
+        raise HTTPException(status_code=500, detail=res.get("error", "Failed to terminate process"))
+    return res
+
+
+@router.get("/countermeasures", summary="Active Defense Countermeasures History")
+async def get_countermeasures_history():
+    """
+    Returns the real-time audit ledger of all executed active defense countermeasures.
+    """
+    return active_defense_service.get_countermeasures_history()
+
+
+@router.get("/quarantine", summary="List Quarantined Malware Vault Files")
+async def list_quarantine_files():
+    """
+    Returns all files isolated in the secure quarantine storage vault.
+    """
+    return await file_scanner_service.list_quarantine()
+
+
+@router.post("/quarantine/{quarantine_id}/restore", summary="Restore Quarantined File")
+async def restore_quarantined_file(quarantine_id: str):
+    """
+    Restores a quarantined file back to its original location.
+    """
+    try:
+        res = await file_scanner_service.restore_quarantined_file(quarantine_id)
+        return res
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/quarantine/{quarantine_id}", summary="Permanently Purge Quarantined File")
+async def purge_quarantined_file(quarantine_id: str):
+    """
+    Permanently purges a file from the quarantine vault after forensic verification.
+    """
+    try:
+        res = await file_scanner_service.purge_quarantined_file(quarantine_id)
+        return res
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/abuse-report", summary="Generate RFC-Compliant ISP Abuse Notice")
+async def generate_abuse_report(req: AbuseReportRequest):
+    """
+    Compiles an RFC-compliant network abuse report for external transit providers and cloud hosts.
+    """
+    report_text = active_defense_service.generate_isp_abuse_report(
+        ip=req.ip,
+        incident_details={
+            "attack_vector": req.attack_vector,
+            "severity": req.severity,
+            "mitre_id": req.mitre_id,
+            "evidence_snippet": req.evidence_snippet
+        }
+    )
+    return {"ip": req.ip, "rfc_report": report_text}

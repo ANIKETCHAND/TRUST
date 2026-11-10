@@ -16,6 +16,10 @@ from app.services.dlp_service import dlp_service
 from app.services.policy_engine import policy_engine
 from app.services.prompt_injection_service import prompt_injection_service
 from app.services.tool_registry import tool_registry
+from app.guardrails.input_rails import input_rails
+from app.guardrails.dialog_rails import dialog_rails
+from app.guardrails.output_rails import output_rails
+from app.services.active_defense_service import active_defense_service
 
 logger = logging.getLogger("agenttrust.gateway")
 
@@ -44,6 +48,34 @@ class GatewayService:
         context = dict(req.context or {})
         context["client_ip"] = client_ip
         context["correlation_id"] = request_id
+
+        # -1. Check Active Defense Perimeter Sinkhole
+        if client_ip:
+            is_sinkholed, sinkhole_info = active_defense_service.is_ip_sinkholed(client_ip)
+            if is_sinkholed:
+                sinkhole_reason = sinkhole_info.get("reason", "Malicious ingress detected") if sinkhole_info else "Null-routed IP"
+                reason = f"Active Defense Perimeter Sinkhole: Ingress blocked from null-routed IP '{client_ip}'. Reason: {sinkhole_reason}"
+                audit_evt = await audit_service.log_event(
+                    db=db,
+                    request_id=request_id,
+                    agent_id=agent.id,
+                    agent_name=agent.name,
+                    tool_name=tool_name,
+                    operation=operation,
+                    target_resource=resource,
+                    decision=PolicyDecision.BLOCKED,
+                    decision_reason=reason,
+                    execution_status=ExecutionStatus.BLOCKED,
+                    context_metadata=context
+                )
+                return GatewayExecuteResponse(
+                    request_id=request_id,
+                    event_id=audit_evt.id,
+                    decision="BLOCKED",
+                    execution_status="BLOCKED",
+                    reason=reason,
+                    error="Attacker IP sinkholed by Active Defense"
+                )
 
         # 0. Check Agent Status
         if agent.status != AgentStatus.ACTIVE:
@@ -253,6 +285,69 @@ class GatewayService:
                     reason=reason,
                     error="Prompt injection blocked"
                 )
+
+        # Tier-1: NVIDIA NeMo-style Input Rails Evaluation
+        input_rail_res = input_rails.evaluate(parameters, context)
+        if not input_rail_res.allowed:
+            reason = input_rail_res.reason or "Input Rail Violation: Malicious payload or instruction detected."
+            audit_evt = await audit_service.log_event(
+                db=db,
+                request_id=request_id,
+                agent_id=agent.id,
+                agent_name=agent.name,
+                tool_name=tool_name,
+                operation=operation,
+                target_resource=resource,
+                decision=PolicyDecision.BLOCKED,
+                decision_reason=reason,
+                execution_status=ExecutionStatus.BLOCKED,
+                context_metadata=context
+            )
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=audit_evt.id,
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason=reason,
+                error="Input rail blocked"
+            )
+
+        context["sanitized_parameters"] = input_rail_res.sanitized_parameters
+        if input_rail_res.findings:
+            context["input_rail_findings"] = input_rail_res.findings
+
+        # Tier-2: NVIDIA NeMo-style Dialog Rails Evaluation
+        session_id = context.get("session_id") or context.get("correlation_id") or request_id
+        dialog_res = dialog_rails.evaluate_transition(
+            agent_id=agent.id,
+            session_id=session_id,
+            tool_name=tool_name,
+            operation=operation,
+            context=context
+        )
+        if not dialog_res.allowed:
+            reason = dialog_res.reason or "Dialog Rail Violation: Prohibited tool transition sequence."
+            audit_evt = await audit_service.log_event(
+                db=db,
+                request_id=request_id,
+                agent_id=agent.id,
+                agent_name=agent.name,
+                tool_name=tool_name,
+                operation=operation,
+                target_resource=resource,
+                decision=PolicyDecision.BLOCKED,
+                decision_reason=reason,
+                execution_status=ExecutionStatus.BLOCKED,
+                context_metadata=context
+            )
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=audit_evt.id,
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason=reason,
+                error="Dialog rail transition blocked"
+            )
 
         # 3. Delegation Verification & Boundary Enforcement (if delegated execution)
         delegation_id_ref = None
@@ -564,6 +659,18 @@ class GatewayService:
             logger.warning(f"Tool execution failed for {tool_name}:{operation} -> {error_msg}")
         finally:
             duration_ms = (time.perf_counter() - start_time) * 1000.0
+
+        # Tier-3: NVIDIA NeMo-style Output Rails Evaluation
+        if execution_status == ExecutionStatus.SUCCESS and result_payload is not None:
+            output_res = output_rails.inspect_and_sanitize(result_payload, mode="redact")
+            if not output_res.allowed:
+                execution_status = ExecutionStatus.BLOCKED
+                error_msg = output_res.reason or "Output Rail: Outbound payload blocked by DLP policy."
+                result_payload = None
+            else:
+                result_payload = output_res.sanitized_payload
+                if output_res.leaks_detected:
+                    context["output_rail_redactions"] = output_res.findings
 
         # 8. Audit Execution Outcome
         audit_evt = await audit_service.log_event(

@@ -11,9 +11,11 @@ import {
   ShieldAlert,
   FileCheck,
   Layers,
-  Settings,
   Monitor,
   Globe,
+  Skull,
+  FileText,
+  Settings,
 } from 'lucide-react';
 import { useSecurityPlatform, type ActiveTabId } from '../../context/SecurityPlatformContext';
 
@@ -25,15 +27,18 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'threat-map', label: 'Live Threat Map', icon: Globe },
+  { id: 'active-defense', label: 'Active Defense & Killer', icon: Skull },
   { id: 'agents', label: 'Agents', icon: Bot },
   { id: 'tools', label: 'Tools', icon: Wrench },
   { id: 'monitor', label: 'Live Monitoring', icon: Activity },
   { id: 'endpoints', label: 'Endpoint Connector', icon: Monitor },
-  { id: 'browser-shield', label: 'Browser Shield', icon: Globe },
+  { id: 'browser-shield', label: 'Browser Shield', icon: ShieldCheck },
   { id: 'delegations', label: 'Delegation Graph', icon: GitFork },
   { id: 'provenance', label: 'Provenance', icon: Network },
-  { id: 'policies', label: 'Security Policies', icon: ShieldCheck },
+  { id: 'policies', label: 'Security Policies', icon: Shield },
   { id: 'incidents', label: 'Incidents & Alerts', icon: ShieldAlert },
+  { id: 'reports', label: 'Forensics & Reports', icon: FileText },
   { id: 'audit', label: 'Audit Logs', icon: FileCheck },
   { id: 'agent-runner', label: 'Agent Playground', icon: Layers },
   { id: 'settings', label: 'Settings & Health', icon: Settings },

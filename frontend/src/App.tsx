@@ -6,6 +6,9 @@ import { Sidebar } from './components/layout/Sidebar';
 import { TopNavbar } from './components/layout/TopNavbar';
 
 import { OverviewTab } from './components/tabs/OverviewTab';
+import { ThreatMapTab } from './components/tabs/ThreatMapTab';
+import { ActiveDefenseTab } from './components/tabs/ActiveDefenseTab';
+import { ReportsTab } from './components/tabs/ReportsTab';
 import { AgentsTab } from './components/tabs/AgentsTab';
 import { ToolsTab } from './components/tabs/ToolsTab';
 import { LiveMonitoringTab } from './components/tabs/LiveMonitoringTab';
@@ -25,6 +28,10 @@ const TabRouter: React.FC = () => {
   switch (activeTab) {
     case 'overview':
       return <OverviewTab />;
+    case 'threat-map':
+      return <ThreatMapTab />;
+    case 'active-defense':
+      return <ActiveDefenseTab />;
     case 'agents':
       return <AgentsTab />;
     case 'tools':
@@ -43,6 +50,8 @@ const TabRouter: React.FC = () => {
       return <PoliciesTab />;
     case 'incidents':
       return <IncidentsTab />;
+    case 'reports':
+      return <ReportsTab />;
     case 'audit':
       return <AuditTab />;
     case 'agent-runner':

@@ -3,6 +3,8 @@ import { api } from '../services/api.client';
 
 export type PlatformTab =
   | 'overview'
+  | 'threat-map'
+  | 'active-defense'
   | 'agents'
   | 'tools'
   | 'monitor'
@@ -12,6 +14,7 @@ export type PlatformTab =
   | 'endpoints'
   | 'browser-shield'
   | 'incidents'
+  | 'reports'
   | 'audit'
   | 'agent-runner'
   | 'settings';

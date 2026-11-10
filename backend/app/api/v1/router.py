@@ -15,6 +15,9 @@ from app.api.v1 import (
     policies,
     provenance,
     tools,
+    attribution,
+    active_defense,
+    reports,
 )
 
 api_router = APIRouter()
@@ -34,3 +37,6 @@ api_router.include_router(agent_exec.router, prefix="/agent-exec")
 api_router.include_router(endpoints.router, prefix="/endpoints")
 api_router.include_router(browser_shield.router, prefix="/browser-shield")
 api_router.include_router(integrations.router, prefix="/integrations")
+api_router.include_router(attribution.router)
+api_router.include_router(active_defense.router)
+api_router.include_router(reports.router)

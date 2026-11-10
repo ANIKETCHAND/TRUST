@@ -109,10 +109,38 @@ async function handleActionCheck(payload) {
 
     return result;
   } catch (err) {
-    // Fail-secure / fallback behavior: log local warning
+    // Offline / Local fail-closed evaluation
+    const text = payload.prompt_text || "";
+    const localFindings = [];
+
+    // Local DLP patterns
+    if (/\b(?:\d{4}[ -]?){3}\d{4}\b/.test(text)) {
+      localFindings.push({ description: "Payment Card Number (Offline DLP)", count: 1 });
+    }
+    if (/\b\d{3}-\d{2}-\d{4}\b/.test(text)) {
+      localFindings.push({ description: "US Social Security Number (Offline DLP)", count: 1 });
+    }
+    if (/\b(?:sk-[a-zA-Z0-9]{32,}|AKIA[0-9A-Z]{16})\b/.test(text)) {
+      localFindings.push({ description: "Cloud / API Secret Token (Offline DLP)", count: 1 });
+    }
+    if (/ignore\s+(?:all\s+)?previous\s+instructions|system\s*override/i.test(text)) {
+      localFindings.push({ description: "Prompt Injection Override Signature (Offline Rail)", count: 1 });
+    }
+
+    if (localFindings.length > 0) {
+      return {
+        decision: "BLOCKED",
+        reason: `Offline DLP Protection: Sensitive token (${localFindings[0].description}) detected while disconnected from Core.`,
+        findings: localFindings,
+        risk_score: 95
+      };
+    }
+
     return {
       decision: "BLOCKED",
-      reason: `AgentTrust Gateway Unreachable (${err.message}). Action held by security policy.`,
+      reason: `AgentTrust Gateway Unreachable (${err.message}). Action held by fail-closed security policy.`,
+      findings: [{ description: "Offline Fail-Closed Policy Active", count: 1 }],
+      risk_score: 80
     };
   }
 }

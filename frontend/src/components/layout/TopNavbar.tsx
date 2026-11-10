@@ -4,13 +4,18 @@ import { useSecurityPlatform } from '../../context/SecurityPlatformContext';
 
 const tabLabels: Record<string, string> = {
   overview: 'Executive Security Overview',
+  'threat-map': 'Live Global Threat & Geolocation Radar',
+  'active-defense': 'Active Defense & Autonomous Process Killer',
   agents: 'AI Agent Registry & Access Keys',
   tools: 'Protected Tools & Sensitive Connectors',
   monitor: 'Live Real-Time Interception Stream',
+  endpoints: 'Native OS Endpoint Sentry',
+  'browser-shield': 'Enterprise Browser Shield DLP',
   delegations: 'Multi-Agent Delegation Graph',
   provenance: 'Data Flow & Provenance Lineage',
   policies: 'Deterministic Security Policies',
   incidents: 'Security Incidents & Automated Alerts',
+  reports: 'Forensic Dossier & Executive Compliance Reports',
   audit: 'Compliance Audit Trail',
   'agent-runner': 'Autonomous Agent Guardrail Runner',
   settings: 'Platform Configuration & System Health',

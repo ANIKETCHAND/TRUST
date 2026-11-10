@@ -75,22 +75,39 @@ class FileScannerService:
                 "scanned_at": datetime.now(timezone.utc).isoformat()
             }
 
-        # 2. Check for suspicious high-risk reverse-shell payloads
+        # 2. Check for suspicious high-risk reverse-shell payloads and YARA signatures
         suspicious_payloads = [
-            b"/bin/sh -i >& /dev/tcp/",
-            b"nc -e /bin/bash",
-            b"powershell -nop -w hidden -c IEX(New-Object Net.WebClient).DownloadString"
+            (b"/bin/sh -i >& /dev/tcp/", "Heuristic.Linux.ReverseShell"),
+            (b"nc -e /bin/bash", "Heuristic.Netcat.ReverseShell"),
+            (b"powershell -nop -w hidden -c IEX(New-Object Net.WebClient).DownloadString", "Heuristic.PowerShell.DownloadCradle"),
+            (b"IEX(New-Object Net.WebClient)", "Heuristic.PowerShell.InMemExecution"),
+            (b"vssadmin delete shadows", "Heuristic.Ransomware.ShadowCopyDeletion"),
+            (b"eval(base64_decode(", "Heuristic.WebShell.PHP.ObfuscatedPayload"),
+            (b"c99shell", "Heuristic.WebShell.C99"),
+            (b"r57shell", "Heuristic.WebShell.R57"),
+            (b"<?php @eval($_POST", "Heuristic.WebShell.PHP.Backdoor"),
         ]
-        for pattern in suspicious_payloads:
-            if pattern in content_preview:
+        for pattern, threat in suspicious_payloads:
+            if pattern.lower() in content_preview.lower():
                 return {
                     "file_path": str(file_path),
                     "is_clean": False,
-                    "threat_name": "Heuristic.AgentScript.SuspiciousPayload",
-                    "engine": "AgentTrust-YARA-HeuristicEngine/1.0",
+                    "threat_name": threat,
+                    "engine": "AgentTrust-YARA-HeuristicEngine/2.0",
                     "hashes": hashes,
                     "scanned_at": datetime.now(timezone.utc).isoformat()
                 }
+
+        # Check for dangerous double extensions (e.g. report.pdf.exe) or PE headers in unexpected scripts
+        if file_path.name.lower().endswith((".pdf.exe", ".doc.exe", ".xls.exe", ".png.exe")):
+            return {
+                "file_path": str(file_path),
+                "is_clean": False,
+                "threat_name": "Heuristic.Malware.DoubleExtensionSpoof",
+                "engine": "AgentTrust-HeuristicEngine/2.0",
+                "hashes": hashes,
+                "scanned_at": datetime.now(timezone.utc).isoformat()
+            }
 
         # Clean file
         return {
@@ -185,6 +202,30 @@ class FileScannerService:
         meta_path.write_text(json.dumps(record, indent=2), encoding="utf-8")
 
         logger.info(f"Quarantined file '{quarantine_id}' restored to '{original_path}' by '{restored_by}'")
+        return record
+
+    async def purge_quarantined_file(
+        self, quarantine_id: str, purged_by: str = "admin"
+    ) -> Dict[str, Any]:
+        """Permanently purges a quarantined file after forensic verification."""
+        import re
+        if not re.match(r"^quar_[a-zA-Z0-9_\-]+$", quarantine_id):
+            raise ValueError(f"Invalid quarantine ID format: '{quarantine_id}'")
+
+        meta_path = (self.meta_dir / f"{quarantine_id}.json").resolve()
+        if not meta_path.is_file():
+            raise FileNotFoundError(f"Quarantine record '{quarantine_id}' not found.")
+
+        record = json.loads(meta_path.read_text(encoding="utf-8"))
+        quarantined_path = Path(record["quarantined_path"])
+        if quarantined_path.is_file():
+            quarantined_path.unlink()
+
+        record["is_purged"] = True
+        record["purged_at"] = datetime.now(timezone.utc).isoformat()
+        record["purged_by"] = purged_by
+        meta_path.write_text(json.dumps(record, indent=2), encoding="utf-8")
+        logger.info(f"Quarantined file '{quarantine_id}' permanently purged by '{purged_by}'")
         return record
 
     async def list_quarantine(self) -> List[Dict[str, Any]]:

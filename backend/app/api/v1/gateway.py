@@ -30,7 +30,11 @@ async def execute_tool(
     Intercepts the tool request, authenticates the agent, deterministically evaluates
     applicable policies, logs the audit trail, and dispatches only authorized executions.
     """
-    client_ip = request.client.host if request.client else "127.0.0.1"
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
+    else:
+        client_ip = request.headers.get("x-real-ip") or (request.client.host if request.client else "127.0.0.1")
     response = await gateway_service.execute_tool_request(
         db=db,
         agent=agent,
