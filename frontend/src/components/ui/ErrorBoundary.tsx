@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { AlertOctagon, RotateCcw } from 'lucide-react';
+import { AlertOctagon, RotateCcw, Terminal } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -20,25 +20,39 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an unhandled error:', error, errorInfo);
+    console.error('AgentTrust ErrorBoundary caught unhandled error:', error, errorInfo);
   }
 
   public override render() {
     if (this.state.hasError) {
       return (
-        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-rose-800/80 bg-rose-950/20 p-8 text-center backdrop-blur">
-          <AlertOctagon className="h-10 w-10 text-rose-400" />
-          <h2 className="mt-3 text-base font-bold text-white">Component Telemetry Failure</h2>
-          <p className="mt-1 max-w-md text-xs text-slate-400">
-            {this.state.error?.message || 'An unexpected rendering error occurred inside this security module.'}
+        <div className="flex min-h-[380px] flex-col items-center justify-center rounded-lg border border-kali-critical/40 bg-kali-card p-8 text-center shadow-2xl">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-kali-critical/60 bg-[#331418] text-kali-critical mb-4">
+            <AlertOctagon className="h-6 w-6" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-bold text-kali-critical">[CRITICAL_UI_FAULT]</span>
+            <h2 className="text-sm font-bold text-white">Component Telemetry Exception</h2>
+          </div>
+          <p className="mt-2 max-w-lg font-mono text-xs text-slate-400 bg-kali-bg p-3 rounded border border-kali-border break-all">
+            {this.state.error?.message || 'An unexpected runtime error occurred inside this command widget.'}
           </p>
-          <button
-            onClick={() => this.setState({ hasError: false })}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            Retry Component Render
-          </button>
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              onClick={() => this.setState({ hasError: false })}
+              className="inline-flex items-center gap-2 rounded border border-kali-border bg-kali-elevated px-4 py-2 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:bg-kali-secondary hover:text-white transition-colors"
+            >
+              <RotateCcw className="h-3.5 w-3.5 text-kali-primary" />
+              Reload Widget
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center gap-2 rounded border border-transparent bg-kali-primary px-4 py-2 font-mono text-xs font-semibold text-white hover:bg-kali-secondaryBlue transition-colors"
+            >
+              <Terminal className="h-3.5 w-3.5" />
+              Reboot Command Console
+            </button>
+          </div>
         </div>
       );
     }

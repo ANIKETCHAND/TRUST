@@ -127,6 +127,7 @@ export const api = {
   getProvenanceGraph: () => apiClient.get<any>('/provenance/graph'),
   createProvenanceNode: (data: any) => apiClient.post<any>('/provenance/nodes', data),
   listPolicies: () => apiClient.get<any[]>('/policies'),
+  createPolicy: (data: any) => apiClient.post<any>('/policies', data),
   updatePolicy: (id: string, data: any) => apiClient.put<any>(`/policies/${id}`, data),
   testPolicy: (data: any) => apiClient.post<any>('/policies/test', data),
   listAuditEvents: (params?: any) => {

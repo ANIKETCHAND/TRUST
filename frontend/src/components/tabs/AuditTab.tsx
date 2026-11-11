@@ -1,22 +1,31 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { FileCheck, Download, RefreshCw, Eye } from 'lucide-react';
+import {
+  FileCheck,
+  Download,
+  RefreshCw,
+  Eye,
+  Copy,
+  Check,
+} from 'lucide-react';
 import { api } from '../../services/api.client';
 import type { AuditEvent } from '../../types';
 import { DecisionBadge } from '../ui/Badge';
 import { Modal } from '../ui/Modal';
 import { SearchInput } from '../ui/SearchInput';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
-import { formatTimestamp, formatLatency, truncateMiddle } from '../../utils/formatters';
+import { TerminalBox } from '../ui/TerminalBox';
+import { formatTimestamp, formatLatency, truncateId } from '../../utils/formatters';
 import { useToast } from '../../context/ToastContext';
 
 export const AuditTab: React.FC = () => {
-  const { showToast } = useToast();
+  const toast = useToast();
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [decisionFilter, setDecisionFilter] = useState('');
   const [toolFilter, setToolFilter] = useState('');
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const fetchAudit = useCallback(async () => {
     try {
@@ -28,15 +37,21 @@ export const AuditTab: React.FC = () => {
       });
       setEvents(res as AuditEvent[]);
     } catch (err: any) {
-      showToast(err.message || 'Failed to fetch audit log', 'error');
+      toast.error('Audit Load Failed', err.message || 'Failed to fetch audit log');
     } finally {
       setLoading(false);
     }
-  }, [decisionFilter, toolFilter, showToast]);
+  }, [decisionFilter, toolFilter, toast]);
 
   useEffect(() => {
     fetchAudit();
   }, [fetchAudit]);
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   const filteredEvents = events.filter(
     (e) =>
@@ -49,210 +64,227 @@ export const AuditTab: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-slate-800 pb-5 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 border-b border-kali-border pb-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <FileCheck className="h-7 w-7 text-cyan-400" />
-            Security Audit Trail & Compliance Logs
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-bold text-kali-primary">// THREAT_OPERATIONS</span>
+            <span className="text-slate-500 font-mono">/</span>
+            <span className="font-mono text-xs text-kali-cyan">AUDIT_LOGS</span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 mt-1">
+            <FileCheck className="h-6 w-6 text-kali-primary" />
+            Security Audit Trail & Compliance Verification
           </h1>
-          <p className="text-sm text-slate-400">
-            Immutable, tamper-evident audit records capturing every tool invocation, gateway decision, and latency metric.
+          <p className="text-xs text-slate-400 mt-0.5">
+            Cryptographically bounded, persistent audit log recording every tool invocation, policy decision, latency metric, and context hash.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <a
             href={api.exportAuditUrl('csv')}
             download="agenttrust_audit.csv"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:text-white transition-colors"
           >
-            <Download className="h-4 w-4 text-cyan-400" />
-            Export CSV
+            <Download className="h-3.5 w-3.5 text-kali-cyan" />
+            <span>CSV</span>
           </a>
           <a
             href={api.exportAuditUrl('json')}
             download="agenttrust_audit.json"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:text-white transition-colors"
           >
-            <Download className="h-4 w-4 text-cyan-400" />
-            Export JSON
+            <Download className="h-3.5 w-3.5 text-kali-primary" />
+            <span>JSON</span>
           </a>
           <button
             onClick={fetchAudit}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:bg-kali-elevated transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            <RefreshCw className={`h-3.5 w-3.5 text-kali-primary ${loading ? 'animate-spin' : ''}`} />
+            <span>SYNC</span>
           </button>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex-1">
-          <SearchInput
-            placeholder="Search audit trail by agent, tool, resource, or request ID..."
-            value={search}
-            onChange={setSearch}
-          />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between">
+        <SearchInput
+          placeholder="Filter audit log by agent, tool, resource, or request ID..."
+          value={search}
+          onChange={setSearch}
+          className="max-w-md w-full"
+        />
+
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-slate-400">DECISION:</span>
+          <select
+            value={decisionFilter}
+            onChange={(e) => setDecisionFilter(e.target.value)}
+            className="rounded border border-kali-border bg-kali-bg px-2.5 py-1.5 font-mono text-xs text-white focus:border-kali-primary focus:outline-none"
+          >
+            <option value="">ALL DECISIONS</option>
+            <option value="ALLOWED">ALLOWED CALLS</option>
+            <option value="BLOCKED">BLOCKED VIOLATIONS</option>
+          </select>
+
+          <span className="font-mono text-xs text-slate-400 ml-2">TOOL:</span>
+          <select
+            value={toolFilter}
+            onChange={(e) => setToolFilter(e.target.value)}
+            className="rounded border border-kali-border bg-kali-bg px-2.5 py-1.5 font-mono text-xs text-white focus:border-kali-primary focus:outline-none"
+          >
+            <option value="">ALL TOOLS</option>
+            <option value="filesystem_tool">filesystem_tool</option>
+            <option value="postgres_tool">postgres_tool</option>
+            <option value="http_api_tool">http_api_tool</option>
+            <option value="mcp_tool">mcp_tool</option>
+          </select>
         </div>
-
-        <select
-          value={decisionFilter}
-          onChange={(e) => setDecisionFilter(e.target.value)}
-          aria-label="Filter by decision"
-          className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
-        >
-          <option value="">All Decisions</option>
-          <option value="ALLOWED">Allowed Only</option>
-          <option value="BLOCKED">Blocked Only</option>
-        </select>
-
-        <select
-          value={toolFilter}
-          onChange={(e) => setToolFilter(e.target.value)}
-          aria-label="Filter by tool"
-          className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
-        >
-          <option value="">All Tools</option>
-          <option value="filesystem_tool">filesystem_tool</option>
-          <option value="postgres_tool">postgres_tool</option>
-          <option value="http_api_tool">http_api_tool</option>
-          <option value="mcp_tool">mcp_tool</option>
-        </select>
       </div>
 
-      {/* Audit Table */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/40 backdrop-blur overflow-hidden">
-        {loading && events.length === 0 ? (
-          <div className="py-12">
-            <LoadingSpinner message="Querying tamper-evident audit records..." />
-          </div>
-        ) : (
+      {/* Audit Events Table */}
+      {loading && events.length === 0 ? (
+        <LoadingSpinner message="TRAVERSING AUDIT HASH CHAIN..." />
+      ) : (
+        <div className="rounded-lg border border-kali-border bg-kali-card overflow-hidden shadow-kali-card">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/60 text-slate-400">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="border-b border-kali-border bg-kali-bg/95 text-[11px] text-slate-400">
                 <tr>
-                  <th className="py-3 px-4 font-semibold">Timestamp</th>
-                  <th className="py-3 px-4 font-semibold">Request ID</th>
-                  <th className="py-3 px-4 font-semibold">Agent Name</th>
-                  <th className="py-3 px-4 font-semibold">Tool & Op</th>
-                  <th className="py-3 px-4 font-semibold">Resource</th>
-                  <th className="py-3 px-4 font-semibold">Decision</th>
-                  <th className="py-3 px-4 font-semibold">Latency</th>
-                  <th className="py-3 px-4 font-semibold text-right">Details</th>
+                  <th className="py-3 px-3.5 font-semibold">Timestamp</th>
+                  <th className="py-3 px-3.5 font-semibold">Request ID</th>
+                  <th className="py-3 px-3.5 font-semibold">Principal Agent</th>
+                  <th className="py-3 px-3.5 font-semibold">Tool & Op</th>
+                  <th className="py-3 px-3.5 font-semibold">Target Resource</th>
+                  <th className="py-3 px-3.5 font-semibold">Decision</th>
+                  <th className="py-3 px-3.5 font-semibold">Duration</th>
+                  <th className="py-3 px-3.5 font-semibold text-right">Inspect</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300 font-mono">
+              <tbody className="divide-y divide-kali-border text-slate-300">
                 {filteredEvents.map((ev) => (
-                  <tr key={ev.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="py-3 px-4 text-slate-400 font-sans">
+                  <tr key={ev.id} className="hover:bg-kali-elevated/40 transition-colors">
+                    <td className="py-2.5 px-3.5 text-slate-400 text-[11px]">
                       {formatTimestamp(ev.created_at)}
                     </td>
-                    <td className="py-3 px-4 text-slate-400" title={ev.request_id}>
-                      {truncateMiddle(ev.request_id, 8, 4)}
+                    <td className="py-2.5 px-3.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="rounded bg-kali-bg px-1.5 py-0.5 border border-kali-border text-slate-400 text-[11px]">
+                          {truncateId(ev.request_id, 10)}
+                        </span>
+                        <button
+                          onClick={() => handleCopy(ev.request_id, ev.id)}
+                          className="text-slate-500 hover:text-white transition-colors"
+                          title="Copy Request ID"
+                        >
+                          {copiedId === ev.id ? (
+                            <Check className="h-3 w-3 text-kali-secure" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </button>
+                      </div>
                     </td>
-                    <td className="py-3 px-4 font-sans font-medium text-white">
-                      {ev.agent_name || truncateMiddle(ev.agent_id, 6, 4)}
+                    <td className="py-2.5 px-3.5 font-sans font-semibold text-white">
+                      {ev.agent_name || truncateId(ev.agent_id)}
                     </td>
-                    <td className="py-3 px-4 text-cyan-300">
+                    <td className="py-2.5 px-3.5 text-kali-cyan font-bold">
                       {ev.tool_name}:{ev.operation}
                     </td>
-                    <td className="py-3 px-4 max-w-[220px] truncate" title={ev.target_resource}>
+                    <td
+                      className="py-2.5 px-3.5 text-slate-300 max-w-[220px] truncate"
+                      title={ev.target_resource}
+                    >
                       {ev.target_resource}
                     </td>
-                    <td className="py-3 px-4 font-sans">
+                    <td className="py-2.5 px-3.5 font-sans">
                       <DecisionBadge decision={ev.decision} />
                     </td>
-                    <td className="py-3 px-4 text-slate-400">
-                      {formatLatency(ev.execution_duration_ms)}
-                    </td>
-                    <td className="py-3 px-4 text-right">
+                    <td className="py-2.5 px-3.5 text-slate-400">{formatLatency(ev.execution_duration_ms)}</td>
+                    <td className="py-2.5 px-3.5 text-right">
                       <button
                         onClick={() => setSelectedEvent(ev)}
-                        className="rounded border border-slate-700 bg-slate-800 p-1.5 text-slate-300 hover:text-white"
-                        title="View detailed audit event"
+                        className="inline-flex items-center gap-1 rounded border border-kali-border bg-kali-elevated px-2 py-1 text-[11px] text-slate-300 hover:border-kali-primary hover:text-white transition-colors"
                       >
-                        <Eye className="h-3.5 w-3.5" />
+                        <Eye className="h-3.5 w-3.5 text-kali-cyan" />
+                        <span>Inspect</span>
                       </button>
                     </td>
                   </tr>
                 ))}
                 {filteredEvents.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-500 font-sans">
-                      No audit records match your filters.
+                    <td colSpan={8} className="py-12 text-center text-slate-500 font-mono">
+                      // ZERO AUDIT LOGS MATCHING QUERY FILTER
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Detail Modal */}
+      {/* Audit Detail Modal */}
       <Modal
         isOpen={!!selectedEvent}
         onClose={() => setSelectedEvent(null)}
-        title="Audit Event Details"
-        subtitle={selectedEvent?.id}
-        size="lg"
+        title="IMMUTABLE AUDIT RECORD"
+        subtitle={`REQUEST: ${selectedEvent?.request_id || ''}`}
+        maxWidth="2xl"
       >
         {selectedEvent && (
           <div className="space-y-4 font-mono text-xs">
-            <div className="grid grid-cols-2 gap-3 bg-slate-950 p-3 rounded-lg border border-slate-800">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 rounded border border-kali-border bg-kali-bg p-3">
               <div>
-                <span className="text-slate-500">Agent ID:</span>{' '}
-                <span className="text-white">{selectedEvent.agent_id}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-500">Decision:</span>{' '}
-                <DecisionBadge decision={selectedEvent.decision} />
+                <span className="text-slate-400 text-[10px] uppercase block">Principal Agent</span>
+                <span className="text-white font-bold">{selectedEvent.agent_name || selectedEvent.agent_id}</span>
               </div>
               <div>
-                <span className="text-slate-500">Tool:</span>{' '}
-                <span className="text-cyan-300">{selectedEvent.tool_name}</span>
+                <span className="text-slate-400 text-[10px] uppercase block">Decision</span>
+                <div className="mt-0.5">
+                  <DecisionBadge decision={selectedEvent.decision} />
+                </div>
               </div>
               <div>
-                <span className="text-slate-500">Operation:</span>{' '}
-                <span className="text-slate-300">{selectedEvent.operation}</span>
-              </div>
-              <div className="col-span-2">
-                <span className="text-slate-500">Target Resource:</span>{' '}
-                <span className="text-slate-200">{selectedEvent.target_resource}</span>
+                <span className="text-slate-400 text-[10px] uppercase block">Duration</span>
+                <span className="text-kali-cyan font-bold">{formatLatency(selectedEvent.execution_duration_ms)}</span>
               </div>
               <div>
-                <span className="text-slate-500">Latency:</span>{' '}
-                <span className="text-slate-200">{formatLatency(selectedEvent.execution_duration_ms)}</span>
+                <span className="text-slate-400 text-[10px] uppercase block">Target Tool</span>
+                <span className="text-kali-primary font-bold">{selectedEvent.tool_name}</span>
               </div>
               <div>
-                <span className="text-slate-500">Timestamp:</span>{' '}
-                <span className="text-slate-200">{formatTimestamp(selectedEvent.created_at)}</span>
+                <span className="text-slate-400 text-[10px] uppercase block">Operation</span>
+                <span className="text-slate-200">{selectedEvent.operation}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 text-[10px] uppercase block">Status</span>
+                <span className="text-slate-300">{selectedEvent.execution_status}</span>
+              </div>
+              <div className="col-span-2 sm:col-span-3">
+                <span className="text-slate-400 text-[10px] uppercase block">Target Resource</span>
+                <span className="text-white break-all">{selectedEvent.target_resource}</span>
               </div>
             </div>
 
             <div>
-              <span className="font-sans font-semibold text-slate-400">Formal Decision Reason:</span>
-              <p className="mt-1 rounded bg-slate-950 p-3 text-slate-300 border border-slate-800 font-sans">
+              <span className="text-slate-300 font-semibold block mb-1">Decision Reasoning</span>
+              <div className="rounded border border-kali-border bg-kali-bg p-3 text-slate-300 leading-relaxed">
                 {selectedEvent.decision_reason}
-              </p>
+              </div>
             </div>
 
             <div>
-              <span className="font-sans font-semibold text-slate-400">Redacted Context Metadata:</span>
-              <pre className="mt-1 overflow-auto rounded bg-slate-950 p-3 text-[11px] text-cyan-300 border border-slate-800 max-h-48">
-                {JSON.stringify(selectedEvent.context_metadata || {}, null, 2)}
-              </pre>
-            </div>
-
-            <div className="border-t border-slate-800 pt-3 flex justify-end font-sans">
-              <button
-                onClick={() => setSelectedEvent(null)}
-                className="rounded-lg bg-slate-800 px-4 py-2 font-semibold text-slate-300 hover:bg-slate-700"
+              <span className="text-slate-300 font-semibold block mb-1">Sanitized Context Payload</span>
+              <TerminalBox
+                title={`AUDIT PAYLOAD // ${truncateId(selectedEvent.request_id, 8)}`}
+                copyContent={JSON.stringify(selectedEvent.context_metadata || {}, null, 2)}
+                maxHeight="max-h-48"
               >
-                Close
-              </button>
+                <pre>{JSON.stringify(selectedEvent.context_metadata || {}, null, 2)}</pre>
+              </TerminalBox>
             </div>
           </div>
         )}

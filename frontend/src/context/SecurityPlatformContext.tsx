@@ -13,6 +13,7 @@ export type PlatformTab =
   | 'policies'
   | 'endpoints'
   | 'browser-shield'
+  | 'integrations'
   | 'incidents'
   | 'reports'
   | 'audit'
@@ -35,6 +36,15 @@ export interface SecurityPlatformContextValue {
   triggerGlobalRefresh: () => void;
   health: any;
   checkHealth: () => Promise<void>;
+  isSidebarCollapsed: boolean;
+  toggleSidebarCollapse: () => void;
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (open: boolean) => void;
+  isSearchOpen: boolean;
+  setIsSearchOpen: (open: boolean) => void;
+  toggleSearch: () => void;
+  selectedOrg: string;
+  setSelectedOrg: (org: string) => void;
 }
 
 const SecurityPlatformContext = createContext<SecurityPlatformContextValue | undefined>(undefined);
@@ -45,6 +55,18 @@ export const SecurityPlatformProvider: React.FC<{ children: ReactNode }> = ({ ch
   const [refreshInterval, setRefreshInterval] = useState(5000);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [health, setHealth] = useState<any>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [selectedOrg, setSelectedOrg] = useState('SOC-PRIMARY');
+
+  const toggleSidebarCollapse = useCallback(() => {
+    setIsSidebarCollapsed((prev) => !prev);
+  }, []);
+
+  const toggleSearch = useCallback(() => {
+    setIsSearchOpen((prev) => !prev);
+  }, []);
 
   const triggerRefresh = useCallback(() => {
     setRefreshTrigger((prev) => prev + 1);
@@ -75,6 +97,30 @@ export const SecurityPlatformProvider: React.FC<{ children: ReactNode }> = ({ ch
     checkHealth();
   }, [checkHealth]);
 
+  // Global keyboard shortcuts (Ctrl+B for sidebar, Ctrl+K for search)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+B: Toggle Sidebar
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+        e.preventDefault();
+        toggleSidebarCollapse();
+      }
+      // Ctrl+K: Toggle Command Palette / Search
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        toggleSearch();
+      }
+      // ESC: Close search if open
+      if (e.key === 'Escape') {
+        setIsSearchOpen(false);
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleSidebarCollapse, toggleSearch]);
+
   return (
     <SecurityPlatformContext.Provider
       value={{
@@ -91,6 +137,15 @@ export const SecurityPlatformProvider: React.FC<{ children: ReactNode }> = ({ ch
         triggerGlobalRefresh,
         health,
         checkHealth,
+        isSidebarCollapsed,
+        toggleSidebarCollapse,
+        isMobileMenuOpen,
+        setIsMobileMenuOpen,
+        isSearchOpen,
+        setIsSearchOpen,
+        toggleSearch,
+        selectedOrg,
+        setSelectedOrg,
       }}
     >
       {children}

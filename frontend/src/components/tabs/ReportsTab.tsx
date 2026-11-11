@@ -42,7 +42,7 @@ interface IncidentItem {
 
 export const ReportsTab: React.FC = () => {
   const { refreshTrigger } = useSecurityPlatform();
-  const { showToast } = useToast();
+  const toast = useToast();
 
   const [summary, setSummary] = useState<ExecutiveSummary | null>(null);
   const [incidents, setIncidents] = useState<IncidentItem[]>([]);
@@ -68,7 +68,7 @@ export const ReportsTab: React.FC = () => {
         setReportPreviewHtml('');
       }
     } catch (err: any) {
-      console.error('Failed to load reports data:', err);
+      console.error('Failed to load reports telemetry:', err);
     } finally {
       setLoading(false);
     }
@@ -100,13 +100,13 @@ export const ReportsTab: React.FC = () => {
 
   const handleExport = async (format: 'html' | 'json' | 'csv') => {
     if (!selectedIncidentId) {
-      showToast('error', 'No Incident Selected', 'Please select a valid incident to export.');
+      toast.error('No Incident Selected', 'Please select a valid incident to export.');
       return;
     }
     try {
       const data = await api.exportIncidentReport(selectedIncidentId, format);
       const blob = new Blob([typeof data === 'string' ? data : JSON.stringify(data, null, 2)], {
-        type: format === 'json' ? 'application/json' : (format === 'csv' ? 'text/csv' : 'text/html'),
+        type: format === 'json' ? 'application/json' : format === 'csv' ? 'text/csv' : 'text/html',
       });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -117,22 +117,27 @@ export const ReportsTab: React.FC = () => {
       a.remove();
       window.URL.revokeObjectURL(url);
 
-      showToast('success', 'Report Downloaded', `Dossier exported in ${format.toUpperCase()} format.`);
+      toast.success('Report Downloaded', `Dossier exported in ${format.toUpperCase()} format.`);
     } catch (err: any) {
-      showToast('error', 'Export Failed', err.message);
+      toast.error('Export Failed', err.message);
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-4">
+      <div className="flex flex-col justify-between gap-4 border-b border-kali-border pb-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
-            <FileText className="h-6 w-6 text-cyan-400" />
-            Forensic Incident Dossier & Executive Compliance Exporter
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-bold text-kali-primary">// THREAT_OPERATIONS</span>
+            <span className="text-slate-500 font-mono">/</span>
+            <span className="font-mono text-xs text-kali-cyan">FORENSICS_AND_REPORTS</span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 mt-1">
+            <FileText className="h-6 w-6 text-kali-primary" />
+            Forensic Incident Dossier & Executive Compliance Reports
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-400 mt-0.5">
             Automated MITRE ATT&CK framework mapping, microsecond timeline reconstruction, and publication-ready SOC incident reporting.
           </p>
         </div>
@@ -140,56 +145,70 @@ export const ReportsTab: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={loadData}
-            className="flex items-center gap-1.5 rounded border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:bg-kali-elevated transition-colors"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-cyan-400 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            <RefreshCw className={`h-3.5 w-3.5 text-kali-primary ${loading ? 'animate-spin' : ''}`} />
+            <span>SYNC DOSSIER</span>
           </button>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
+          tag="REP-01"
           label="Posture Score"
-          value={summary ? `${summary.posture_score} / 100` : '100 / 100'}
-          icon={<Shield className="h-5 w-5 text-cyan-400" />}
+          value={summary ? `${summary.posture_score}/100` : '100/100'}
+          icon={<Shield className="h-4 w-4" />}
           subValue={summary?.posture_status || 'STRONG'}
+          subValueColor="text-kali-secure"
+          description="Overall defensive posture rating"
         />
         <StatCard
+          tag="REP-02"
           label="Blocked Violations"
           value={summary?.blocked_violations ?? 0}
-          icon={<ShieldAlert className="h-5 w-5 text-red-400" />}
+          icon={<ShieldAlert className="h-4 w-4 text-kali-critical" />}
+          subValue="Pre-Flight"
+          subValueColor="text-kali-critical"
+          description="Unauthorized tool invocations"
         />
         <StatCard
+          tag="REP-03"
           label="Guardrails Active"
           value={summary?.guardrails_active.length ?? 3}
-          icon={<Layers className="h-5 w-5 text-cyan-400" />}
-          subValue="3-Tier NeMo Pipeline"
+          icon={<Layers className="h-4 w-4 text-kali-cyan" />}
+          subValue="3-Tier Pipeline"
+          subValueColor="text-kali-cyan"
+          description="NeMo, Regex, Heuristic Checks"
         />
         <StatCard
+          tag="REP-04"
           label="Sinkholes Active"
           value={summary?.active_defense_status.perimeter_sinkholes_active ?? 0}
-          icon={<CheckCircle2 className="h-5 w-5 text-emerald-400" />}
+          icon={<CheckCircle2 className="h-4 w-4 text-kali-secure" />}
+          subValue="Firewall Rules"
+          subValueColor="text-kali-secure"
+          description="Quarantined perimeter nodes"
         />
       </div>
 
       {/* Incident Selection & Export Actions */}
-      <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="rounded-lg border border-kali-border bg-kali-card p-5 shadow-kali-card space-y-4 font-mono text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-kali-border pb-3">
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-300">Select Incident Dossier to Inspect:</label>
+            <label className="font-bold text-white block">// SELECT_INCIDENT_DOSSIER:</label>
             <select
               value={selectedIncidentId}
               onChange={(e) => setSelectedIncidentId(e.target.value)}
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
+              className="rounded border border-kali-border bg-kali-bg px-3 py-1.5 font-mono text-xs text-white focus:border-kali-primary focus:outline-none min-w-[280px]"
             >
               {incidents.length === 0 ? (
                 <option value="">No incidents recorded</option>
               ) : (
                 incidents.map((inc) => (
                   <option key={inc.id} value={inc.id}>
-                    {inc.id.slice(0, 16)} &bull; {inc.title} ({inc.severity})
+                    {inc.id.slice(0, 12)} • {inc.title} ({inc.severity})
                   </option>
                 ))
               )}
@@ -200,38 +219,38 @@ export const ReportsTab: React.FC = () => {
             <button
               onClick={() => handleExport('html')}
               disabled={!selectedIncidentId}
-              className="flex items-center gap-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 text-xs font-semibold shadow transition-colors disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded bg-kali-primary px-3 py-1.5 font-mono text-xs font-bold text-white shadow-kali-glow hover:bg-kali-secondaryBlue transition-colors disabled:opacity-40"
             >
               <Download className="h-3.5 w-3.5" />
-              Download HTML / PDF
+              <span>Export HTML / PDF</span>
             </button>
             <button
               onClick={() => handleExport('json')}
               disabled={!selectedIncidentId}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-bg px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:text-white transition-colors disabled:opacity-40"
             >
-              <Code className="h-3.5 w-3.5 text-cyan-400" />
-              JSON
+              <Code className="h-3.5 w-3.5 text-kali-primary" />
+              <span>JSON</span>
             </button>
             <button
               onClick={() => handleExport('csv')}
               disabled={!selectedIncidentId}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-bg px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-secure hover:text-white transition-colors disabled:opacity-40"
             >
-              <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-400" />
-              CSV
+              <FileSpreadsheet className="h-3.5 w-3.5 text-kali-secure" />
+              <span>CSV</span>
             </button>
           </div>
         </div>
 
         {/* Live HTML Dossier Render Sandbox */}
-        <div className="rounded-lg border border-slate-800 overflow-hidden bg-slate-900/50">
-          <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 bg-slate-900 text-xs text-slate-400">
-            <span className="font-mono">FORENSIC REPORT PREVIEW ({selectedIncidentId || 'NONE'})</span>
-            {generating && <span className="text-cyan-400 animate-pulse">Rendering Dossier...</span>}
+        <div className="rounded border border-kali-border overflow-hidden bg-kali-bg">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-kali-border bg-kali-secondary text-xs text-slate-400">
+            <span className="font-mono">FORENSIC REPORT PREVIEW // {selectedIncidentId || 'NO_INCIDENT_SELECTED'}</span>
+            {generating && <span className="text-kali-cyan animate-pulse">Rendering Dossier...</span>}
           </div>
 
-          <div className="p-1 max-h-[600px] overflow-y-auto bg-slate-950">
+          <div className="p-1 max-h-[600px] overflow-y-auto bg-[#070A0F]">
             {reportPreviewHtml ? (
               <iframe
                 title="Incident Report Preview"
@@ -240,10 +259,10 @@ export const ReportsTab: React.FC = () => {
                 sandbox="allow-same-origin"
               />
             ) : (
-              <div className="p-12 text-center text-slate-500 text-xs">
+              <div className="py-20 text-center text-slate-500 font-mono text-xs">
                 {incidents.length === 0
-                  ? 'No security incidents recorded yet. All agent actions are currently verified clean.'
-                  : 'Select an incident above to preview forensic investigation dossier.'}
+                  ? '// NO ACTIVE SECURITY INCIDENTS. ZERO ROGUE TOOL ACTIVITY DETECTED.'
+                  : '// SELECT AN INCIDENT DOSSIER ABOVE TO PREVIEW COMPLIANCE REPORT.'}
               </div>
             )}
           </div>
@@ -252,16 +271,16 @@ export const ReportsTab: React.FC = () => {
 
       {/* Compliance Frameworks & Recommendations */}
       {summary && (
-        <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-5 space-y-3">
-          <h2 className="text-sm font-bold text-white flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-            Autonomous Posture & Executive Remediation Recommendations
+        <div className="rounded-lg border border-kali-border bg-kali-card p-5 shadow-kali-card space-y-3 font-mono text-xs">
+          <h2 className="text-xs font-bold text-white flex items-center gap-2 border-b border-kali-border pb-2.5">
+            <CheckCircle2 className="h-4 w-4 text-kali-secure" />
+            <span>// POSTURE_ASSESSMENT_AND_REMEDIATION_RECOMMENDATIONS</span>
           </h2>
-          <ul className="space-y-1.5 text-xs text-slate-300">
+          <ul className="space-y-2 text-slate-300 font-sans text-xs">
             {summary.recommendations.map((rec, idx) => (
               <li key={idx} className="flex items-start gap-2">
-                <span className="text-cyan-400 font-bold">&bull;</span>
-                <span>{rec}</span>
+                <span className="text-kali-cyan font-bold font-mono">[{idx + 1}]</span>
+                <span className="leading-relaxed">{rec}</span>
               </li>
             ))}
           </ul>

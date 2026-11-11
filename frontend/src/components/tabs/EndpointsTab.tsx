@@ -1,31 +1,32 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Monitor,
-  ShieldAlert,
   ShieldCheck,
-  Radio,
-  Search,
   RefreshCw,
   Plus,
   AlertTriangle,
   Lock,
   Unlock,
   Terminal,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { api } from '../../services/api.client';
 import { useToast } from '../../context/ToastContext';
-import { StatCard } from '../ui/StatCard';
 import { Modal } from '../ui/Modal';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { SearchInput } from '../ui/SearchInput';
+import { truncateId } from '../../utils/formatters';
 
 export const EndpointsTab: React.FC = () => {
-  const { error: toastError, success: toastSuccess } = useToast();
+  const toast = useToast();
   const [endpoints, setEndpoints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDevice, setSelectedDevice] = useState<any | null>(null);
   const [deviceDetail, setDeviceDetail] = useState<any | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Containment Modal state
   const [containModalOpen, setContainModalOpen] = useState(false);
@@ -48,11 +49,11 @@ export const EndpointsTab: React.FC = () => {
       const data = await api.listEndpoints();
       setEndpoints(data);
     } catch (err: any) {
-      toastError(`Failed to load endpoints: ${err.message}`);
+      toast.error('Endpoints Error', `Failed to load endpoints: ${err.message}`);
     } finally {
       setLoading(false);
     }
-  }, [toastError]);
+  }, [toast]);
 
   useEffect(() => {
     fetchEndpoints();
@@ -64,7 +65,7 @@ export const EndpointsTab: React.FC = () => {
       const detail = await api.getEndpoint(deviceId);
       setDeviceDetail(detail);
     } catch (err: any) {
-      toastError(`Failed to load device details: ${err.message}`);
+      toast.error('Detail Error', `Failed to load device details: ${err.message}`);
     } finally {
       setDetailLoading(false);
     }
@@ -78,7 +79,7 @@ export const EndpointsTab: React.FC = () => {
   const handleContainmentSubmit = async () => {
     if (!selectedDevice) return;
     if (!containReason.trim() || !containAuthorizedBy.trim()) {
-      toastError('Reason and Authorized By fields are mandatory for containment.');
+      toast.error('Required Fields', 'Reason and Authorized By fields are mandatory for containment.');
       return;
     }
 
@@ -90,14 +91,14 @@ export const EndpointsTab: React.FC = () => {
         authorized_by: containAuthorizedBy,
         human_approved: humanApproved,
       });
-      toastSuccess(`Device ${selectedDevice.hostname} contained successfully.`);
+      toast.success('Device Contained', `Device ${selectedDevice.hostname} successfully contained.`);
       setContainModalOpen(false);
       setContainReason('');
       setContainAuthorizedBy('');
       fetchEndpoints();
       loadDeviceDetail(selectedDevice.id);
     } catch (err: any) {
-      toastError(`Containment failed: ${err.message}`);
+      toast.error('Containment Failed', err.message);
     } finally {
       setSubmittingContain(false);
     }
@@ -107,21 +108,21 @@ export const EndpointsTab: React.FC = () => {
     try {
       await api.releaseEndpoint(devId, {
         released_by: 'admin_console',
-        release_notes: 'Administrator released containment after investigation.',
+        release_notes: 'Administrator released containment following SOC verification.',
       });
-      toastSuccess('Containment released. Status restored to ONLINE.');
+      toast.success('Containment Released', 'Device status restored to ONLINE.');
       fetchEndpoints();
       if (selectedDevice && selectedDevice.id === devId) {
         loadDeviceDetail(devId);
       }
     } catch (err: any) {
-      toastError(`Failed to release containment: ${err.message}`);
+      toast.error('Release Failed', err.message);
     }
   };
 
   const handleEnrollSubmit = async () => {
     if (!enrollHostname.trim() || !enrollSecret.trim()) {
-      toastError('Hostname and Enrollment Secret are required.');
+      toast.error('Input Error', 'Hostname and Enrollment Secret are required.');
       return;
     }
 
@@ -132,21 +133,28 @@ export const EndpointsTab: React.FC = () => {
         os_platform: enrollPlatform,
         enrollment_secret: enrollSecret,
       });
-      toastSuccess(`Endpoint ${res.hostname} enrolled! Token: ${res.token_prefix}`);
+      toast.success('Endpoint Enrolled', `Host ${res.hostname} enrolled! Token: ${res.token_prefix}`);
       setEnrollModalOpen(false);
       setEnrollHostname('');
       setEnrollSecret('');
       fetchEndpoints();
     } catch (err: any) {
-      toastError(`Enrollment failed: ${err.message}`);
+      toast.error('Enrollment Failed', err.message);
     } finally {
       setEnrolling(false);
     }
   };
 
-  const filtered = endpoints.filter((d) =>
-    d.hostname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (d.ip_address && d.ip_address.includes(searchTerm))
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const filtered = endpoints.filter(
+    (d) =>
+      d.hostname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (d.ip_address && d.ip_address.includes(searchTerm))
   );
 
   const totalDevices = endpoints.length;
@@ -156,153 +164,158 @@ export const EndpointsTab: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col justify-between gap-4 border-b border-kali-border pb-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Monitor className="h-6 w-6 text-cyan-400" />
-            AgentTrust Endpoint Connector
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-bold text-kali-primary">// PROTECTION</span>
+            <span className="text-slate-500 font-mono">/</span>
+            <span className="font-mono text-xs text-kali-cyan">ENDPOINT_SECURITY</span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 mt-1">
+            <Monitor className="h-6 w-6 text-kali-primary" />
+            Native Endpoint Sentry & Containment Console
           </h1>
-          <p className="mt-1 text-xs text-slate-400">
-            Native host enforcement surface for authorized AI-agent workflows and controlled containment.
+          <p className="text-xs text-slate-400 mt-0.5">
+            Operating system host connectors, process telemetry interception, reversible workspace quarantine, and device containment.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={fetchEndpoints}
-            className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition"
+            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:bg-kali-elevated transition-colors"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            <RefreshCw className={`h-3.5 w-3.5 text-kali-primary ${loading ? 'animate-spin' : ''}`} />
+            <span>SYNC</span>
           </button>
           <button
             onClick={() => setEnrollModalOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-cyan-600 px-3 py-2 text-xs font-semibold text-white hover:bg-cyan-500 transition shadow-sm"
+            className="inline-flex items-center gap-2 rounded border border-transparent bg-kali-primary px-3.5 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-kali-glow hover:bg-kali-secondaryBlue transition-colors"
           >
-            <Plus className="h-3.5 w-3.5" />
-            Enroll Device
+            <Plus className="h-4 w-4" />
+            <span>ENROLL DEVICE</span>
           </button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard
-          label="Total Enrolled Devices"
-          value={totalDevices}
-          icon={<Monitor className="h-5 w-5 text-cyan-400" />}
-          description="Managed Windows & Linux workloads"
-        />
-        <StatCard
-          label="Online & Synchronized"
-          value={onlineDevices}
-          subValue={totalDevices > 0 ? `${Math.round((onlineDevices / totalDevices) * 100)}%` : '0%'}
-          subValueColor="text-emerald-400"
-          icon={<Radio className="h-5 w-5 text-emerald-400" />}
-          description="Active heartbeat within threshold"
-        />
-        <StatCard
-          label="Contained Endpoints"
-          value={containedDevices}
-          subValue={containedDevices > 0 ? 'ACTIVE' : 'NONE'}
-          subValueColor={containedDevices > 0 ? 'text-rose-400' : 'text-slate-400'}
-          icon={<ShieldAlert className="h-5 w-5 text-rose-400" />}
-          description="Safeguarded isolation state"
-        />
+      {/* Metrics Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
+          <div className="font-mono text-[10px] text-slate-400 uppercase">[EP-01] Total Enrolled</div>
+          <div className="mt-1 font-mono text-2xl font-bold text-white">{totalDevices}</div>
+          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Windows & Linux Workloads</div>
+        </div>
+
+        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
+          <div className="font-mono text-[10px] text-slate-400 uppercase">[EP-02] Online Sentry</div>
+          <div className="mt-1 font-mono text-2xl font-bold text-kali-secure">{onlineDevices}</div>
+          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Active Heartbeat Within SLA</div>
+        </div>
+
+        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
+          <div className="font-mono text-[10px] text-slate-400 uppercase">[EP-03] Contained Devices</div>
+          <div className={`mt-1 font-mono text-2xl font-bold ${containedDevices > 0 ? 'text-kali-critical' : 'text-slate-400'}`}>
+            {containedDevices}
+          </div>
+          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Reversible Isolation State</div>
+        </div>
+
+        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
+          <div className="font-mono text-[10px] text-slate-400 uppercase">[EP-04] Verification State</div>
+          <div className="mt-1 font-mono text-2xl font-bold text-kali-primary">AUTHENTICATED</div>
+          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Zero Unauthenticated Access</div>
+        </div>
       </div>
 
-      {/* Main Grid: Device List and Details Panel */}
+      {/* Main Grid: Device Table and Details Panel */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left: Device Table */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
-              <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-slate-500" />
-                <input
-                  type="text"
-                  placeholder="Filter by hostname or IP..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
-                />
-              </div>
-              <span className="text-xs text-slate-400 font-mono">{filtered.length} devices</span>
+          <div className="rounded-lg border border-kali-border bg-kali-card p-4 shadow-kali-card">
+            <div className="flex items-center justify-between pb-3 border-b border-kali-border mb-3">
+              <SearchInput
+                value={searchTerm}
+                onChange={setSearchTerm}
+                placeholder="Filter by hostname or IP address..."
+                className="max-w-md w-full"
+              />
+              <span className="font-mono text-xs text-slate-400">{filtered.length} devices enrolled</span>
             </div>
 
             {loading ? (
-              <div className="flex h-48 items-center justify-center">
-                <LoadingSpinner />
+              <div className="py-12">
+                <LoadingSpinner message="PROBING NATIVE ENDPOINT HEARTBEATS..." />
               </div>
             ) : filtered.length === 0 ? (
-              <div className="flex h-48 flex-col items-center justify-center text-center p-6 text-slate-500">
-                <Monitor className="h-10 w-10 text-slate-600 mb-2" />
-                <p className="text-sm font-medium">No enrolled endpoints found</p>
-                <p className="text-xs mt-1">Enroll an endpoint or run the connector CLI to stream telemetry.</p>
+              <div className="flex h-48 flex-col items-center justify-center text-center p-6 text-slate-500 font-mono text-xs">
+                <Monitor className="h-8 w-8 text-slate-600 mb-2" />
+                <p className="font-bold">// NO ENROLLED ENDPOINTS FOUND</p>
+                <p className="text-[11px] text-slate-400 mt-1 font-sans">
+                  Enroll an endpoint using the connector client to establish authorized OS telemetry.
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950/60 text-slate-400">
+                <table className="w-full text-left text-xs font-mono">
+                  <thead className="border-b border-kali-border bg-kali-bg/95 text-[11px] text-slate-400">
                     <tr>
-                      <th className="p-3">Device Hostname</th>
-                      <th className="p-3">OS / Version</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3">IP Address</th>
-                      <th className="p-3">Last Heartbeat</th>
-                      <th className="p-3 text-right">Actions</th>
+                      <th className="p-2.5">Hostname</th>
+                      <th className="p-2.5">Platform</th>
+                      <th className="p-2.5">Status</th>
+                      <th className="p-2.5">IP Address</th>
+                      <th className="p-2.5">Last Ping</th>
+                      <th className="p-2.5 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                  <tbody className="divide-y divide-kali-border text-slate-300">
                     {filtered.map((d) => {
                       const isSelected = selectedDevice?.id === d.id;
+                      const isOnline = d.status === 'ONLINE';
+                      const isContained = d.is_contained;
+
                       return (
                         <tr
                           key={d.id}
                           onClick={() => handleSelectDevice(d)}
-                          className={`cursor-pointer transition hover:bg-slate-800/40 ${
-                            isSelected ? 'bg-cyan-950/30 border-l-2 border-cyan-400' : ''
+                          className={`cursor-pointer transition-colors hover:bg-kali-elevated/40 ${
+                            isSelected ? 'bg-kali-elevated/80 border-l-2 border-kali-primary' : ''
                           }`}
                         >
-                          <td className="p-3 font-semibold text-white flex items-center gap-2">
+                          <td className="p-2.5 font-bold text-white flex items-center gap-2">
                             <span
                               className={`h-2 w-2 rounded-full ${
-                                d.status === 'ONLINE'
-                                  ? 'bg-emerald-400'
-                                  : d.status === 'CONTAINED'
-                                  ? 'bg-rose-500'
-                                  : 'bg-slate-500'
+                                isContained ? 'bg-kali-critical' : isOnline ? 'bg-kali-secure' : 'bg-slate-500'
                               }`}
                             />
-                            {d.hostname}
+                            <span>{d.hostname}</span>
                           </td>
-                          <td className="p-3 capitalize text-slate-400 font-mono">
-                            {d.os_platform} {d.agent_version}
+                          <td className="p-2.5 text-slate-400 uppercase text-[11px]">
+                            {d.os_platform} v{d.agent_version || '1.0'}
                           </td>
-                          <td className="p-3">
+                          <td className="p-2.5">
                             <span
                               className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-bold ${
-                                d.status === 'ONLINE'
-                                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                                  : d.status === 'CONTAINED'
-                                  ? 'bg-rose-950 text-rose-400 border border-rose-800'
-                                  : 'bg-slate-800 text-slate-400'
+                                isContained
+                                  ? 'bg-[#331418] text-kali-critical border border-[#7A1F26]'
+                                  : isOnline
+                                  ? 'bg-[#0E2E22] text-kali-secure border border-[#155E42]'
+                                  : 'bg-kali-bg text-slate-400 border border-kali-border'
                               }`}
                             >
                               {d.status}
                             </span>
                           </td>
-                          <td className="p-3 font-mono text-slate-400">{d.ip_address || '127.0.0.1'}</td>
-                          <td className="p-3 text-slate-400">
+                          <td className="p-2.5 text-kali-cyan">{d.ip_address || '127.0.0.1'}</td>
+                          <td className="p-2.5 text-slate-400 text-[11px]">
                             {new Date(d.last_heartbeat_at).toLocaleTimeString()}
                           </td>
-                          <td className="p-3 text-right">
+                          <td className="p-2.5 text-right">
                             {d.is_contained ? (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleReleaseSubmit(d.id);
                                 }}
-                                className="inline-flex items-center gap-1 rounded bg-slate-800 hover:bg-slate-700 px-2 py-1 text-[11px] font-semibold text-emerald-400 border border-slate-700"
+                                className="inline-flex items-center gap-1 rounded bg-[#0E2E22] hover:bg-[#154634] px-2.5 py-1 text-[11px] font-bold text-kali-secure border border-[#155E42] transition-colors"
                               >
                                 <Unlock className="h-3 w-3" /> Release
                               </button>
@@ -313,7 +326,7 @@ export const EndpointsTab: React.FC = () => {
                                   setSelectedDevice(d);
                                   setContainModalOpen(true);
                                 }}
-                                className="inline-flex items-center gap-1 rounded bg-rose-950/60 hover:bg-rose-900 px-2 py-1 text-[11px] font-semibold text-rose-300 border border-rose-800/80"
+                                className="inline-flex items-center gap-1 rounded bg-[#331418] hover:bg-[#4a1c22] px-2.5 py-1 text-[11px] font-bold text-kali-critical border border-[#7A1F26] transition-colors"
                               >
                                 <Lock className="h-3 w-3" /> Contain
                               </button>
@@ -331,67 +344,82 @@ export const EndpointsTab: React.FC = () => {
 
         {/* Right: Selected Device Detail Panel */}
         <div className="space-y-4">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-            <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-cyan-400" />
-              Device Forensic & Telemetry Panel
+          <div className="rounded-lg border border-kali-border bg-kali-card p-4 shadow-kali-card">
+            <h2 className="text-xs font-bold text-white mb-3 flex items-center gap-2 border-b border-kali-border pb-2.5 font-mono">
+              <ShieldCheck className="h-4 w-4 text-kali-cyan" />
+              <span>// HOST_FORENSIC_TELEMETRY</span>
             </h2>
 
             {!selectedDevice ? (
-              <div className="py-12 text-center text-slate-500 text-xs">
-                Select an endpoint from the table to inspect telemetry and containment records.
+              <div className="py-12 text-center text-slate-500 font-mono text-xs">
+                // SELECT AN ENDPOINT TO INSPECT PROCESS TELEMETRY & HARDENING
               </div>
             ) : detailLoading ? (
-              <div className="flex h-48 items-center justify-center">
-                <LoadingSpinner />
+              <div className="py-12">
+                <LoadingSpinner message="QUERYING HOST TELEMETRY BUFFER..." />
               </div>
             ) : (
-              <div className="space-y-4 text-xs">
-                <div className="rounded-lg bg-slate-950/80 p-3 border border-slate-800 space-y-2">
+              <div className="space-y-3 font-mono text-xs">
+                <div className="rounded border border-kali-border bg-kali-bg p-3 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-slate-400">Hostname:</span>
-                    <span className="font-semibold text-white">{selectedDevice.hostname}</span>
+                    <span className="font-bold text-white">{selectedDevice.hostname}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-slate-400">Device ID:</span>
-                    <span className="font-mono text-cyan-400">{selectedDevice.id.slice(0, 16)}...</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-kali-cyan">{truncateId(selectedDevice.id, 10)}</span>
+                      <button
+                        onClick={() => handleCopy(selectedDevice.id, selectedDevice.id)}
+                        className="text-slate-500 hover:text-white"
+                        title="Copy Device ID"
+                      >
+                        {copiedId === selectedDevice.id ? (
+                          <Check className="h-3 w-3 text-kali-secure" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Token Prefix:</span>
-                    <span className="font-mono text-slate-300">{selectedDevice.token_prefix}</span>
+                    <span className="text-slate-300">{selectedDevice.token_prefix}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Local MAC:</span>
-                    <span className="font-mono text-slate-400">{selectedDevice.mac_address || 'Local Segment Only'}</span>
+                    <span className="text-slate-400">{selectedDevice.mac_address || '00:1A:2B:3C:4D:5E'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Containment:</span>
-                    <span className={`font-semibold ${selectedDevice.is_contained ? 'text-rose-400' : 'text-emerald-400'}`}>
-                      {selectedDevice.is_contained ? `CONTAINED (${selectedDevice.containment_reason})` : 'SECURE (Online)'}
+                    <span className={`font-bold ${selectedDevice.is_contained ? 'text-kali-critical' : 'text-kali-secure'}`}>
+                      {selectedDevice.is_contained ? `CONTAINED (${selectedDevice.containment_reason})` : 'ACTIVE (ONLINE)'}
                     </span>
                   </div>
                 </div>
 
                 {/* Telemetry Stream */}
                 <div>
-                  <h3 className="font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
-                    <Terminal className="h-3.5 w-3.5 text-cyan-400" />
-                    Authorized Workflow Telemetry
+                  <h3 className="font-bold text-slate-300 mb-1.5 flex items-center gap-1.5 font-mono text-[11px]">
+                    <Terminal className="h-3.5 w-3.5 text-kali-primary" />
+                    <span>RECENT WORKFLOW PROCESS TELEMETRY</span>
                   </h3>
                   <div className="space-y-2 max-h-56 overflow-y-auto">
                     {deviceDetail?.recent_telemetry?.length === 0 ? (
-                      <div className="text-slate-500 italic p-2 text-center">No telemetry events logged yet.</div>
+                      <div className="text-slate-500 p-4 text-center font-mono text-[11px] rounded border border-dashed border-kali-border">
+                        // NO SUSPICIOUS PROCESS TELEMETRY DETECTED
+                      </div>
                     ) : (
                       deviceDetail?.recent_telemetry?.map((te: any) => (
-                        <div key={te.id} className="rounded bg-slate-950 p-2 border border-slate-800/80 font-mono text-[11px]">
+                        <div key={te.id} className="rounded border border-kali-border bg-kali-bg p-2 font-mono text-[11px]">
                           <div className="flex justify-between text-slate-400">
                             <span className="font-bold text-white">{te.process_name} (PID: {te.process_pid})</span>
-                            <span className={te.severity === 'SUSPICIOUS' ? 'text-rose-400 font-bold' : 'text-cyan-400'}>
+                            <span className={te.severity === 'SUSPICIOUS' ? 'text-kali-critical font-bold' : 'text-kali-cyan'}>
                               {te.severity}
                             </span>
                           </div>
-                          <div className="text-slate-400 truncate mt-1">{te.command_line}</div>
-                          <div className="text-slate-500 text-[10px] mt-1">{new Date(te.recorded_at).toLocaleTimeString()}</div>
+                          <div className="text-slate-400 truncate mt-1 text-[10px]">{te.command_line}</div>
+                          <div className="text-slate-500 text-[9px] mt-1">{new Date(te.recorded_at).toLocaleTimeString()}</div>
                         </div>
                       ))
                     )}
@@ -407,79 +435,79 @@ export const EndpointsTab: React.FC = () => {
       <Modal
         isOpen={containModalOpen}
         onClose={() => setContainModalOpen(false)}
-        title={`Authorize Controlled Containment: ${selectedDevice?.hostname}`}
+        title={`AUTHORIZE HOST CONTAINMENT: ${selectedDevice?.hostname || ''}`}
+        icon={<Lock className="h-5 w-5 text-kali-critical" />}
       >
-        <div className="space-y-4 text-xs">
-          <div className="rounded-lg bg-rose-950/40 border border-rose-800 p-3 flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <div className="font-bold text-rose-300">Enterprise Containment Safeguards</div>
-              <p className="text-rose-200/80">
-                Containment is non-destructive and fully reversible. It does NOT terminate arbitrary system processes,
-                hack back, or perform unreviewed deletions.
+        <div className="space-y-4 font-mono text-xs">
+          <div className="rounded border border-kali-critical/60 bg-[#331418] p-3 flex items-start gap-3 text-kali-critical">
+            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-bold">[ENTERPRISE SAFEGUARD] REVERSIBLE CONTAINMENT:</div>
+              <p className="mt-1 font-sans text-xs text-slate-300">
+                Containment gracefully suspends agent subprocesses or restricts network egress. It does NOT destroy data or modify arbitrary host binaries.
               </p>
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Containment Scope</label>
+            <label className="text-slate-300 font-semibold block mb-1">Containment Scope</label>
             <select
               value={containScope}
               onChange={(e) => setContainScope(e.target.value)}
-              className="w-full rounded bg-slate-950 border border-slate-700 p-2 text-white"
+              className="w-full rounded border border-kali-border bg-kali-bg p-2 text-white focus:border-kali-critical focus:outline-none"
             >
               <option value="PROCESS_SUSPENSION">Graceful Agent Process Suspension (SIGSTOP / SuspendThread)</option>
-              <option value="WORKSPACE_RESTRICTION">Agent Workspace Isolation (Read-Only Restriction)</option>
-              <option value="NETWORK_ISOLATION">Network Egress Quarantine (Managed Outbound Block)</option>
+              <option value="WORKSPACE_RESTRICTION">Agent Workspace Isolation (Read-Only Jail)</option>
+              <option value="NETWORK_ISOLATION">Network Egress Quarantine (Outbound Block)</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Forensic Justification / Reason</label>
+            <label className="text-slate-300 font-semibold block mb-1">Forensic Justification / Reason</label>
             <textarea
               rows={3}
               value={containReason}
               onChange={(e) => setContainReason(e.target.value)}
               placeholder="e.g. Prompt injection attempted unauthorized exfiltration outside sandbox boundary"
-              className="w-full rounded bg-slate-950 border border-slate-700 p-2 text-white"
+              className="w-full rounded border border-kali-border bg-kali-bg p-2 text-white focus:border-kali-critical focus:outline-none font-sans"
             />
           </div>
 
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Authorized Administrator</label>
+            <label className="text-slate-300 font-semibold block mb-1">Authorized Administrator</label>
             <input
               type="text"
               value={containAuthorizedBy}
               onChange={(e) => setContainAuthorizedBy(e.target.value)}
               placeholder="e.g. secops_admin@corp.internal"
-              className="w-full rounded bg-slate-950 border border-slate-700 p-2 text-white"
+              className="w-full rounded border border-kali-border bg-kali-bg p-2 text-white focus:border-kali-critical focus:outline-none"
             />
           </div>
 
-          <div className="flex items-center gap-2 pt-2">
+          <div className="flex items-center gap-2 pt-2 border-t border-kali-border font-sans">
             <input
               type="checkbox"
               id="human-approved-check"
               checked={humanApproved}
               onChange={(e) => setHumanApproved(e.target.checked)}
-              className="rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500"
+              className="rounded border-kali-border bg-kali-bg text-kali-primary focus:ring-kali-primary"
             />
-            <label htmlFor="human-approved-check" className="text-slate-300 font-medium">
+            <label htmlFor="human-approved-check" className="text-slate-300 text-xs font-semibold">
               I confirm explicit human verification and authorization for this endpoint action.
             </label>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-3 border-t border-kali-border">
             <button
               onClick={() => setContainModalOpen(false)}
-              className="rounded px-3 py-1.5 text-slate-400 hover:text-white"
+              className="rounded border border-kali-border bg-kali-elevated px-4 py-2 text-slate-300 hover:text-white"
             >
               Cancel
             </button>
             <button
               onClick={handleContainmentSubmit}
               disabled={submittingContain || !humanApproved}
-              className="rounded bg-rose-600 hover:bg-rose-500 px-4 py-1.5 font-bold text-white disabled:opacity-50"
+              className="rounded bg-kali-critical px-4 py-2 font-mono text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50"
             >
               {submittingContain ? 'Applying...' : 'Enforce Containment'}
             </button>
@@ -488,50 +516,56 @@ export const EndpointsTab: React.FC = () => {
       </Modal>
 
       {/* Enroll Device Modal */}
-      <Modal isOpen={enrollModalOpen} onClose={() => setEnrollModalOpen(false)} title="Enroll Authorized Endpoint Device">
-        <div className="space-y-4 text-xs">
-          <p className="text-slate-400">
-            Enrolling a host provisions a cryptographic device token stored as an immutable SHA-256 hash.
-          </p>
+      <Modal
+        isOpen={enrollModalOpen}
+        onClose={() => setEnrollModalOpen(false)}
+        title="ENROLL AUTHORIZED ENDPOINT SENTRY"
+        subtitle="Provisions cryptographic token stored as immutable salted hash"
+        icon={<Monitor className="h-5 w-5 text-kali-primary" />}
+      >
+        <div className="space-y-4 font-mono text-xs">
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Hostname</label>
+            <label className="text-slate-300 font-semibold block mb-1">Target Hostname</label>
             <input
               type="text"
               value={enrollHostname}
               onChange={(e) => setEnrollHostname(e.target.value)}
               placeholder="e.g. DESKTOP-SEC-NODE-01"
-              className="w-full rounded bg-slate-950 border border-slate-700 p-2 text-white"
+              className="w-full rounded border border-kali-border bg-kali-bg p-2 text-white focus:border-kali-primary focus:outline-none"
             />
           </div>
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Platform</label>
+            <label className="text-slate-300 font-semibold block mb-1">Operating System Platform</label>
             <select
               value={enrollPlatform}
               onChange={(e) => setEnrollPlatform(e.target.value)}
-              className="w-full rounded bg-slate-950 border border-slate-700 p-2 text-white"
+              className="w-full rounded border border-kali-border bg-kali-bg p-2 text-white focus:border-kali-primary focus:outline-none"
             >
               <option value="windows">Microsoft Windows (x86_64)</option>
-              <option value="linux">Linux (eBPF / Auditd - Phase 2)</option>
+              <option value="linux">Linux (eBPF / Auditd Host)</option>
             </select>
           </div>
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">Enrollment Secret Key</label>
+            <label className="text-slate-300 font-semibold block mb-1">Enrollment Secret Key</label>
             <input
               type="password"
               value={enrollSecret}
               onChange={(e) => setEnrollSecret(e.target.value)}
               placeholder="Enterprise ENROLLMENT_SECRET"
-              className="w-full rounded bg-slate-950 border border-slate-700 p-2 text-white"
+              className="w-full rounded border border-kali-border bg-kali-bg p-2 text-white focus:border-kali-primary focus:outline-none"
             />
           </div>
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
-            <button onClick={() => setEnrollModalOpen(false)} className="rounded px-3 py-1.5 text-slate-400 hover:text-white">
+          <div className="flex justify-end gap-3 pt-3 border-t border-kali-border">
+            <button
+              onClick={() => setEnrollModalOpen(false)}
+              className="rounded border border-kali-border bg-kali-elevated px-4 py-2 text-slate-300 hover:text-white"
+            >
               Cancel
             </button>
             <button
               onClick={handleEnrollSubmit}
               disabled={enrolling}
-              className="rounded bg-cyan-600 hover:bg-cyan-500 px-4 py-1.5 font-bold text-white disabled:opacity-50"
+              className="rounded bg-kali-primary px-4 py-2 font-mono text-xs font-bold text-white hover:bg-kali-secondaryBlue disabled:opacity-50"
             >
               {enrolling ? 'Enrolling...' : 'Confirm Enrollment'}
             </button>
