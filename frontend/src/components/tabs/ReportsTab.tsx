@@ -13,6 +13,7 @@ import {
 import { useSecurityPlatform } from '../../context/SecurityPlatformContext';
 import { useToast } from '../../context/ToastContext';
 import { StatCard } from '../ui/StatCard';
+import { api } from '../../services/api.client';
 
 interface ExecutiveSummary {
   posture_score: number;
@@ -45,7 +46,7 @@ export const ReportsTab: React.FC = () => {
 
   const [summary, setSummary] = useState<ExecutiveSummary | null>(null);
   const [incidents, setIncidents] = useState<IncidentItem[]>([]);
-  const [selectedIncidentId, setSelectedIncidentId] = useState<string>('sample-incident-001');
+  const [selectedIncidentId, setSelectedIncidentId] = useState<string>('');
   const [reportPreviewHtml, setReportPreviewHtml] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -53,18 +54,18 @@ export const ReportsTab: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [sumRes, incRes] = await Promise.all([
-        fetch('/api/v1/reports/executive-summary'),
-        fetch('/api/v1/audit/incidents'),
+      const [sumData, incList] = await Promise.all([
+        api.getExecutiveSummary().catch(() => null),
+        api.listIncidents().catch(() => []),
       ]);
 
-      if (sumRes.ok) setSummary(await sumRes.json());
-      if (incRes.ok) {
-        const incList = await incRes.json();
-        setIncidents(incList);
-        if (incList.length > 0) {
-          setSelectedIncidentId(incList[0].id);
-        }
+      if (sumData) setSummary(sumData);
+      setIncidents(incList);
+      if (incList.length > 0) {
+        setSelectedIncidentId(incList[0].id);
+      } else {
+        setSelectedIncidentId('');
+        setReportPreviewHtml('');
       }
     } catch (err: any) {
       console.error('Failed to load reports data:', err);
@@ -74,17 +75,14 @@ export const ReportsTab: React.FC = () => {
   };
 
   const generateReportPreview = async (incidentId: string) => {
+    if (!incidentId) return;
     try {
       setGenerating(true);
-      const res = await fetch(`/api/v1/reports/incident/${incidentId}/export?format=html`, {
-        method: 'POST',
-      });
-      if (res.ok) {
-        const html = await res.text();
-        setReportPreviewHtml(html);
-      }
+      const html = await api.exportIncidentReport(incidentId, 'html');
+      setReportPreviewHtml(html as string);
     } catch (err: any) {
       console.error('Failed to generate HTML dossier:', err);
+      setReportPreviewHtml('');
     } finally {
       setGenerating(false);
     }
@@ -101,13 +99,15 @@ export const ReportsTab: React.FC = () => {
   }, [selectedIncidentId]);
 
   const handleExport = async (format: 'html' | 'json' | 'csv') => {
+    if (!selectedIncidentId) {
+      showToast('error', 'No Incident Selected', 'Please select a valid incident to export.');
+      return;
+    }
     try {
-      const res = await fetch(`/api/v1/reports/incident/${selectedIncidentId}/export?format=${format}`, {
-        method: 'POST',
+      const data = await api.exportIncidentReport(selectedIncidentId, format);
+      const blob = new Blob([typeof data === 'string' ? data : JSON.stringify(data, null, 2)], {
+        type: format === 'json' ? 'application/json' : (format === 'csv' ? 'text/csv' : 'text/html'),
       });
-      if (!res.ok) throw new Error('Export request failed');
-
-      const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -184,33 +184,39 @@ export const ReportsTab: React.FC = () => {
               onChange={(e) => setSelectedIncidentId(e.target.value)}
               className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
             >
-              <option value="incident-demo-prompt-injection">DEMO: Critical Prompt Injection & Subprocess Spawn</option>
-              {incidents.map((inc) => (
-                <option key={inc.id} value={inc.id}>
-                  {inc.id.slice(0, 16)} &bull; {inc.title} ({inc.severity})
-                </option>
-              ))}
+              {incidents.length === 0 ? (
+                <option value="">No incidents recorded</option>
+              ) : (
+                incidents.map((inc) => (
+                  <option key={inc.id} value={inc.id}>
+                    {inc.id.slice(0, 16)} &bull; {inc.title} ({inc.severity})
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleExport('html')}
-              className="flex items-center gap-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 text-xs font-semibold shadow transition-colors"
+              disabled={!selectedIncidentId}
+              className="flex items-center gap-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 text-xs font-semibold shadow transition-colors disabled:opacity-40"
             >
               <Download className="h-3.5 w-3.5" />
               Download HTML / PDF
             </button>
             <button
               onClick={() => handleExport('json')}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 px-3 py-1.5 text-xs font-semibold transition-colors"
+              disabled={!selectedIncidentId}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40"
             >
               <Code className="h-3.5 w-3.5 text-cyan-400" />
               JSON
             </button>
             <button
               onClick={() => handleExport('csv')}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 px-3 py-1.5 text-xs font-semibold transition-colors"
+              disabled={!selectedIncidentId}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40"
             >
               <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-400" />
               CSV
@@ -221,7 +227,7 @@ export const ReportsTab: React.FC = () => {
         {/* Live HTML Dossier Render Sandbox */}
         <div className="rounded-lg border border-slate-800 overflow-hidden bg-slate-900/50">
           <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 bg-slate-900 text-xs text-slate-400">
-            <span className="font-mono">FORENSIC REPORT PREVIEW ({selectedIncidentId})</span>
+            <span className="font-mono">FORENSIC REPORT PREVIEW ({selectedIncidentId || 'NONE'})</span>
             {generating && <span className="text-cyan-400 animate-pulse">Rendering Dossier...</span>}
           </div>
 
@@ -235,7 +241,9 @@ export const ReportsTab: React.FC = () => {
               />
             ) : (
               <div className="p-12 text-center text-slate-500 text-xs">
-                Generating forensic dossier...
+                {incidents.length === 0
+                  ? 'No security incidents recorded yet. All agent actions are currently verified clean.'
+                  : 'Select an incident above to preview forensic investigation dossier.'}
               </div>
             )}
           </div>

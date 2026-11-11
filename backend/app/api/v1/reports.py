@@ -25,7 +25,13 @@ async def export_incident_report(
     Compiles an industrial-grade incident response dossier with MITRE ATT&CK mapping,
     attacker attribution, and active countermeasure ledger in requested format.
     """
-    dossier = await report_generator.generate_incident_dossier(db, incident_id)
+    try:
+        dossier = await report_generator.generate_incident_dossier(db, incident_id)
+    except (KeyError, FileNotFoundError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Security incident '{incident_id}' not found."
+        )
 
     if format == "json":
         json_content = report_generator.export_as_json(dossier)

@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime, timezone
 import uuid
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -538,4 +539,239 @@ def test_endpoint_daemon_containment_handler():
     daemon._release_containment()
     assert daemon.is_contained is False
     assert daemon.containment_reason is None
+
+
+@pytest.mark.asyncio
+async def test_tenant_isolation_boundary_enforced(db_session: AsyncSession):
+    """
+    Verifies that PolicyEngine enforces multi-tenant isolation:
+    - Agent in Tenant A cannot inherit or benefit from wildcard permissions in Tenant B.
+    - Delegation across tenant boundaries is strictly rejected.
+    """
+    from app.services.policy_engine import policy_engine
+    from app.services.delegation_service import delegation_service
+
+    # Create Agent Alpha in tenant_alpha
+    agent_alpha = Agent(
+        id=f"agent-alpha-{uuid.uuid4().hex[:6]}",
+        name="AlphaBot",
+        role="worker",
+        status=AgentStatus.ACTIVE,
+        tenant_id="tenant_alpha"
+    )
+    # Create Agent Beta in tenant_beta
+    agent_beta = Agent(
+        id=f"agent-beta-{uuid.uuid4().hex[:6]}",
+        name="BetaBot",
+        role="worker",
+        status=AgentStatus.ACTIVE,
+        tenant_id="tenant_beta"
+    )
+    db_session.add_all([agent_alpha, agent_beta])
+    await db_session.commit()
+
+    # Create wildcard permission belonging exclusively to tenant_beta
+    beta_perm = Permission(
+        id=f"perm-beta-{uuid.uuid4().hex[:6]}",
+        agent_id=None,  # Wildcard for all agents in tenant_beta
+        tenant_id="tenant_beta",
+        tool_name="http_api_tool",
+        operation="http_post",
+        resource_pattern="*",
+        effect=PermissionEffect.ALLOW,
+        is_active=True,
+        priority=10
+    )
+    db_session.add(beta_perm)
+    await db_session.commit()
+
+    # 1. Evaluate Agent Alpha: must be BLOCKED (cannot use Beta's wildcard permission)
+    decision_alpha, reason_alpha, _ = await policy_engine.evaluate(
+        db=db_session,
+        agent=agent_alpha,
+        tool_name="http_api_tool",
+        operation="http_post",
+        resource="https://external.api.org/data",
+        context={}
+    )
+    assert decision_alpha == PolicyDecision.BLOCKED
+    assert "Deny-by-default" in reason_alpha
+
+    # 2. Evaluate Agent Beta: must be ALLOWED (belongs to tenant_beta)
+    decision_beta, _, _ = await policy_engine.evaluate(
+        db=db_session,
+        agent=agent_beta,
+        tool_name="http_api_tool",
+        operation="http_post",
+        resource="https://external.api.org/data",
+        context={}
+    )
+    assert decision_beta == PolicyDecision.ALLOWED
+
+    # 3. Verify cross-tenant delegation is rejected with PermissionError
+    with pytest.raises(PermissionError) as exc_info:
+        await delegation_service.create_delegation(
+            db=db_session,
+            parent_agent_id=agent_alpha.id,
+            child_agent_id=agent_beta.id,
+            scope=["http_api_tool:http_post:*"],
+            expires_at=datetime.now(timezone.utc)
+        )
+    assert "Tenant Isolation Violation" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_database_tool_empty_sql_and_destructive_delete_blocked(tmp_path):
+    """
+    Verifies that SandboxedDatabaseTool rejects empty/whitespace queries
+    and strictly forbids destructive operations like DELETE and DROP.
+    """
+    db_file = tmp_path / "test_sandbox.db"
+    db_tool = SandboxedDatabaseTool(db_path=db_file)
+
+    # 1. Empty SQL query -> ValueError
+    with pytest.raises(ValueError, match="SQL statement cannot be empty"):
+        await db_tool.execute("query_select", "database", {"sql": "   "})
+
+    # 2. DELETE statement -> PermissionError
+    with pytest.raises(PermissionError, match="Destructive DDL/administrative SQL statements are strictly forbidden"):
+        await db_tool.execute("query_select", "database", {"sql": "DELETE FROM customer_records WHERE id=1"})
+
+    # 3. DROP statement -> PermissionError
+    with pytest.raises(PermissionError, match="Destructive DDL/administrative SQL statements are strictly forbidden"):
+        await db_tool.execute("query_select", "database", {"sql": "DROP TABLE customer_records"})
+
+
+@pytest.mark.asyncio
+async def test_http_tool_null_timeout_and_ssrf_safety():
+    """
+    Verifies that SandboxedHttpApiTool handles None timeout and non-dict headers gracefully,
+    and enforces SSRF protection against cloud metadata and loopback destinations.
+    """
+    from app.tools.http_api_tool import SandboxedHttpApiTool
+    http_tool = SandboxedHttpApiTool()
+
+    # 1. Cloud metadata SSRF attempt -> PermissionError
+    with pytest.raises(PermissionError, match="SSRF Protection"):
+        await http_tool.execute(
+            operation="http_get",
+            resource="http://169.254.169.254/latest/meta-data",
+            parameters={"timeout": None, "headers": "invalid-non-dict"}
+        )
+
+    # 2. Localhost SSRF attempt -> PermissionError
+    with pytest.raises(PermissionError, match="SSRF Protection"):
+        await http_tool.execute(
+            operation="http_get",
+            resource="http://127.0.0.1:8000/api/v1/health",
+            parameters={"timeout": None}
+        )
+
+
+@pytest.mark.asyncio
+async def test_mcp_tool_unregistered_target_rejected():
+    """
+    Verifies that MCPIntegrationTool rejects unregistered/unauthorized target tools
+    and enforces operation parameter presence.
+    """
+    from app.tools.mcp_tool import MCPIntegrationTool
+    mcp_tool = MCPIntegrationTool()
+
+    # 1. Unregistered tool call -> ValueError
+    with pytest.raises(ValueError, match="Invalid or unauthorized MCP target tool"):
+        await mcp_tool.execute(
+            operation="mcp_call_tool",
+            resource="mcp://tools",
+            parameters={"tool": "malicious_unregistered_tool", "operation": "exec"}
+        )
+
+    # 2. Missing operation parameter -> ValueError
+    with pytest.raises(ValueError, match="Missing 'operation' parameter"):
+        await mcp_tool.execute(
+            operation="mcp_call_tool",
+            resource="mcp://tools",
+            parameters={"tool": "filesystem_tool"}
+        )
+
+
+@pytest.mark.asyncio
+async def test_incident_full_lifecycle_statuses(db_session: AsyncSession):
+    """
+    Verifies all 6 incident lifecycle statuses defined in Part 11 and INCIDENT_RESPONSE.md:
+    OPEN -> ACKNOWLEDGED -> INVESTIGATING -> CONTAINED -> RESOLVED -> FALSE_POSITIVE.
+    """
+    from app.models.incident import IncidentSeverity, IncidentStatus, SecurityIncident
+
+    incident = SecurityIncident(
+        id=f"lifecycle-inc-{uuid.uuid4().hex[:6]}",
+        agent_id="agent-lifecycle-test",
+        title="Test Incident Lifecycle",
+        description="Testing complete state transition sequence",
+        severity=IncidentSeverity.HIGH,
+        status=IncidentStatus.OPEN,
+        incident_metadata={"test": True}
+    )
+    db_session.add(incident)
+    await db_session.commit()
+
+    # Verify transitions through all lifecycle states
+    for status in [
+        IncidentStatus.ACKNOWLEDGED,
+        IncidentStatus.INVESTIGATING,
+        IncidentStatus.CONTAINED,
+        IncidentStatus.RESOLVED,
+        IncidentStatus.FALSE_POSITIVE,
+    ]:
+        incident.status = status
+        await db_session.commit()
+        await db_session.refresh(incident)
+        assert incident.status == status
+
+
+@pytest.mark.asyncio
+async def test_production_admin_registration_lockout(db_session: AsyncSession):
+    """
+    Verifies that in production mode, anonymous users cannot register an additional ADMIN account
+    when an administrator already exists.
+    """
+    from app.core.config import settings
+
+    orig_env = settings.ENVIRONMENT
+    settings.ENVIRONMENT = "production"
+
+    # Ensure at least one admin exists in DB
+    existing_admin = User(
+        id=f"admin-{uuid.uuid4().hex[:6]}",
+        username=f"superadmin_{uuid.uuid4().hex[:4]}",
+        email=f"admin_{uuid.uuid4().hex[:4]}@enterprise.corp",
+        hashed_password="hashed_pw_test",
+        role=UserRole.ADMIN,
+        is_active=True
+    )
+    db_session.add(existing_admin)
+    await db_session.commit()
+
+    transport = ASGITransport(app=app)
+    try:
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            # Attempt to register another ADMIN account -> 403 Forbidden
+            res = await client.post("/api/v1/auth/register", json={
+                "username": f"rogue_admin_{uuid.uuid4().hex[:4]}",
+                "email": f"rogue_{uuid.uuid4().hex[:4]}@evil.corp",
+                "password": "Password123!",
+                "role": "admin"
+            })
+            assert res.status_code == 403
+            assert "Administrator accounts cannot be created" in res.json()["detail"]
+
+            # Registering an OPERATOR account remains permitted -> 201 Created
+            res_op = await client.post("/api/v1/auth/register", json={
+                "username": f"valid_op_{uuid.uuid4().hex[:4]}",
+                "email": f"valid_op_{uuid.uuid4().hex[:4]}@corp.internal",
+                "password": "Password123!",
+                "role": "operator"
+            })
+            assert res_op.status_code == 201
+    finally:
+        settings.ENVIRONMENT = orig_env
 

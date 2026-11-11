@@ -120,7 +120,10 @@ class AuditService:
                     "request_id": request_id,
                     "tool": tool_name,
                     "resource": target_resource,
-                    "reason": decision_reason
+                    "reason": decision_reason,
+                    "agent_name": agent_name or agent_id,
+                    "client_ip": clean_context.get("client_ip", "127.0.0.1"),
+                    "correlation_id": clean_context.get("correlation_id", request_id)
                 }
             )
             db.add(incident)
@@ -137,15 +140,17 @@ class AuditService:
         if not events:
             return {"valid": True, "total_events": 0, "message": "Audit log ledger is empty."}
 
-        expected_prev_hash = "0" * 64
-        for idx, evt in enumerate(events):
-            if evt.previous_hash != expected_prev_hash:
-                return {
-                    "valid": False,
-                    "tampered_event_id": evt.id,
-                    "error": f"Chain link broken at event #{idx} ({evt.id}): expected previous hash {expected_prev_hash}, got {evt.previous_hash}"
-                }
+        # Topological chain map: previous_hash -> event to walk chain in exact cryptographic sequence
+        by_prev_hash: Dict[str, AuditEvent] = {}
+        for ev in events:
+            prev = ev.previous_hash or ("0" * 64)
+            by_prev_hash[prev] = ev
 
+        expected_prev_hash = "0" * 64
+        verified_count = 0
+
+        while expected_prev_hash in by_prev_hash:
+            evt = by_prev_hash[expected_prev_hash]
             expected_sig = self.compute_event_signature(
                 previous_hash=evt.previous_hash or ("0" * 64),
                 event_id=evt.id,
@@ -161,9 +166,18 @@ class AuditService:
                 return {
                     "valid": False,
                     "tampered_event_id": evt.id,
-                    "error": f"Signature mismatch at event #{idx} ({evt.id}): audit record has been modified after signing."
+                    "error": f"Signature mismatch at event ({evt.id}): audit record has been modified after signing."
                 }
             expected_prev_hash = evt.hmac_signature
+            verified_count += 1
+
+        if verified_count != len(events):
+            # Chain is fractured or branched
+            return {
+                "valid": False,
+                "tampered_event_id": events[verified_count].id if verified_count < len(events) else "unknown",
+                "error": f"Audit chain link broken: verified {verified_count} of {len(events)} events before link broken."
+            }
 
         return {
             "valid": True,

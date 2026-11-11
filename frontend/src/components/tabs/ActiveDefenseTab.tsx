@@ -14,6 +14,7 @@ import { useSecurityPlatform } from '../../context/SecurityPlatformContext';
 import { useToast } from '../../context/ToastContext';
 import { StatCard } from '../ui/StatCard';
 import { Modal } from '../ui/Modal';
+import { api } from '../../services/api.client';
 
 interface ProcessInfo {
   pid: number;
@@ -85,17 +86,17 @@ export const ActiveDefenseTab: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [pRes, sRes, qRes, hRes] = await Promise.all([
-        fetch('/api/v1/active-defense/processes'),
-        fetch('/api/v1/attribution/sinkholes'),
-        fetch('/api/v1/active-defense/quarantine'),
-        fetch('/api/v1/active-defense/countermeasures'),
+      const [procs, sHoles, qFiles, hist] = await Promise.all([
+        api.listActiveDefenseProcesses().catch(() => []),
+        api.listSinkholes().catch(() => []),
+        api.getActiveDefenseQuarantine().catch(() => []),
+        api.getCountermeasuresHistory().catch(() => []),
       ]);
 
-      if (pRes.ok) setProcesses(await pRes.json());
-      if (sRes.ok) setSinkholes(await sRes.json());
-      if (qRes.ok) setQuarantine(await qRes.json());
-      if (hRes.ok) setHistory(await hRes.json());
+      setProcesses(procs);
+      setSinkholes(sHoles);
+      setQuarantine(qFiles);
+      setHistory(hist);
     } catch (err: any) {
       console.error('Failed to load active defense data:', err);
     } finally {
@@ -110,25 +111,16 @@ export const ActiveDefenseTab: React.FC = () => {
   const handleExecuteKill = async () => {
     if (!selectedPidToKill) return;
     try {
-      const res = await fetch('/api/v1/active-defense/kill-process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pid: selectedPidToKill,
-          reason: killReason,
-          force: true,
-        }),
+      await api.killProcess({
+        pid: selectedPidToKill,
+        reason: killReason,
+        force: true,
       });
 
-      if (res.ok) {
-        showToast('success', 'Process Neutralized', `Process PID ${selectedPidToKill} and all spawned subprocesses were successfully killed.`);
-        setIsKillModalOpen(false);
-        setSelectedPidToKill(null);
-        loadData();
-      } else {
-        const err = await res.json();
-        throw new Error(err.detail || 'Process termination failed');
-      }
+      showToast('success', 'Process Neutralized', `Process PID ${selectedPidToKill} and all spawned subprocesses were successfully killed.`);
+      setIsKillModalOpen(false);
+      setSelectedPidToKill(null);
+      loadData();
     } catch (err: any) {
       showToast('error', 'Kill Switch Failed', err.message);
     }
@@ -139,25 +131,16 @@ export const ActiveDefenseTab: React.FC = () => {
     if (!sinkholeIpInput.trim()) return;
 
     try {
-      const res = await fetch('/api/v1/attribution/sinkhole', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ip: sinkholeIpInput.trim(),
-          reason: sinkholeReasonInput,
-          duration_seconds: 86400,
-        }),
+      await api.createSinkhole({
+        ip: sinkholeIpInput.trim(),
+        reason: sinkholeReasonInput,
+        duration_seconds: 86400,
       });
 
-      if (res.ok) {
-        showToast('success', 'Sinkhole Enforced', `Dynamic null-route established for ${sinkholeIpInput}.`);
-        setIsSinkholeModalOpen(false);
-        setSinkholeIpInput('');
-        loadData();
-      } else {
-        const err = await res.json();
-        throw new Error(err.detail || 'Failed to create sinkhole');
-      }
+      showToast('success', 'Sinkhole Enforced', `Dynamic null-route established for ${sinkholeIpInput}.`);
+      setIsSinkholeModalOpen(false);
+      setSinkholeIpInput('');
+      loadData();
     } catch (err: any) {
       showToast('error', 'Error Establishing Sinkhole', err.message);
     }
@@ -165,13 +148,9 @@ export const ActiveDefenseTab: React.FC = () => {
 
   const handleReleaseSinkhole = async (ip: string) => {
     try {
-      const res = await fetch(`/api/v1/attribution/sinkhole/${encodeURIComponent(ip)}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        showToast('info', 'Sinkhole Removed', `Perimeter filter released for IP ${ip}.`);
-        loadData();
-      }
+      await api.releaseSinkhole(ip);
+      showToast('info', 'Sinkhole Removed', `Perimeter filter released for IP ${ip}.`);
+      loadData();
     } catch (err: any) {
       showToast('error', 'Release Failed', err.message);
     }
@@ -179,13 +158,9 @@ export const ActiveDefenseTab: React.FC = () => {
 
   const handleRestoreQuarantine = async (id: string) => {
     try {
-      const res = await fetch(`/api/v1/active-defense/quarantine/${id}/restore`, {
-        method: 'POST',
-      });
-      if (res.ok) {
-        showToast('success', 'File Restored', `File ${id} restored to its original path.`);
-        loadData();
-      }
+      await api.restoreActiveDefenseQuarantine(id);
+      showToast('success', 'File Restored', `File ${id} restored to its original path.`);
+      loadData();
     } catch (err: any) {
       showToast('error', 'Restore Failed', err.message);
     }
@@ -193,13 +168,9 @@ export const ActiveDefenseTab: React.FC = () => {
 
   const handlePurgeQuarantine = async (id: string) => {
     try {
-      const res = await fetch(`/api/v1/active-defense/quarantine/${id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        showToast('info', 'File Purged', `Quarantine entry ${id} permanently wiped.`);
-        loadData();
-      }
+      await api.purgeActiveDefenseQuarantine(id);
+      showToast('info', 'File Purged', `Quarantine entry ${id} permanently wiped.`);
+      loadData();
     } catch (err: any) {
       showToast('error', 'Purge Failed', err.message);
     }

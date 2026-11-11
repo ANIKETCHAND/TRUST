@@ -95,36 +95,25 @@ class ReportGeneratorService:
         # Fetch incident record
         inc = await db.get(Incident, incident_id)
         if not inc:
-            # Generate synthetic / simulated incident dossier if ID not found in DB
-            incident_data = {
-                "id": incident_id,
-                "title": f"Security Incident {incident_id}",
-                "severity": "CRITICAL",
-                "status": "CONTAINED",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "agent_id": "ag_audit_demonstration",
-                "agent_name": "AuditBot-Sentry",
-                "description": "Automated security policy trigger and active countermeasure engagement.",
-                "client_ip": "198.51.100.1"
-            }
-        else:
-            meta = inc.incident_metadata or {}
-            client_ip = meta.get("client_ip") or "198.51.100.1"
-            incident_data = {
-                "id": str(inc.id),
-                "title": inc.title,
-                "severity": inc.severity.value if hasattr(inc.severity, "value") else str(inc.severity),
-                "status": inc.status.value if hasattr(inc.status, "value") else str(inc.status),
-                "created_at": inc.created_at.isoformat() if inc.created_at else datetime.now(timezone.utc).isoformat(),
-                "agent_id": str(inc.agent_id) if inc.agent_id else "unknown",
-                "agent_name": meta.get("agent_name", "Monitored Agent"),
-                "description": inc.description,
-                "client_ip": client_ip,
-                "event_id": str(inc.audit_event_id) if inc.audit_event_id else None
-            }
+            raise KeyError(f"Security incident '{incident_id}' not found.")
+
+        meta = inc.incident_metadata or {}
+        client_ip = meta.get("client_ip") or "127.0.0.1"
+        incident_data = {
+            "id": str(inc.id),
+            "title": inc.title,
+            "severity": inc.severity.value if hasattr(inc.severity, "value") else str(inc.severity),
+            "status": inc.status.value if hasattr(inc.status, "value") else str(inc.status),
+            "created_at": inc.created_at.isoformat() if inc.created_at else datetime.now(timezone.utc).isoformat(),
+            "agent_id": str(inc.agent_id) if inc.agent_id else "unknown",
+            "agent_name": meta.get("agent_name", "Monitored Agent"),
+            "description": inc.description,
+            "client_ip": client_ip,
+            "event_id": str(inc.audit_event_id) if inc.audit_event_id else None
+        }
 
         # Resolve Attacker Attribution
-        target_ip = incident_data.get("client_ip") or "198.51.100.1"
+        target_ip = incident_data.get("client_ip") or "127.0.0.1"
         attribution = attribution_service.trace_ip(target_ip)
 
         # MITRE ATT&CK Matrix mapping

@@ -83,14 +83,20 @@ class SandboxedHttpApiTool(BaseTool):
         target_url = resource
         self._validate_ssrf_safety(target_url)
 
-        headers = parameters.get("headers", {})
+        raw_headers = parameters.get("headers")
+        headers = raw_headers if isinstance(raw_headers, dict) else {}
         sanitized_headers = {
-            k: v for k, v in headers.items()
-            if k.lower() not in ["host", "authorization", "cookie"]
+            str(k): str(v) for k, v in headers.items()
+            if str(k).lower() not in ["host", "authorization", "cookie"]
         }
         sanitized_headers["User-Agent"] = "AgentTrust-Secure-Gateway/0.2.0"
 
-        timeout = min(float(parameters.get("timeout", 5.0)), 15.0)
+        raw_timeout = parameters.get("timeout")
+        try:
+            timeout_val = float(raw_timeout) if raw_timeout is not None else 5.0
+        except (ValueError, TypeError):
+            timeout_val = 5.0
+        timeout = min(max(timeout_val, 0.5), 15.0)
 
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
             if operation == "http_get":

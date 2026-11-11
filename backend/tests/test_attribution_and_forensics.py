@@ -97,7 +97,28 @@ async def test_forensic_reports_api_endpoints(client: AsyncClient):
     assert "posture_score" in exec_data
     assert "guardrails_active" in exec_data
 
-    # 3. Export Incident Dossier in JSON
+    # 3. Seed real test incident in database for forensics export
+    from app.core.database import async_session_maker
+    from app.models.incident import SecurityIncident, IncidentSeverity, IncidentStatus
+    async with async_session_maker() as session:
+        existing = await session.get(SecurityIncident, "incident-test-01")
+        if not existing:
+            inc = SecurityIncident(
+                id="incident-test-01",
+                title="Adversarial Prompt Injection & Exfiltration Attempt",
+                severity=IncidentSeverity.CRITICAL,
+                status=IncidentStatus.CONTAINED,
+                description="Automated security policy trigger and active countermeasure engagement.",
+                incident_metadata={"client_ip": "198.51.100.1", "agent_name": "AuditBot-Sentry"}
+            )
+            session.add(inc)
+            await session.commit()
+
+    # Verify non-existent incident returns 404 (negative verification)
+    missing_res = await client.post("/api/v1/reports/incident/non-existent-incident-999/export?format=json")
+    assert missing_res.status_code == 404
+
+    # Export Incident Dossier in JSON
     export_json = await client.post("/api/v1/reports/incident/incident-test-01/export?format=json")
     assert export_json.status_code == 200
     assert "application/json" in export_json.headers["content-type"]

@@ -14,7 +14,7 @@ class SandboxedDatabaseTool(BaseTool):
 
     # Dangerous SQL statements strictly blocked to prevent destructive administrative actions
     FORBIDDEN_KEYWORDS = re.compile(
-        r"\b(DROP|TRUNCATE|ALTER|CREATE|REPLACE|ATTACH|DETACH|PRAGMA|VACUUM|GRANT|REVOKE)\b",
+        r"\b(DROP|TRUNCATE|ALTER|CREATE|REPLACE|ATTACH|DETACH|PRAGMA|VACUUM|GRANT|REVOKE|DELETE)\b",
         re.IGNORECASE
     )
 
@@ -62,12 +62,18 @@ class SandboxedDatabaseTool(BaseTool):
         conn.close()
 
     def _validate_sql_safety(self, sql: str, expected_type: str) -> None:
-        clean_sql = sql.strip()
+        clean_sql = (sql or "").strip()
+        if not clean_sql:
+            raise ValueError("SQL statement cannot be empty.")
+
         if self.FORBIDDEN_KEYWORDS.search(clean_sql):
             raise PermissionError("Security Violation: Destructive DDL/administrative SQL statements are strictly forbidden.")
         
         # Enforce that query starts with appropriate statement
-        first_word = clean_sql.split()[0].upper()
+        words = clean_sql.split()
+        if not words:
+            raise ValueError("SQL statement cannot be empty.")
+        first_word = words[0].upper()
         if expected_type == "query_select" and first_word != "SELECT":
             raise ValueError("Operation 'query_select' only permits SELECT statements.")
         elif expected_type == "query_insert" and first_word != "INSERT":

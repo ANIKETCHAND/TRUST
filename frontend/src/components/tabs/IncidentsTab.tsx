@@ -17,7 +17,7 @@ export const IncidentsTab: React.FC = () => {
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
 
   // Status update
-  const [newStatus, setNewStatus] = useState<'OPEN' | 'INVESTIGATING' | 'RESOLVED' | 'FALSE_POSITIVE'>('OPEN');
+  const [newStatus, setNewStatus] = useState<'OPEN' | 'ACKNOWLEDGED' | 'INVESTIGATING' | 'CONTAINED' | 'RESOLVED' | 'FALSE_POSITIVE'>('OPEN');
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [updating, setUpdating] = useState(false);
 
@@ -112,7 +112,9 @@ export const IncidentsTab: React.FC = () => {
         >
           <option value="">All Statuses</option>
           <option value="OPEN">Open Only</option>
+          <option value="ACKNOWLEDGED">Acknowledged</option>
           <option value="INVESTIGATING">Investigating</option>
+          <option value="CONTAINED">Contained</option>
           <option value="RESOLVED">Resolved</option>
           <option value="FALSE_POSITIVE">False Positive</option>
         </select>
@@ -225,7 +227,9 @@ export const IncidentsTab: React.FC = () => {
                   className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-cyan-500 focus:outline-none"
                 >
                   <option value="OPEN">OPEN</option>
+                  <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
                   <option value="INVESTIGATING">INVESTIGATING</option>
+                  <option value="CONTAINED">CONTAINED</option>
                   <option value="RESOLVED">RESOLVED</option>
                   <option value="FALSE_POSITIVE">FALSE_POSITIVE</option>
                 </select>

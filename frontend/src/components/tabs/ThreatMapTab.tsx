@@ -14,6 +14,7 @@ import {
 import { useSecurityPlatform } from '../../context/SecurityPlatformContext';
 import { useToast } from '../../context/ToastContext';
 import { StatCard } from '../ui/StatCard';
+import { api } from '../../services/api.client';
 
 interface ThreatOrigin {
   id: string;
@@ -73,19 +74,17 @@ export const ThreatMapTab: React.FC = () => {
   const fetchThreatMap = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/v1/attribution/threat-map');
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-        if (json.active_threats && json.active_threats.length > 0) {
-          setSelectedThreat(json.active_threats[0]);
-        }
+      const json = await api.getThreatMap();
+      setData(json);
+      if (json.active_threats && json.active_threats.length > 0) {
+        setSelectedThreat(json.active_threats[0]);
       }
 
-      const arpRes = await fetch('/api/v1/attribution/local-arp');
-      if (arpRes.ok) {
-        const arpJson = await arpRes.json();
+      try {
+        const arpJson = await api.getLocalArp();
         setArpTable(arpJson);
+      } catch {
+        // Fallback for non-admin accounts where local-arp requires admin role
       }
     } catch (err: any) {
       console.error('Failed to load threat map data:', err);
@@ -100,21 +99,13 @@ export const ThreatMapTab: React.FC = () => {
 
   const handleSinkhole = async (ip: string) => {
     try {
-      const res = await fetch('/api/v1/attribution/sinkhole', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ip,
-          reason: 'Operator 1-click active perimeter sinkhole',
-          duration_seconds: 86400,
-        }),
+      await api.createSinkhole({
+        ip,
+        reason: 'Operator 1-click active perimeter sinkhole',
+        duration_seconds: 86400,
       });
-      if (res.ok) {
-        showToast('success', 'IP Sinkholed', `Host ${ip} has been null-routed at the gateway and OS firewall.`);
-        fetchThreatMap();
-      } else {
-        throw new Error('Failed to sinkhole IP');
-      }
+      showToast('success', 'IP Sinkholed', `Host ${ip} has been null-routed at the gateway and OS firewall.`);
+      fetchThreatMap();
     } catch (err: any) {
       showToast('error', 'Sinkhole Failed', err.message);
     }

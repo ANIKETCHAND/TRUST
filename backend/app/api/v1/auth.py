@@ -22,6 +22,16 @@ async def register_user(req: UserCreate, db: AsyncSession = Depends(get_db)):
             detail="Username or email is already registered"
         )
 
+    # Prevent unauthenticated privilege escalation in production:
+    # If an ADMIN user already exists, public registration cannot create another ADMIN account
+    if req.role == UserRole.ADMIN and settings.ENVIRONMENT.lower() == "production":
+        admin_check = await db.execute(select(User).where(User.role == UserRole.ADMIN))
+        if admin_check.scalars().first():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Privilege Escalation Blocked: Administrator accounts cannot be created via public registration when an administrator already exists."
+            )
+
     user = User(
         id=str(uuid.uuid4()),
         username=req.username,

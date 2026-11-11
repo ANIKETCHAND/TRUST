@@ -165,4 +165,41 @@ export const api = {
   listQuarantine: () => apiClient.get<any[]>('/integrations/quarantine'),
   restoreQuarantine: (data: any) => apiClient.post<any>('/integrations/quarantine/restore', data),
   queryThreatIntel: (data: any) => apiClient.post<any>('/integrations/threat-intel', data),
+
+  // Threat Map & Attribution Forensics
+  getThreatMap: () => apiClient.get<any>('/attribution/threat-map'),
+  getLocalArp: () => apiClient.get<any[]>('/attribution/local-arp'),
+  traceIp: (ip: string) => apiClient.get<any>(`/attribution/trace/${encodeURIComponent(ip)}`),
+  listSinkholes: () => apiClient.get<any[]>('/attribution/sinkholes'),
+  createSinkhole: (data: any) => apiClient.post<any>('/attribution/sinkhole', data),
+  releaseSinkhole: (ip: string) => apiClient.delete<any>(`/attribution/sinkhole/${encodeURIComponent(ip)}`),
+
+  // Active Defense & Malicious Process Killer
+  listActiveDefenseProcesses: () => apiClient.get<any[]>('/active-defense/processes'),
+  killProcess: (data: any) => apiClient.post<any>('/active-defense/kill-process', data),
+  getActiveDefenseQuarantine: () => apiClient.get<any[]>('/active-defense/quarantine'),
+  restoreActiveDefenseQuarantine: (id: string) => apiClient.post<any>(`/active-defense/quarantine/${encodeURIComponent(id)}/restore`),
+  purgeActiveDefenseQuarantine: (id: string) => apiClient.delete<any>(`/active-defense/quarantine/${encodeURIComponent(id)}`),
+  getCountermeasuresHistory: () => apiClient.get<any[]>('/active-defense/countermeasures'),
+
+  // Forensics & Reports
+  getExecutiveSummary: (format: 'json' | 'html' = 'json') => apiClient.get<any>(`/reports/executive-summary?format=${format}`),
+  exportIncidentReport: async (incidentId: string, format: 'html' | 'json' | 'csv' = 'html') => {
+    const token = typeof window !== 'undefined' ? (localStorage.getItem('agenttrust_token') || localStorage.getItem('access_token')) : null;
+    const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    const res = await fetch(`${ENV.API_BASE_URL}/reports/incident/${encodeURIComponent(incidentId)}/export?format=${format}`, {
+      method: 'POST',
+      headers: { ...authHeader, 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) {
+      let errDetail = `HTTP ${res.status}`;
+      try {
+        const j = await res.json();
+        errDetail = j.detail || errDetail;
+      } catch {}
+      throw new ApiError(errDetail, res.status);
+    }
+    return format === 'json' ? res.json() : res.text();
+  },
+  getMitreMatrix: () => apiClient.get<any>('/reports/mitre-matrix'),
 };

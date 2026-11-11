@@ -91,11 +91,12 @@ class PolicyEngine:
 
         now = datetime.now(timezone.utc)
 
-        # 3. Query Applicable Active Permissions
+        # 3. Query Applicable Active Permissions (Enforcing Tenant Isolation)
         stmt = (
             select(Permission)
             .where(
                 or_(Permission.agent_id == agent.id, Permission.agent_id.is_(None)),
+                Permission.tenant_id == agent.tenant_id,
                 Permission.is_active == True,
                 or_(Permission.expires_at.is_(None), Permission.expires_at > now)
             )
@@ -149,8 +150,11 @@ class PolicyEngine:
                     "taint_containment_policy"
                 )
 
-        # 6. Evaluate Active Enterprise Policies (SEC-04 Unification)
-        stmt_policies = select(Policy).where(Policy.is_active == True)
+        # 6. Evaluate Active Enterprise Policies (SEC-04 Unification & Tenant Isolation)
+        stmt_policies = select(Policy).where(
+            Policy.tenant_id == agent.tenant_id,
+            Policy.is_active == True
+        )
         res_policies = await db.execute(stmt_policies)
         active_policies: List[Policy] = list(res_policies.scalars().all())
 

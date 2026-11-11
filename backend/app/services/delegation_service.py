@@ -87,6 +87,10 @@ class DelegationService:
         if not child or child.status != AgentStatus.ACTIVE:
             raise PermissionError("Child agent is inactive, revoked, or not found.")
 
+        # Multi-Tenant Isolation: Cross-tenant delegation is strictly prohibited
+        if parent.tenant_id != child.tenant_id:
+            raise PermissionError("Tenant Isolation Violation: Cross-tenant delegation is prohibited. Both agents must belong to the same tenant.")
+
         if parent_agent_id == child_agent_id:
             raise ValueError("An agent cannot delegate permissions to itself.")
 
