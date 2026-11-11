@@ -1,10 +1,11 @@
 import uuid
 from datetime import datetime, timezone
 from typing import Optional, Tuple
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import generate_agent_api_key, hash_api_key
 from app.models.agent import Agent, AgentCredential, AgentStatus
+from app.models.delegation import Delegation, DelegationStatus
 from app.models.incident import RevocationRecord
 from app.schemas.agent import AgentCreate, AgentRegistrationResponse, AgentResponse
 
@@ -58,7 +59,7 @@ class AgentService:
             raw_api_key = raw_api_key[7:].strip()
 
         token_hash = hash_api_key(raw_api_key)
-        
+
         stmt = (
             select(AgentCredential)
             .where(
@@ -103,6 +104,43 @@ class AgentService:
         for cred in credentials:
             cred.is_revoked = True
             cred.revoked_at = now
+
+        # Cascading revocation: transitively revoke all active delegations involving this agent
+        # and all downstream descendant delegations.
+        direct_stmt = select(Delegation).where(
+            or_(Delegation.parent_agent_id == agent_id, Delegation.child_agent_id == agent_id),
+            Delegation.status == DelegationStatus.ACTIVE
+        )
+        direct_res = await db.execute(direct_stmt)
+        queue = [d.id for d in direct_res.scalars().all()]
+        visited = set()
+
+        while queue:
+            curr_id = queue.pop(0)
+            if curr_id in visited:
+                continue
+            visited.add(curr_id)
+
+            curr_del = await db.get(Delegation, curr_id)
+            if not curr_del:
+                continue
+
+            if curr_del.status == DelegationStatus.ACTIVE:
+                curr_del.status = DelegationStatus.REVOKED
+                curr_del.revoked_at = now
+                curr_del.revocation_reason = f"Cascaded revocation from revoked agent '{agent.name}': {reason}"
+
+            downstream_stmt = select(Delegation).where(
+                or_(
+                    Delegation.parent_delegation_id == curr_id,
+                    Delegation.parent_agent_id == curr_del.child_agent_id
+                ),
+                Delegation.status == DelegationStatus.ACTIVE
+            )
+            downstream_res = await db.execute(downstream_stmt)
+            for child_del in downstream_res.scalars().all():
+                if child_del.id not in visited:
+                    queue.append(child_del.id)
 
         # Add revocation record
         rev_record = RevocationRecord(

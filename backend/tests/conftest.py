@@ -73,7 +73,49 @@ async def override_get_db():
             await session.close()
 
 
+from app.api.deps import (
+    get_current_user,
+    get_current_admin_user,
+    get_current_operator_or_admin,
+    get_current_user_optional,
+)
+from app.models.user import User, UserRole
+
+from datetime import datetime, timezone
+
+mock_test_admin = User(
+    id="test-admin-uuid",
+    username="test_admin",
+    email="testadmin@example.com",
+    hashed_password="hashed_test_password",
+    role=UserRole.ADMIN,
+    is_active=True,
+    tenant_id="default_tenant",
+    created_at=datetime.now(timezone.utc)
+)
+
+
+async def override_get_current_user():
+    return mock_test_admin
+
+
+async def override_get_current_admin_user():
+    return mock_test_admin
+
+
+async def override_get_current_operator_or_admin():
+    return mock_test_admin
+
+
+async def override_get_current_user_optional():
+    return mock_test_admin
+
+
 app.dependency_overrides[get_db] = override_get_db
+app.dependency_overrides[get_current_user] = override_get_current_user
+app.dependency_overrides[get_current_admin_user] = override_get_current_admin_user
+app.dependency_overrides[get_current_operator_or_admin] = override_get_current_operator_or_admin
+app.dependency_overrides[get_current_user_optional] = override_get_current_user_optional
 
 
 @pytest_asyncio.fixture

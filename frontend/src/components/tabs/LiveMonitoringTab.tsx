@@ -1,149 +1,279 @@
 import React, { useState } from 'react';
-import { Activity, RefreshCw, Eye, ShieldAlert, CheckCircle2, Play, Pause } from 'lucide-react';
+import {
+  Activity,
+  RefreshCw,
+  Eye,
+  ShieldAlert,
+  CheckCircle2,
+  Play,
+  Pause,
+  Terminal,
+  Clock,
+  Radio,
+  Copy,
+  Check,
+  ShieldCheck,
+  AlertOctagon,
+  Network,
+} from 'lucide-react';
 import { useMonitoring } from '../../hooks/useMonitoring';
+import { useSecurityPlatform } from '../../context/SecurityPlatformContext';
 import { DecisionBadge } from '../ui/Badge';
 import { Modal } from '../ui/Modal';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
-import { formatLatency, formatTimeOnly, truncateId } from '../../utils/formatters';
+import { TerminalBox } from '../ui/TerminalBox';
+import { SearchInput } from '../ui/SearchInput';
+import { formatLatency, formatTimestamp, truncateId } from '../../utils/formatters';
 import type { AuditEvent, PolicyDecision } from '../../types';
 
 export const LiveMonitoringTab: React.FC = () => {
+  const { health } = useSecurityPlatform();
   const [isAutoPolling, setIsAutoPolling] = useState(true);
   const [decisionFilter, setDecisionFilter] = useState<PolicyDecision | ''>('');
+  const [search, setSearch] = useState('');
   const { events, loading, refresh } = useMonitoring(isAutoPolling, decisionFilter);
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const allowedCount = events.filter((e) => e.decision === 'ALLOWED').length;
   const blockedCount = events.filter((e) => e.decision === 'BLOCKED').length;
+  const heldCount = events.filter((e) => e.execution_status === 'PENDING').length;
+  const avgLatency =
+    events.length > 0
+      ? (
+          events.reduce((acc, curr) => acc + (curr.execution_duration_ms || 0), 0) / events.length
+        ).toFixed(1)
+      : '0.0';
+
+  const isHealthOk = health?.status === 'healthy' || health?.status === 'ok';
+
+  const filteredEvents = events.filter((ev) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      ev.agent_name?.toLowerCase().includes(q) ||
+      ev.tool_name?.toLowerCase().includes(q) ||
+      ev.operation?.toLowerCase().includes(q) ||
+      ev.target_resource?.toLowerCase().includes(q) ||
+      ev.request_id?.toLowerCase().includes(q)
+    );
+  });
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-slate-800 pb-5 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 border-b border-kali-border pb-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Activity className="h-7 w-7 text-cyan-400" />
-            Live Security Gateway Telemetry & Monitoring
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-bold text-kali-primary">// AGENT_SECURITY</span>
+            <span className="text-slate-500 font-mono">/</span>
+            <span className="font-mono text-xs text-kali-cyan">GATEWAY_TELEMETRY</span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 mt-1">
+            <Activity className="h-6 w-6 text-kali-primary" />
+            Security Gateway Monitor & Interception Stream
           </h1>
-          <p className="text-sm text-slate-400">
-            Real-time interception feed of autonomous agent tool operations, access decisions, and latency metrics.
+          <p className="text-xs text-slate-400 mt-0.5">
+            Real-time interception feed of autonomous agent tool requests, authorization outcomes, and millisecond latencies.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setIsAutoPolling(!isAutoPolling)}
-            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded border px-3 py-1.5 font-mono text-xs font-semibold transition-colors ${
               isAutoPolling
-                ? 'border-emerald-800 bg-emerald-950/60 text-emerald-400 hover:bg-emerald-900/60'
-                : 'border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800'
+                ? 'border-kali-secure/60 bg-[#0E2E22] text-kali-secure hover:bg-[#154634]'
+                : 'border-kali-border bg-kali-card text-slate-400 hover:bg-kali-elevated'
             }`}
           >
-            {isAutoPolling ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            {isAutoPolling ? 'Polling (Every 3s)' : 'Polling Paused'}
+            {isAutoPolling ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+            <span>{isAutoPolling ? 'POLLING (3s)' : 'PAUSED'}</span>
           </button>
           <button
             onClick={refresh}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800"
+            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:bg-kali-elevated transition-colors"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            <RefreshCw className={`h-3.5 w-3.5 text-kali-primary ${loading ? 'animate-spin' : ''}`} />
+            <span>SYNC</span>
           </button>
         </div>
       </div>
 
-      {/* Stream Metrics Strip */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 backdrop-blur flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold uppercase text-slate-400">Stream Buffer</span>
-            <div className="mt-1 font-mono text-2xl font-bold text-white">{events.length} Events</div>
+      {/* Gateway Metrics Strip (Section 7) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* Gateway Health */}
+        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
+          <div className="flex items-center justify-between text-slate-400 font-mono text-[10px] uppercase">
+            <span>[GW-01] Health</span>
+            <ShieldCheck className={`h-3.5 w-3.5 ${isHealthOk ? 'text-kali-secure' : 'text-kali-warning'}`} />
           </div>
-          <Activity className="h-8 w-8 text-cyan-400/40" />
+          <div className={`mt-1 font-mono text-lg font-bold ${isHealthOk ? 'text-kali-secure' : 'text-kali-warning'}`}>
+            {health?.status ? health.status.toUpperCase() : 'ONLINE'}
+          </div>
+          <div className="font-mono text-[9px] text-kali-cyan mt-0.5">Fail-Closed Active</div>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 backdrop-blur flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold uppercase text-emerald-400">Allowed Invocations</span>
-            <div className="mt-1 font-mono text-2xl font-bold text-emerald-400">{allowedCount}</div>
+
+        {/* Request Volume */}
+        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
+          <div className="flex items-center justify-between text-slate-400 font-mono text-[10px] uppercase">
+            <span>[GW-02] Volume</span>
+            <Radio className="h-3.5 w-3.5 text-kali-primary animate-pulse" />
           </div>
-          <CheckCircle2 className="h-8 w-8 text-emerald-400/40" />
+          <div className="mt-1 font-mono text-lg font-bold text-white">{events.length}</div>
+          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Total Invocations</div>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 backdrop-blur flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold uppercase text-rose-400">Blocked Interceptions</span>
-            <div className="mt-1 font-mono text-2xl font-bold text-rose-400">{blockedCount}</div>
+
+        {/* Allowed Requests */}
+        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
+          <div className="flex items-center justify-between text-slate-400 font-mono text-[10px] uppercase">
+            <span>[GW-03] Allowed</span>
+            <CheckCircle2 className="h-3.5 w-3.5 text-kali-secure" />
           </div>
-          <ShieldAlert className="h-8 w-8 text-rose-400/40" />
+          <div className="mt-1 font-mono text-lg font-bold text-kali-secure">{allowedCount}</div>
+          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Compliant Calls</div>
+        </div>
+
+        {/* Denied Requests */}
+        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
+          <div className="flex items-center justify-between text-slate-400 font-mono text-[10px] uppercase">
+            <span>[GW-04] Denied</span>
+            <ShieldAlert className="h-3.5 w-3.5 text-kali-critical" />
+          </div>
+          <div className="mt-1 font-mono text-lg font-bold text-kali-critical">{blockedCount}</div>
+          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Policy Denials</div>
+        </div>
+
+        {/* Held Requests */}
+        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
+          <div className="flex items-center justify-between text-slate-400 font-mono text-[10px] uppercase">
+            <span>[GW-05] Held / Pending</span>
+            <AlertOctagon className="h-3.5 w-3.5 text-kali-warning" />
+          </div>
+          <div className="mt-1 font-mono text-lg font-bold text-kali-warning">{heldCount}</div>
+          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Quarantined / Held</div>
+        </div>
+
+        {/* Average Latency */}
+        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
+          <div className="flex items-center justify-between text-slate-400 font-mono text-[10px] uppercase">
+            <span>[GW-06] Avg Latency</span>
+            <Clock className="h-3.5 w-3.5 text-kali-cyan" />
+          </div>
+          <div className="mt-1 font-mono text-lg font-bold text-white">{avgLatency} ms</div>
+          <div className="font-mono text-[10px] text-kali-cyan mt-0.5">Pre-flight Latency</div>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="flex items-center gap-3">
-        <span className="text-xs font-semibold text-slate-300">Decision Filter:</span>
-        <select
-          value={decisionFilter}
-          onChange={(e) => setDecisionFilter(e.target.value as any)}
-          className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-1.5 text-xs text-white focus:border-cyan-500 focus:outline-none"
-        >
-          <option value="">All Decisions (Allowed + Blocked)</option>
-          <option value="ALLOWED">Allowed Calls Only</option>
-          <option value="BLOCKED">Blocked Violations Only</option>
-        </select>
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between">
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Filter request ID, agent, tool, operation, or resource..."
+          className="max-w-md w-full"
+        />
+
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-slate-400">DECISION:</span>
+          <select
+            value={decisionFilter}
+            onChange={(e) => setDecisionFilter(e.target.value as any)}
+            className="rounded border border-kali-border bg-kali-bg px-3 py-1.5 font-mono text-xs text-white focus:border-kali-primary focus:outline-none"
+          >
+            <option value="">ALL DECISIONS</option>
+            <option value="ALLOWED">ALLOWED ONLY</option>
+            <option value="BLOCKED">BLOCKED ONLY</option>
+          </select>
+        </div>
       </div>
 
       {/* Stream Table */}
       {loading && events.length === 0 ? (
-        <LoadingSpinner message="CONNECTING TO TELEMETRY STREAM..." />
+        <LoadingSpinner message="ESTABLISHING LOW-LATENCY GATEWAY INTERCEPTION FEED..." />
       ) : (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 backdrop-blur overflow-hidden">
+        <div className="rounded-lg border border-kali-border bg-kali-card overflow-hidden shadow-kali-card">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/60 text-slate-400">
+              <thead className="border-b border-kali-border bg-kali-bg/95 font-mono text-[11px] text-slate-400">
                 <tr>
-                  <th className="py-3 px-4 font-semibold">Timestamp</th>
-                  <th className="py-3 px-4 font-semibold">Request ID</th>
-                  <th className="py-3 px-4 font-semibold">Agent</th>
-                  <th className="py-3 px-4 font-semibold">Tool</th>
-                  <th className="py-3 px-4 font-semibold">Operation</th>
-                  <th className="py-3 px-4 font-semibold">Target Resource</th>
-                  <th className="py-3 px-4 font-semibold">Gateway Decision</th>
-                  <th className="py-3 px-4 font-semibold">Latency</th>
-                  <th className="py-3 px-4 font-semibold text-right">Inspect</th>
+                  <th className="py-3 px-3.5 font-semibold">Timestamp</th>
+                  <th className="py-3 px-3.5 font-semibold">Request ID</th>
+                  <th className="py-3 px-3.5 font-semibold">Principal Agent</th>
+                  <th className="py-3 px-3.5 font-semibold">Tool & Op</th>
+                  <th className="py-3 px-3.5 font-semibold">Target Resource</th>
+                  <th className="py-3 px-3.5 font-semibold">Policy Decision</th>
+                  <th className="py-3 px-3.5 font-semibold">Execution Status</th>
+                  <th className="py-3 px-3.5 font-semibold">Latency</th>
+                  <th className="py-3 px-3.5 font-semibold text-right">Inspect</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300 font-mono">
-                {events.map((ev) => (
-                  <tr key={ev.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="py-2.5 px-4 text-slate-400">{formatTimeOnly(ev.created_at)}</td>
-                    <td className="py-2.5 px-4 text-slate-400" title={ev.request_id}>
-                      {truncateId(ev.request_id)}
+              <tbody className="divide-y divide-kali-border font-mono text-slate-300">
+                {filteredEvents.map((ev) => (
+                  <tr key={ev.id} className="hover:bg-kali-elevated/40 transition-colors">
+                    <td className="py-2.5 px-3.5 text-slate-400 text-[11px]">
+                      {formatTimestamp(ev.created_at)}
                     </td>
-                    <td className="py-2.5 px-4 font-sans text-white font-medium">
+                    <td className="py-2.5 px-3.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="rounded bg-kali-bg px-1.5 py-0.5 border border-kali-border text-slate-400 text-[11px]">
+                          {truncateId(ev.request_id, 10)}
+                        </span>
+                        <button
+                          onClick={() => handleCopy(ev.request_id, ev.id)}
+                          className="text-slate-500 hover:text-white transition-colors"
+                          title="Copy Request ID"
+                        >
+                          {copiedId === ev.id ? (
+                            <Check className="h-3 w-3 text-kali-secure" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-3.5 font-sans font-semibold text-white">
                       {ev.agent_name || truncateId(ev.agent_id)}
                     </td>
-                    <td className="py-2.5 px-4 text-cyan-300">{ev.tool_name}</td>
-                    <td className="py-2.5 px-4 text-slate-300">{ev.operation}</td>
-                    <td className="py-2.5 px-4 text-slate-300 max-w-[200px] truncate" title={ev.target_resource}>
+                    <td className="py-2.5 px-3.5 text-kali-cyan font-bold">
+                      {ev.tool_name}:{ev.operation}
+                    </td>
+                    <td
+                      className="py-2.5 px-3.5 text-slate-300 max-w-[200px] truncate"
+                      title={ev.target_resource}
+                    >
                       {ev.target_resource}
                     </td>
-                    <td className="py-2.5 px-4 font-sans">
+                    <td className="py-2.5 px-3.5 font-sans">
                       <DecisionBadge decision={ev.decision} />
                     </td>
-                    <td className="py-2.5 px-4 text-slate-400">{formatLatency(ev.execution_duration_ms)}</td>
-                    <td className="py-2.5 px-4 text-right">
+                    <td className="py-2.5 px-3.5 text-[11px]">
+                      <span className="rounded bg-kali-bg px-1.5 py-0.5 border border-kali-border text-slate-400">
+                        {ev.execution_status}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3.5 text-slate-400">{formatLatency(ev.execution_duration_ms)}</td>
+                    <td className="py-2.5 px-3.5 text-right">
                       <button
                         onClick={() => setSelectedEvent(ev)}
-                        className="rounded border border-slate-700 bg-slate-800/80 p-1.5 text-slate-300 hover:text-white hover:bg-slate-700"
-                        title="Inspect Event"
+                        className="inline-flex items-center gap-1 rounded border border-kali-border bg-kali-elevated px-2 py-1 text-[11px] text-slate-300 hover:border-kali-primary hover:text-white transition-colors"
+                        title="Inspect Request Evidence"
                       >
-                        <Eye className="h-3.5 w-3.5" />
+                        <Eye className="h-3.5 w-3.5 text-kali-cyan" />
+                        <span>Inspect</span>
                       </button>
                     </td>
                   </tr>
                 ))}
-                {events.length === 0 && (
+                {filteredEvents.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-slate-500 font-sans">
-                      No matching telemetry events.
+                    <td colSpan={9} className="py-10 text-center font-mono text-xs text-slate-500">
+                      // ZERO TELEMETRY EVENTS MATCH QUERY CRITERIA
                     </td>
                   </tr>
                 )}
@@ -153,49 +283,91 @@ export const LiveMonitoringTab: React.FC = () => {
         </div>
       )}
 
-      {/* Inspect Event Modal */}
+      {/* REQUEST DETAIL INSPECTION MODAL */}
       <Modal
         isOpen={!!selectedEvent}
         onClose={() => setSelectedEvent(null)}
-        title="Event Telemetry Breakdown"
-        subtitle={`Request ID: ${selectedEvent?.request_id}`}
+        title="REQUEST TELEMETRY & AUDIT BREAKDOWN"
+        subtitle={`REQUEST: ${selectedEvent?.request_id || ''}`}
         maxWidth="2xl"
       >
         {selectedEvent && (
-          <div className="space-y-3 font-mono text-xs">
-            <div className="grid grid-cols-2 gap-3 bg-slate-950 p-3 rounded border border-slate-800">
+          <div className="space-y-4 font-mono text-xs">
+            {/* Summary Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 rounded border border-kali-border bg-kali-bg p-3">
               <div>
-                <span className="text-slate-500">Agent:</span> <span className="text-white">{selectedEvent.agent_name}</span>
+                <span className="text-slate-400 text-[10px] uppercase block">Principal Agent</span>
+                <span className="text-white font-bold">{selectedEvent.agent_name || selectedEvent.agent_id}</span>
               </div>
               <div>
-                <span className="text-slate-500">Decision:</span>{' '}
-                <span className={selectedEvent.decision === 'ALLOWED' ? 'text-emerald-400' : 'text-rose-400'}>
-                  {selectedEvent.decision}
-                </span>
+                <span className="text-slate-400 text-[10px] uppercase block">Policy Decision</span>
+                <div className="mt-0.5">
+                  <DecisionBadge decision={selectedEvent.decision} />
+                </div>
               </div>
               <div>
-                <span className="text-slate-500">Tool:</span> <span className="text-cyan-300">{selectedEvent.tool_name}</span>
+                <span className="text-slate-400 text-[10px] uppercase block">Execution Latency</span>
+                <span className="text-kali-cyan font-bold">{formatLatency(selectedEvent.execution_duration_ms)}</span>
               </div>
               <div>
-                <span className="text-slate-500">Operation:</span> <span className="text-slate-300">{selectedEvent.operation}</span>
+                <span className="text-slate-400 text-[10px] uppercase block">Target Tool</span>
+                <span className="text-kali-primary font-bold">{selectedEvent.tool_name}</span>
               </div>
-              <div className="col-span-2">
-                <span className="text-slate-500">Resource:</span> <span className="text-slate-200">{selectedEvent.target_resource}</span>
+              <div>
+                <span className="text-slate-400 text-[10px] uppercase block">Operation</span>
+                <span className="text-slate-200">{selectedEvent.operation}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 text-[10px] uppercase block">Execution Outcome</span>
+                <span className="text-slate-300">{selectedEvent.execution_status}</span>
+              </div>
+              <div className="col-span-2 sm:col-span-3">
+                <span className="text-slate-400 text-[10px] uppercase block">Target Resource</span>
+                <span className="text-white break-all">{selectedEvent.target_resource}</span>
               </div>
             </div>
 
+            {/* Delegation Context (if present) */}
+            <div className="rounded border border-kali-border bg-kali-bg p-3">
+              <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1.5 mb-1">
+                <Network className="h-3.5 w-3.5 text-kali-primary" />
+                <span>DELEGATION & PRINCIPAL SCOPE</span>
+              </div>
+              <div className="text-slate-300 text-[11px]">
+                {selectedEvent.context_metadata?.delegation_id ? (
+                  <span>DELEGATED TOKEN: #{truncateId(selectedEvent.context_metadata.delegation_id, 12)} (Depth verified)</span>
+                ) : (
+                  <span>DIRECT PRINCIPAL EXECUTION (No downstream delegation chained)</span>
+                )}
+              </div>
+            </div>
+
+            {/* Decision Reason */}
             <div>
-              <span className="text-slate-400 font-semibold font-sans">Decision Reason:</span>
-              <p className="mt-1 rounded bg-slate-950 p-3 text-slate-300 border border-slate-800">
+              <div className="text-[11px] font-bold text-kali-cyan mb-1.5 flex items-center gap-1.5">
+                <Terminal className="h-3.5 w-3.5" />
+                <span>EVALUATION LOGIC & REASONING</span>
+              </div>
+              <div className="rounded border border-kali-border bg-kali-bg p-3 text-slate-300 leading-relaxed font-mono">
                 {selectedEvent.decision_reason}
-              </p>
+              </div>
             </div>
 
+            {/* Sanitized Evidence & Context Metadata */}
             <div>
-              <span className="text-slate-400 font-semibold font-sans">Sanitized Context Metadata:</span>
-              <pre className="mt-1 overflow-auto rounded bg-slate-950 p-3 text-[11px] text-cyan-300 border border-slate-800">
-                {JSON.stringify(selectedEvent.context_metadata || {}, null, 2)}
-              </pre>
+              <div className="text-[11px] font-bold text-slate-400 mb-1.5">
+                <span>AUDIT EVIDENCE & SANITIZED CONTEXT METADATA</span>
+              </div>
+              <TerminalBox
+                title={`AUDIT EVIDENCE // ${selectedEvent.request_id}`}
+                copyContent={JSON.stringify(selectedEvent.context_metadata || {}, null, 2)}
+                maxHeight="max-h-56"
+              >
+                <pre>{JSON.stringify(selectedEvent.context_metadata || {}, null, 2)}</pre>
+              </TerminalBox>
+              <div className="mt-1 font-mono text-[10px] text-slate-500">
+                NOTE: Cryptographic tokens and credentials are sanitarily stripped before persistent logging.
+              </div>
             </div>
           </div>
         )}

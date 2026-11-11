@@ -3,15 +3,21 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.permission import Permission
+from app.models.user import User
 from app.schemas.permission import PermissionCreate, PermissionResponse
 
 router = APIRouter()
 
 
 @router.post("", response_model=PermissionResponse, status_code=status.HTTP_201_CREATED, tags=["Permissions"])
-async def create_permission(req: PermissionCreate, db: AsyncSession = Depends(get_db)):
+async def create_permission(
+    req: PermissionCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Creates a new permission grant or explicit deny rule."""
     perm = Permission(
         id=str(uuid.uuid4()),
@@ -37,7 +43,8 @@ async def list_permissions(
     agent_id: Optional[str] = Query(None),
     tool_name: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(True),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Lists permissions with optional filtering by agent, tool, or active state."""
     query = select(Permission)
@@ -52,7 +59,11 @@ async def list_permissions(
 
 
 @router.delete("/{permission_id}", tags=["Permissions"])
-async def deactivate_permission(permission_id: str, db: AsyncSession = Depends(get_db)):
+async def deactivate_permission(
+    permission_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Deactivates a permission grant."""
     stmt = select(Permission).where(Permission.id == permission_id)
     result = await db.execute(stmt)

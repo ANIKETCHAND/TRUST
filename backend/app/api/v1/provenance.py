@@ -4,8 +4,10 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.provenance import EdgeType, NodeType, ProvenanceEdge, ProvenanceNode, TrustLevel
+from app.models.user import User
 
 router = APIRouter()
 
@@ -25,7 +27,11 @@ class EdgeCreateRequest(BaseModel):
 
 
 @router.post("/nodes", status_code=status.HTTP_201_CREATED, tags=["Provenance"])
-async def create_provenance_node(req: NodeCreateRequest, db: AsyncSession = Depends(get_db)):
+async def create_provenance_node(
+    req: NodeCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Registers an origin source, document, or transform node in the provenance graph."""
     node = ProvenanceNode(
         id=str(uuid.uuid4()),
@@ -42,7 +48,11 @@ async def create_provenance_node(req: NodeCreateRequest, db: AsyncSession = Depe
 
 
 @router.post("/edges", status_code=status.HTTP_201_CREATED, tags=["Provenance"])
-async def create_provenance_edge(req: EdgeCreateRequest, db: AsyncSession = Depends(get_db)):
+async def create_provenance_edge(
+    req: EdgeCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Links two provenance nodes to track influence, derivation, or agent handoff."""
     edge = ProvenanceEdge(
         id=str(uuid.uuid4()),
@@ -57,7 +67,10 @@ async def create_provenance_edge(req: EdgeCreateRequest, db: AsyncSession = Depe
 
 
 @router.get("/graph", tags=["Provenance"])
-async def get_provenance_graph(db: AsyncSession = Depends(get_db)):
+async def get_provenance_graph(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Returns full provenance graph with nodes, edges, and classification metadata.
     Automatically seeds demonstration nodes if empty.

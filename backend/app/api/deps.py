@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.agent import Agent, AgentStatus
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.services.agent_service import agent_service
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
@@ -35,6 +35,39 @@ async def get_current_user(
     user = result.scalars().first()
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive or not found")
+    return user
+
+
+def require_roles(allowed_roles: List[UserRole]):
+    async def role_checker(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied: User does not have required permissions. Required roles: {[r.value for r in allowed_roles]}"
+            )
+        return current_user
+    return role_checker
+
+
+get_current_admin_user = require_roles([UserRole.ADMIN])
+get_current_operator_or_admin = require_roles([UserRole.ADMIN, UserRole.OPERATOR])
+
+
+async def get_current_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+) -> Optional[User]:
+    if not token:
+        return None
+    payload = decode_access_token(token)
+    if not payload:
+        return None
+    username = payload.get("sub")
+    stmt = select(User).where(User.username == username)
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+    if not user or not user.is_active:
+        return None
     return user
 
 

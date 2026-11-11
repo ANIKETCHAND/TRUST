@@ -4,31 +4,66 @@
 
 :root {
   color-scheme: dark;
+  --kali-bg: #0B0F17;
+  --kali-secondary: #111827;
+  --kali-sidebar: #0D1420;
+  --kali-card: #151E2D;
+  --kali-elevated: #1B2638;
+  --kali-border: #1E293B;
+  --kali-border-light: #2A3B54;
+  --kali-primary: #367BF5;
+  --kali-secondary-blue: #2563EB;
+  --kali-cyan: #22B8CF;
+  --kali-secure: #16A36A;
+  --kali-warning: #D99A35;
+  --kali-critical: #DC4C55;
 }
 
 body {
   margin: 0;
-  background-color: #090d16;
-  color: #e2e8f0;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #0B0F17;
+  color: #E2E8F0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom subtle scrollbar */
+/* Kali-style technical scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: #0B0F17;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 3px;
+  background: #1E293B;
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #2A3B54;
 }
+
+/* Command center grid styling */
+.soc-grid-bg {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(30, 41, 59, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(30, 41, 59, 0.25) 1px, transparent 1px);
+}
+
+/* Accessible focus ring */
+:focus-visible {
+  outline: 2px solid #367BF5;
+  outline-offset: 1px;
+}
+
+/* Technical typography helpers */
+.font-mono-tech {
+  font-family: 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
+}
+

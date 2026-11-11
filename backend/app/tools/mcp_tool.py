@@ -64,11 +64,19 @@ class MCPIntegrationTool(BaseTool):
         elif operation == "mcp_call_tool":
             target_tool = parameters.get("tool")
             target_op = parameters.get("operation")
-            target_params = parameters.get("parameters", {})
+            target_params = parameters.get("parameters") or {}
+
+            registered_mcp_tools = {"filesystem_tool", "postgres_tool", "http_api_tool"}
+            if not target_tool or target_tool not in registered_mcp_tools:
+                raise ValueError(f"Invalid or unauthorized MCP target tool '{target_tool}'. Supported tools: {sorted(registered_mcp_tools)}")
+            if not target_op:
+                raise ValueError(f"Missing 'operation' parameter for MCP tool '{target_tool}'")
+
             return {
                 "protocol": "mcp/1.0",
                 "status": "routed",
                 "target_tool": target_tool,
                 "target_operation": target_op,
+                "parameters": target_params,
                 "resource": resource
             }

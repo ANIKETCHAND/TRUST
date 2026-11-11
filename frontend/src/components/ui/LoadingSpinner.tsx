@@ -1,33 +1,46 @@
 import React from 'react';
-import { RefreshCw } from 'lucide-react';
+import { Loader2, Radio } from 'lucide-react';
 
 interface LoadingSpinnerProps {
   message?: string;
   size?: 'sm' | 'md' | 'lg';
+  fullScreen?: boolean;
 }
 
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
-  message = 'TELEMETRY AGGREGATION IN PROGRESS...',
+  message = 'INITIALIZING TELEMETRY STREAM...',
   size = 'md',
+  fullScreen = false,
 }) => {
-  const sizeClasses = {
-    sm: 'h-3.5 w-3.5',
-    md: 'h-5 w-5',
-    lg: 'h-7 w-7',
-  };
+  const spinnerSize = {
+    sm: 'h-4 w-4',
+    md: 'h-6 w-6',
+    lg: 'h-9 w-9',
+  }[size];
 
-  const containerPadding = {
-    sm: 'p-2',
-    md: 'py-8',
-    lg: 'py-16',
-  };
-
-  return (
-    <div className={`flex items-center justify-center ${containerPadding[size]}`}>
-      <div className="flex items-center gap-3 text-cyan-400">
-        <RefreshCw className={`${sizeClasses[size]} animate-spin`} />
-        {message && <span className="font-mono text-xs tracking-wider">{message}</span>}
+  const content = (
+    <div className="flex flex-col items-center justify-center gap-3 p-6 text-center">
+      <div className="relative flex items-center justify-center">
+        <Radio className={`${spinnerSize} animate-ping text-kali-cyan/40 absolute`} />
+        <Loader2 className={`${spinnerSize} animate-spin text-kali-primary`} />
+      </div>
+      <div className="flex items-center gap-1.5 font-mono text-xs font-semibold tracking-wider text-kali-cyan">
+        <span>›</span>
+        <span>{message}</span>
+      </div>
+      <div className="font-mono text-[10px] text-slate-500">
+        SECURITY PROTOCOL: DETERMINISTIC_SOC
       </div>
     </div>
   );
+
+  if (fullScreen) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-kali-bg/95 backdrop-blur-md">
+        {content}
+      </div>
+    );
+  }
+
+  return content;
 };

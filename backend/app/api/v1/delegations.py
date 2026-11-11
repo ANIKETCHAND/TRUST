@@ -1,12 +1,15 @@
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.agent import Agent
 from app.models.delegation import Delegation, DelegationStatus
+from app.models.user import User, UserRole
+from app.services.agent_service import agent_service
 from app.services.delegation_service import delegation_service
 
 router = APIRouter()
@@ -18,6 +21,7 @@ class DelegationCreateRequest(BaseModel):
     scope: Dict[str, Any]
     expires_at: datetime
     max_depth: int = Field(1, ge=1, le=5)
+    parent_delegation_id: Optional[str] = None
 
 
 class DelegationRevokeRequest(BaseModel):
@@ -26,8 +30,34 @@ class DelegationRevokeRequest(BaseModel):
 
 @router.post("", status_code=status.HTTP_201_CREATED, tags=["Delegation"])
 async def create_delegation(
-    req: DelegationCreateRequest, db: AsyncSession = Depends(get_db)
+    req: DelegationCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    x_agent_key: Optional[str] = Header(None, alias="X-Agent-Key"),
+    current_user: User = Depends(get_current_user)
 ):
+    """
+    Issues a scoped delegation grant from parent agent to child agent.
+    Requires authentication: non-admins must supply parent agent X-Agent-Key (SEC-12).
+    """
+    if current_user.role != UserRole.ADMIN:
+        if not x_agent_key:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Parent agent authentication required: Supply parent agent's X-Agent-Key header."
+            )
+        parent_agent = await agent_service.authenticate_agent(db, x_agent_key)
+        if not parent_agent or parent_agent.id != req.parent_agent_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Parent agent authentication mismatch: credential does not match parent_agent_id '{req.parent_agent_id}'"
+            )
+    elif x_agent_key:
+        parent_agent = await agent_service.authenticate_agent(db, x_agent_key)
+        if not parent_agent or parent_agent.id != req.parent_agent_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Parent agent authentication mismatch: credential does not match parent_agent_id '{req.parent_agent_id}'"
+            )
     """Issues a scoped delegation grant from parent agent to child agent."""
     try:
         delegation, raw_token = await delegation_service.create_delegation(
@@ -36,13 +66,15 @@ async def create_delegation(
             child_agent_id=req.child_agent_id,
             scope=req.scope,
             expires_at=req.expires_at,
-            max_depth=req.max_depth
+            max_depth=req.max_depth,
+            parent_delegation_id=req.parent_delegation_id
         )
         return {
             "delegation": {
                 "id": delegation.id,
                 "parent_agent_id": delegation.parent_agent_id,
                 "child_agent_id": delegation.child_agent_id,
+                "parent_delegation_id": delegation.parent_delegation_id,
                 "scope": delegation.scope,
                 "max_depth": delegation.max_depth,
                 "current_depth": delegation.current_depth,
@@ -60,7 +92,8 @@ async def create_delegation(
 @router.get("", tags=["Delegation"])
 async def list_delegations(
     status_filter: Optional[DelegationStatus] = Query(None, alias="status"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Lists all delegation grants with parent and child agent names."""
     stmt = select(Delegation)
@@ -96,7 +129,10 @@ async def list_delegations(
 
 @router.post("/{delegation_id}/revoke", tags=["Delegation"])
 async def revoke_delegation(
-    delegation_id: str, req: DelegationRevokeRequest, db: AsyncSession = Depends(get_db)
+    delegation_id: str,
+    req: DelegationRevokeRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Immediately invalidates a delegation grant and prevents further execution."""
     success = await delegation_service.revoke_delegation(

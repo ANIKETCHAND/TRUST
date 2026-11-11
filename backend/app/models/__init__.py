@@ -8,6 +8,14 @@ from app.models.policy import Policy, PolicyVersion, PolicyEffectDefault
 from app.models.provenance import ProvenanceNode, ProvenanceEdge, NodeType, TrustLevel, EdgeType
 from app.models.audit import AuditEvent, PolicyDecision, ExecutionStatus
 from app.models.incident import SecurityIncident, IncidentSeverity, IncidentStatus, RevocationRecord
+from app.models.endpoint import (
+    EndpointDevice,
+    EndpointStatus,
+    EndpointTelemetryEvent,
+    EndpointContainmentAction,
+    ContainmentScope,
+    BrowserShieldExtension
+)
 
 __all__ = [
     "Base",
@@ -39,4 +47,10 @@ __all__ = [
     "IncidentSeverity",
     "IncidentStatus",
     "RevocationRecord",
+    "EndpointDevice",
+    "EndpointStatus",
+    "EndpointTelemetryEvent",
+    "EndpointContainmentAction",
+    "ContainmentScope",
+    "BrowserShieldExtension",
 ]

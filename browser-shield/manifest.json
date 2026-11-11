@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "AgentTrust Enterprise Browser Shield",
+  "version": "1.0.0",
+  "description": "Industrial AI agent runtime security, prompt injection defense, and pre-flight DLP inspection for enterprise LLM portals.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "alarms",
+    "declarativeNetRequest",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://*.chatgpt.com/*",
+    "https://claude.ai/*",
+    "https://*.claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://*.perplexity.ai/*",
+    "https://*.deepseek.com/*",
+    "http://localhost:8080/*",
+    "http://127.0.0.1:8080/*",
+    "http://localhost:5173/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://*.chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://*.claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://*.perplexity.ai/*",
+        "https://*.deepseek.com/*",
+        "http://localhost:8080/*",
+        "http://localhost:5173/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "AgentTrust Enterprise Browser Shield"
+  }
+}

@@ -20,6 +20,25 @@ async def lifespan(app: FastAPI):
     await init_db()
     async with async_session_maker() as session:
         await tool_registry.sync_tools_to_db(session)
+        # Seed default development admin if not present
+        if settings.ENVIRONMENT.lower() != "production":
+            import uuid
+            from sqlalchemy import select
+            from app.models.user import User, UserRole
+            from app.core.security import get_password_hash
+            stmt = select(User).where(User.username == "admin")
+            res = await session.execute(stmt)
+            if not res.scalars().first():
+                admin_user = User(
+                    id=str(uuid.uuid4()),
+                    username="admin",
+                    email="admin@agenttrust.corp",
+                    hashed_password=get_password_hash("admin123"),
+                    role=UserRole.ADMIN,
+                    is_active=True
+                )
+                session.add(admin_user)
+                await session.commit()
     yield
     # Shutdown logic (if any)
 

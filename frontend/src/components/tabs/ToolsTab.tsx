@@ -1,8 +1,17 @@
 import React, { useState } from 'react';
-import { Wrench, Terminal, Play, RefreshCw, HardDrive, Database, Globe, Network } from 'lucide-react';
+import {
+  Wrench,
+  Play,
+  RefreshCw,
+  HardDrive,
+  Database,
+  Globe,
+  Network,
+} from 'lucide-react';
 import { useTools } from '../../hooks/useTools';
 import { DecisionBadge, StatusBadge } from '../ui/Badge';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { TerminalBox } from '../ui/TerminalBox';
 import { formatLatency, safeJsonParse } from '../../utils/formatters';
 
 export const ToolsTab: React.FC = () => {
@@ -24,7 +33,7 @@ export const ToolsTab: React.FC = () => {
         operation: testOp,
         resource: testResource,
         parameters: parsedParams,
-        context: { source: 'dashboard_tool_tester' },
+        context: { source: 'kali_dashboard_tool_tester' },
       },
       agentApiKey || undefined
     );
@@ -33,105 +42,132 @@ export const ToolsTab: React.FC = () => {
   const getToolIcon = (category: string) => {
     switch (category) {
       case 'filesystem':
-        return <HardDrive className="h-6 w-6 text-cyan-400" />;
+        return <HardDrive className="h-5 w-5 text-kali-cyan" />;
       case 'database':
-        return <Database className="h-6 w-6 text-emerald-400" />;
+        return <Database className="h-5 w-5 text-kali-secure" />;
       case 'http_api':
-        return <Globe className="h-6 w-6 text-purple-400" />;
+        return <Globe className="h-5 w-5 text-kali-primary" />;
       default:
-        return <Network className="h-6 w-6 text-amber-400" />;
+        return <Network className="h-5 w-5 text-kali-warning" />;
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-slate-800 pb-5 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 border-b border-kali-border pb-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Wrench className="h-7 w-7 text-purple-400" />
-            Protected Tool Registry & Execution Testing
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-bold text-kali-primary">// AGENT_SECURITY</span>
+            <span className="text-slate-500 font-mono">/</span>
+            <span className="font-mono text-xs text-kali-cyan">TOOL_REGISTRY</span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 mt-1">
+            <Wrench className="h-6 w-6 text-kali-primary" />
+            Protected Tool Registry & Sandboxed Execution Console
           </h1>
-          <p className="text-sm text-slate-400">
-            Enforced server-side tool integrations, sandboxed boundaries, and interactive gateway test dispatch.
+          <p className="text-xs text-slate-400 mt-0.5">
+            Sandboxed tool boundaries, strict filesystem isolation, authenticated database adapters, and interactive gateway interception dispatch.
           </p>
         </div>
-        <button
-          onClick={refresh}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh Tools
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={refresh}
+            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:bg-kali-elevated transition-colors"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-kali-primary ${loading ? 'animate-spin' : ''}`} />
+            <span>SYNC TOOLS</span>
+          </button>
+        </div>
       </div>
 
+      {/* Tool Cards */}
       {loading && tools.length === 0 ? (
-        <LoadingSpinner message="SYNCING SERVER-SIDE TOOLS..." />
+        <LoadingSpinner message="ENUMERATING PROTECTED TOOL CONNECTORS..." />
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {tools.map((t) => (
-            <div key={t.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between">
-                  {getToolIcon(t.category)}
-                  <StatusBadge status={t.status} />
-                </div>
-                <h3 className="mt-3 text-sm font-bold text-white">{t.display_name}</h3>
-                <p className="mt-1 text-xs text-slate-400 font-mono">{t.name}</p>
-                <div className="mt-3">
-                  <span className="text-[11px] font-semibold text-slate-400">Supported Operations:</span>
-                  <div className="mt-1.5 flex flex-wrap gap-1">
-                    {t.supported_operations.map((op: string) => (
-                      <span key={op} className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-300 border border-slate-700">
-                        {op}
+        <div>
+          <div className="mb-2 font-mono text-[11px] font-bold text-slate-400">
+            // REGISTERED_TOOL_ADAPTERS ({tools.length})
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {tools.map((t) => (
+              <div
+                key={t.id}
+                className="rounded-lg border border-kali-border bg-kali-card p-4 shadow-kali-card flex flex-col justify-between hover:border-kali-primary/60 transition-all"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {getToolIcon(t.category)}
+                      <span className="font-mono text-[10px] uppercase text-kali-cyan bg-kali-bg px-2 py-0.5 rounded border border-kali-border">
+                        {t.category}
                       </span>
-                    ))}
+                    </div>
+                    <StatusBadge status={t.status} />
+                  </div>
+                  <h3 className="mt-3 text-sm font-bold text-white">{t.display_name}</h3>
+                  <p className="mt-1 font-mono text-xs text-slate-400">{t.name}</p>
+
+                  <div className="mt-3">
+                    <span className="font-mono text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                      Allowed Operations:
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {t.supported_operations.map((op: string) => (
+                        <span
+                          key={op}
+                          className="rounded bg-kali-bg px-1.5 py-0.5 font-mono text-[10px] text-slate-300 border border-kali-border"
+                        >
+                          {op}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
+
+                <div className="mt-4 border-t border-kali-border pt-2.5 flex items-center justify-between font-mono text-[10px] text-slate-400">
+                  <span>JAIL BOUNDARY:</span>
+                  <span className="text-kali-secure font-bold">[SANDBOX_ACTIVE]</span>
+                </div>
               </div>
-              <div className="mt-4 border-t border-slate-800/80 pt-3 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Boundary:</span>
-                <span className="font-mono text-cyan-400">Sandboxed Jail</span>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
       {/* Interactive Gateway Execution Tester */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 backdrop-blur">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div className="rounded-lg border border-kali-border bg-kali-card p-5 shadow-kali-card space-y-4">
+        <div className="flex items-center justify-between border-b border-kali-border pb-3">
           <div>
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Terminal className="h-5 w-5 text-cyan-400" />
-              Gateway Execution Testing Console
-            </h2>
-            <p className="text-xs text-slate-400">
-              Dispatch a real tool call through the Security Gateway to verify deterministic policy decisions and tool outputs.
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[10px] text-kali-primary font-bold">[INTERACTIVE_DISPATCH]</span>
+              <h2 className="text-sm font-bold text-white">Gateway Pre-Flight Tool Dispatch Testing Bench</h2>
+            </div>
+            <p className="font-mono text-[10px] text-slate-400 mt-0.5">
+              Dispatch real requests to the Security Gateway to observe policy evaluation, authorization enforcement, and execution outcomes.
             </p>
           </div>
         </div>
 
-        <form onSubmit={handleExecuteTool} className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <form onSubmit={handleExecuteTool} className="grid grid-cols-1 gap-5 lg:grid-cols-2 font-mono text-xs">
           {/* Controls Column */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div>
-              <label className="text-xs font-semibold text-slate-300">Agent API Key (Bearer Authorization)</label>
+              <label className="text-slate-300 font-semibold block mb-1">
+                Agent Bearer Key (<span className="text-slate-400 font-sans">Leave blank to test fail-closed unauthorized denial</span>)
+              </label>
               <input
                 type="password"
-                placeholder="agk_live_... (leave empty to test unauthorized denial)"
+                placeholder="agk_live_... (optional)"
                 value={agentApiKey}
                 onChange={(e) => setAgentApiKey(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs text-cyan-300 focus:border-cyan-500 focus:outline-none"
+                className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-kali-cyan focus:border-kali-primary focus:outline-none"
               />
-              <span className="text-[11px] text-slate-500">
-                Supply the agent's key to test authorized calls, or leave empty/invalid to observe fail-closed denial.
-              </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-slate-300">Target Tool</label>
+                <label className="text-slate-300 font-semibold block mb-1">Target Tool</label>
                 <select
                   value={testTool}
                   onChange={(e) => {
@@ -150,7 +186,7 @@ export const ToolsTab: React.FC = () => {
                       setTestParams('{\n  "timeout": 5\n}');
                     }
                   }}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
+                  className="w-full rounded border border-kali-border bg-kali-bg px-2.5 py-2 text-white focus:border-kali-primary focus:outline-none"
                 >
                   <option value="filesystem_tool">filesystem_tool</option>
                   <option value="postgres_tool">postgres_tool</option>
@@ -160,86 +196,88 @@ export const ToolsTab: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-300">Operation</label>
+                <label className="text-slate-300 font-semibold block mb-1">Operation</label>
                 <input
                   type="text"
                   value={testOp}
                   onChange={(e) => setTestOp(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs text-white focus:border-cyan-500 focus:outline-none"
+                  className="w-full rounded border border-kali-border bg-kali-bg px-2.5 py-2 text-white focus:border-kali-primary focus:outline-none"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300">Target Resource</label>
+              <label className="text-slate-300 font-semibold block mb-1">Target Resource</label>
               <input
                 type="text"
                 value={testResource}
                 onChange={(e) => setTestResource(e.target.value)}
-                placeholder="e.g. reports/audit.txt or table:customer_records"
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs text-white focus:border-cyan-500 focus:outline-none"
+                placeholder="e.g. reports/audit.txt or table:customers"
+                className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300">Parameters (JSON Payload)</label>
+              <label className="text-slate-300 font-semibold block mb-1">Parameters (JSON Schema)</label>
               <textarea
-                rows={5}
+                rows={4}
                 value={testParams}
                 onChange={(e) => setTestParams(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 p-3 font-mono text-xs text-slate-200 focus:border-cyan-500 focus:outline-none"
+                className="w-full rounded border border-kali-border bg-kali-bg p-2.5 text-kali-cyan focus:border-kali-primary focus:outline-none font-mono"
               />
             </div>
 
             <button
               type="submit"
               disabled={executing}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-600 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-cyan-600/20 hover:bg-cyan-500 disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 rounded bg-kali-primary py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-kali-glow hover:bg-kali-secondaryBlue transition-colors disabled:opacity-50"
             >
               <Play className="h-4 w-4" />
-              {executing ? 'Evaluating & Executing via Gateway...' : 'Dispatch Request to Gateway'}
+              <span>{executing ? 'Evaluating Gateway...' : 'Dispatch Request To Gateway'}</span>
             </button>
           </div>
 
           {/* Result Column */}
-          <div className="flex flex-col rounded-lg border border-slate-800 bg-slate-950 p-4">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Gateway Interception & Execution Result
-            </span>
+          <div className="flex flex-col justify-between rounded border border-kali-border bg-kali-bg p-4">
+            <div>
+              <div className="flex items-center justify-between border-b border-kali-border pb-2.5 mb-3">
+                <span className="font-bold text-white">// GATEWAY_DECISION_OUTCOME</span>
+                {executionResult && <DecisionBadge decision={executionResult.decision} />}
+              </div>
 
-            {executionResult ? (
-              <div className="mt-3 flex-1 flex flex-col justify-between space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <div className="flex items-center gap-2">
-                    <DecisionBadge decision={executionResult.decision} />
-                    <span className="font-mono text-xs text-slate-400">
-                      Status: {executionResult.execution_status}
-                    </span>
+              {executionResult ? (
+                <div className="space-y-3 font-mono text-xs">
+                  <div className="flex justify-between items-center text-[11px] text-slate-400">
+                    <span>EXECUTION STATUS: {executionResult.execution_status}</span>
+                    {executionResult.execution_duration_ms && (
+                      <span className="text-kali-cyan">
+                        LATENCY: {formatLatency(executionResult.execution_duration_ms)}
+                      </span>
+                    )}
                   </div>
-                  {executionResult.execution_duration_ms && (
-                    <span className="font-mono text-xs text-cyan-400">
-                      Latency: {formatLatency(executionResult.execution_duration_ms)}
-                    </span>
-                  )}
-                </div>
 
-                <div className="text-xs text-slate-300">
-                  <span className="font-semibold text-slate-400">Decision Reason: </span>
-                  {executionResult.reason}
-                </div>
+                  <div className="rounded border border-kali-border bg-kali-card p-2.5 text-slate-300 font-sans leading-relaxed">
+                    <span className="font-mono text-slate-400 font-bold">REASON: </span>
+                    {executionResult.reason}
+                  </div>
 
-                <div className="flex-1">
-                  <span className="text-xs font-semibold text-slate-400">Payload / Result Body:</span>
-                  <pre className="mt-1 h-52 overflow-auto rounded border border-slate-800 bg-slate-900/60 p-3 font-mono text-[11px] text-cyan-300">
-                    {JSON.stringify(executionResult.result || executionResult.error || executionResult, null, 2)}
-                  </pre>
+                  <div>
+                    <span className="text-slate-400 font-bold block mb-1">// RESPONSE_PAYLOAD</span>
+                    <TerminalBox
+                      title="GATEWAY EXECUTION RESULT"
+                      copyContent={JSON.stringify(executionResult.result || executionResult.error || executionResult, null, 2)}
+                      maxHeight="max-h-48"
+                    >
+                      <pre>{JSON.stringify(executionResult.result || executionResult.error || executionResult, null, 2)}</pre>
+                    </TerminalBox>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex flex-1 items-center justify-center text-xs text-slate-600">
-                No tool request dispatched yet. Click "Dispatch Request to Gateway" to evaluate.
-              </div>
-            )}
+              ) : (
+                <div className="py-20 text-center text-slate-500 font-mono text-xs">
+                  // ZERO DISPATCH RECORDED. CLICK "DISPATCH REQUEST TO GATEWAY" TO EVALUATE.
+                </div>
+              )}
+            </div>
           </div>
         </form>
       </div>

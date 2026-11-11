@@ -30,8 +30,23 @@ async def run_full_platform_demo():
         print(f"\n[1] PLATFORM HEALTH CHECK: HTTP {health.status_code}")
         print(f"    Service: {health.json()['service']} | Version: {health.json()['version']}")
 
+        # 1.1 Admin Authentication
+        admin_reg = await client.post("/api/v1/auth/register", json={
+            "username": "secops_admin",
+            "email": "secops@agenttrust.corp",
+            "password": "SuperAdminSecurePassword123!",
+            "role": "admin"
+        })
+        login_resp = await client.post("/api/v1/auth/login", json={
+            "username": "secops_admin",
+            "password": "SuperAdminSecurePassword123!"
+        })
+        admin_token = login_resp.json()["access_token"]
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+        print(f"\n[1.1] ADMIN AUTHENTICATION INITIALIZED: Role ADMIN (HTTP {login_resp.status_code})")
+
         # 2. Register Lead Security Agent
-        lead_agent_resp = await client.post("/api/v1/agents", json={
+        lead_agent_resp = await client.post("/api/v1/agents", headers=admin_headers, json={
             "name": "SecOps-Lead-Agent",
             "role": "compliance_lead",
             "description": "Enterprise compliance & audit supervisor"
@@ -58,7 +73,7 @@ async def run_full_platform_demo():
 
         # 4. Grant Permissions (Database & Filesystem)
         print("\n[4] GRANTING GRANULAR PERMISSIONS:")
-        p1 = await client.post("/api/v1/permissions", json={
+        p1 = await client.post("/api/v1/permissions", headers=admin_headers, json={
             "agent_id": lead_id,
             "tool_name": "postgres_tool",
             "operation": "query_select",
@@ -66,7 +81,7 @@ async def run_full_platform_demo():
             "effect": "ALLOW",
             "priority": 10
         })
-        p2 = await client.post("/api/v1/permissions", json={
+        p2 = await client.post("/api/v1/permissions", headers=admin_headers, json={
             "agent_id": lead_id,
             "tool_name": "filesystem_tool",
             "operation": "write_file",
@@ -103,7 +118,7 @@ async def run_full_platform_demo():
         # 7. SSRF Protection on HTTP Tool
         print("\n[7] TESTING SSRF BOUNDARY ENFORCEMENT ON HTTP TOOL:")
         # Grant lead permission for HTTP
-        await client.post("/api/v1/permissions", json={
+        await client.post("/api/v1/permissions", headers=admin_headers, json={
             "agent_id": lead_id,
             "tool_name": "http_api_tool",
             "operation": "http_get",
@@ -138,14 +153,14 @@ async def run_full_platform_demo():
 
         # 9. Multi-Agent Delegation & Anti-Privilege Escalation
         print("\n[9] TESTING MULTI-AGENT DELEGATION:")
-        child_resp = await client.post("/api/v1/agents", json={
+        child_resp = await client.post("/api/v1/agents", headers=admin_headers, json={
             "name": "SecOps-Subordinate-Worker",
             "role": "data_processor"
         })
         child_id = child_resp.json()["agent"]["id"]
         
         # Valid Delegation
-        del_resp = await client.post("/api/v1/delegations", json={
+        del_resp = await client.post("/api/v1/delegations", headers=admin_headers, json={
             "parent_agent_id": lead_id,
             "child_agent_id": child_id,
             "scope": {"tool_name": "filesystem_tool", "operation": "write_file"},
@@ -169,13 +184,21 @@ async def run_full_platform_demo():
             print(f"     Step {step['step']}: {step['action']} -> {status_symbol} ({step['decision']})")
 
         # 11. Security Incidents & Audit Stats
-        stats_resp = await client.get("/api/v1/overview/stats")
+        stats_resp = await client.get("/api/v1/overview/stats", headers=admin_headers)
         stats = stats_resp.json()
         print(f"\n[11] LIVE CYBERSECURITY TELEMETRY SUMMARY:")
         print(f"     Total Agents: {stats['metrics']['total_agents']}")
         print(f"     Allowed Operations: {stats['metrics']['allowed_operations']}")
         print(f"     Blocked Security Violations: {stats['metrics']['blocked_operations']}")
         print(f"     Open Security Incidents: {stats['metrics']['security_incidents']}")
+
+        # 12. HMAC-SHA256 Cryptographic Audit Chain Verification
+        chain_resp = await client.get("/api/v1/audit/verify-chain", headers=admin_headers)
+        chain_data = chain_resp.json()
+        print(f"\n[12] HMAC-SHA256 CRYPTOGRAPHIC AUDIT LOG INTEGRITY:")
+        print(f"     Chain Status: {'VALID - UNTAMPERED' if chain_data['valid'] else 'COMPROMISED'}")
+        print(f"     Verified Events: {chain_data['total_events']}")
+        print(f"     Chain Head Signature: {chain_data.get('latest_hash')}")
 
     print("\n" + "=" * 80)
     print("   END-TO-END VERIFICATION COMPLETED: ALL SECURITY SYSTEMS NOMINAL")

@@ -1,21 +1,45 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: agenttrust-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-agenttrust}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-agenttrust}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agenttrust} -d ${POSTGRES_DB:-agenttrust}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
     container_name: agenttrust-backend
     ports:
-      - "8080:8080"
+      - "${API_PORT:-8080}:8080"
     environment:
       - ENVIRONMENT=production
       - API_PORT=8080
-      - DATABASE_URL=sqlite+aiosqlite:///./agenttrust.db
-      - ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173
-      - JWT_SECRET=agenttrust-production-secret-change-in-production-use
+      - SECRET_KEY=${SECRET_KEY:?Set high-entropy SECRET_KEY in .env}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-agenttrust}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-agenttrust}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173}
+      - ENROLLMENT_SECRET=${ENROLLMENT_SECRET:?Set ENROLLMENT_SECRET in .env}
+      - BROWSER_SHIELD_ENABLED=true
+      - ENDPOINT_CONNECTOR_ENABLED=true
     volumes:
       - agenttrust-data:/app/sandbox_storage
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
@@ -23,5 +47,18 @@ services:
       timeout: 5s
       retries: 3
 
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: agenttrust-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
+  postgres-data:
   agenttrust-data:

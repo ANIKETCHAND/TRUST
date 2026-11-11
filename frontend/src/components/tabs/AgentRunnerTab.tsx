@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Bot, Play, Terminal, Layers } from 'lucide-react';
+import { Bot, Play, Terminal, Layers, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api.client';
 import type { Agent } from '../../types';
 import { DecisionBadge } from '../ui/Badge';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { TerminalBox } from '../ui/TerminalBox';
 import { useToast } from '../../context/ToastContext';
 
 interface WorkflowStep {
@@ -23,7 +24,7 @@ interface WorkflowResult {
 }
 
 export const AgentRunnerTab: React.FC = () => {
-  const { showToast } = useToast();
+  const toast = useToast();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [selectedAgentId, setSelectedAgentId] = useState('');
@@ -43,11 +44,11 @@ export const AgentRunnerTab: React.FC = () => {
         setSelectedAgentId(res[0].id);
       }
     } catch (err: any) {
-      showToast(err.message || 'Failed to load active agents', 'error');
+      toast.error('Agent Load Failed', err.message || 'Failed to load active agents');
     } finally {
       setLoadingAgents(false);
     }
-  }, [selectedAgentId, showToast]);
+  }, [selectedAgentId, toast]);
 
   useEffect(() => {
     fetchAgents();
@@ -56,7 +57,7 @@ export const AgentRunnerTab: React.FC = () => {
   const handleRunWorkflow = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAgentId) {
-      showToast('Please select an active agent before executing.', 'warning');
+      toast.warning('Agent Required', 'Please select an active agent before executing.');
       return;
     }
     setRunning(true);
@@ -70,12 +71,12 @@ export const AgentRunnerTab: React.FC = () => {
       });
       setWorkflowOutput(res as WorkflowResult);
       if (res.status === 'COMPLETED') {
-        showToast('Autonomous agent task completed successfully.', 'success');
+        toast.success('Workflow Completed', 'Autonomous agent task executed within policy boundaries.');
       } else {
-        showToast(`Workflow halted by AgentTrust gateway: ${res.status}`, 'warning');
+        toast.warning('Workflow Halted', `Gateway intercepted violation: ${res.status}`);
       }
     } catch (err: any) {
-      showToast(`Agent workflow execution error: ${err.message}`, 'error');
+      toast.error('Workflow Exception', err.message);
     } finally {
       setRunning(false);
     }
@@ -84,39 +85,52 @@ export const AgentRunnerTab: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-slate-800 pb-5 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 border-b border-kali-border pb-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Layers className="h-7 w-7 text-cyan-400" />
-            Autonomous Agent Execution & Guardrail Runner
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-bold text-kali-primary">// AGENT_SECURITY</span>
+            <span className="text-slate-500 font-mono">/</span>
+            <span className="font-mono text-xs text-kali-cyan">SANDBOX_PLAYGROUND</span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 mt-1">
+            <Layers className="h-6 w-6 text-kali-primary" />
+            Autonomous Agent Playground & Guardrail Testbench
           </h1>
-          <p className="text-sm text-slate-400">
-            Execute multi-step autonomous AI workflows where every database query, file write, and external API call passes through the AgentTrust security gateway.
+          <p className="text-xs text-slate-400 mt-0.5">
+            Simulate multi-step autonomous AI operations where every database query, filesystem write, and network egress is intercepted by the Security Gateway.
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchAgents}
+            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:bg-kali-elevated transition-colors"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-kali-primary ${loadingAgents ? 'animate-spin' : ''}`} />
+            <span>SYNC AGENTS</span>
+          </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Run Controls */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur space-y-4">
-          <h2 className="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-            <Terminal className="h-4 w-4 text-cyan-400" />
-            Task Dispatch Configuration
+        <div className="rounded-lg border border-kali-border bg-kali-card p-5 shadow-kali-card space-y-4 font-mono text-xs">
+          <h2 className="text-xs font-bold text-white flex items-center gap-2 border-b border-kali-border pb-3">
+            <Terminal className="h-4 w-4 text-kali-primary" />
+            <span>// TASK_DISPATCH_CONFIGURATION</span>
           </h2>
 
-          <form onSubmit={handleRunWorkflow} className="space-y-4 text-xs">
+          <form onSubmit={handleRunWorkflow} className="space-y-4">
             <div>
-              <label className="font-semibold text-slate-300">Target Agent</label>
+              <label className="text-slate-300 font-semibold block mb-1">Target Subject Agent</label>
               {loadingAgents ? (
-                <div className="mt-1 py-2">
-                  <LoadingSpinner size="sm" message="Loading agents..." />
+                <div className="py-2">
+                  <LoadingSpinner size="sm" message="Enumerating agents..." />
                 </div>
               ) : (
                 <select
                   value={selectedAgentId}
                   onChange={(e) => setSelectedAgentId(e.target.value)}
-                  aria-label="Select target agent"
-                  className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-cyan-500 focus:outline-none"
+                  className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
                 >
                   {agents.map((a) => (
                     <option key={a.id} value={a.id}>
@@ -129,29 +143,29 @@ export const AgentRunnerTab: React.FC = () => {
             </div>
 
             <div>
-              <label className="font-semibold text-slate-300">High-Level Task Directive</label>
+              <label className="text-slate-300 font-semibold block mb-1">Autonomous Task Directive</label>
               <textarea
                 rows={4}
                 required
                 value={taskPrompt}
                 onChange={(e) => setTaskPrompt(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 p-3 text-slate-200 focus:border-cyan-500 focus:outline-none"
+                className="w-full rounded border border-kali-border bg-kali-bg p-3 text-kali-cyan focus:border-kali-primary focus:outline-none font-sans text-xs"
               />
             </div>
 
             {/* Prompt Injection Simulation Switch */}
-            <div className="rounded-lg border border-amber-900/60 bg-amber-950/20 p-3">
+            <div className="rounded border border-kali-warning/50 bg-[#2E200C] p-3 text-slate-200">
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={simulateInjection}
                   onChange={(e) => setSimulateInjection(e.target.checked)}
-                  className="mt-0.5 rounded border-amber-700 text-amber-500 focus:ring-amber-500"
+                  className="mt-0.5 rounded border-kali-border bg-kali-bg text-kali-warning focus:ring-kali-warning"
                 />
                 <div>
-                  <span className="font-bold text-amber-300">Simulate Indirect Prompt Injection</span>
-                  <p className="mt-0.5 text-[11px] text-amber-400/80">
-                    Injects a malicious untrusted vendor document instruction commanding the agent to exfiltrate database records to an external HTTP sink. Observe AgentTrust blocking the leak!
+                  <span className="font-bold text-kali-warning font-mono">[INJECTION TESTBENCH]</span>
+                  <p className="mt-1 text-[11px] text-slate-300 font-sans leading-relaxed">
+                    Inject an untrusted third-party document command forcing the agent to exfiltrate database records to an external HTTP sink. Observe AgentTrust pre-flight interception!
                   </p>
                 </div>
               </label>
@@ -160,80 +174,82 @@ export const AgentRunnerTab: React.FC = () => {
             <button
               type="submit"
               disabled={running || agents.length === 0}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-600 px-4 py-2.5 font-semibold text-white shadow-lg shadow-cyan-600/20 hover:bg-cyan-500 disabled:opacity-50 transition-colors"
+              className="w-full flex items-center justify-center gap-2 rounded bg-kali-primary py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-kali-glow hover:bg-kali-secondaryBlue transition-colors disabled:opacity-50"
             >
               <Play className="h-4 w-4" />
-              {running ? 'Agent Dispatched & Running...' : 'Execute Agent Workflow'}
+              <span>{running ? 'Dispatching & Intercepting...' : 'Dispatch Agent Workflow'}</span>
             </button>
           </form>
         </div>
 
         {/* Live Step Execution Timeline */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 backdrop-blur lg:col-span-2 flex flex-col justify-between">
+        <div className="rounded-lg border border-kali-border bg-kali-card p-5 shadow-kali-card lg:col-span-2 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <Bot className="h-4 w-4 text-cyan-400" />
-                Interception & Security Guardrail Timeline
+            <div className="flex items-center justify-between border-b border-kali-border pb-3">
+              <h2 className="text-xs font-bold text-white font-mono flex items-center gap-2">
+                <Bot className="h-4 w-4 text-kali-cyan" />
+                <span>// GATEWAY_INTERCEPTION_TIMELINE</span>
               </h2>
               {workflowOutput && (
                 <span
                   className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
                     workflowOutput.status === 'COMPLETED'
-                      ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                      : 'bg-rose-950 text-rose-400 border border-rose-800'
+                      ? 'bg-[#0E2E22] text-kali-secure border border-[#155E42]'
+                      : 'bg-[#331418] text-kali-critical border border-[#7A1F26]'
                   }`}
                 >
-                  {workflowOutput.status}
+                  [{workflowOutput.status}]
                 </span>
               )}
             </div>
 
             {running ? (
               <div className="py-24">
-                <LoadingSpinner size="lg" message="Agent execution dispatched. Intercepting operations via Security Gateway..." />
+                <LoadingSpinner size="lg" message="AGENT TASK DISPATCHED. INTERCEPTING OPERATIONS VIA ZERO-TRUST GATEWAY..." />
               </div>
             ) : workflowOutput ? (
-              <div className="mt-4 space-y-4">
+              <div className="mt-4 space-y-3 font-mono text-xs">
                 {workflowOutput.steps.map((st) => (
-                  <div key={st.step} className="rounded-lg border border-slate-800 bg-slate-950 p-4 text-xs space-y-2">
+                  <div key={st.step} className="rounded border border-kali-border bg-kali-bg p-3.5 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300">
-                          Step {st.step}
+                        <span className="rounded bg-kali-card px-2 py-0.5 text-[10px] text-slate-300 border border-kali-border">
+                          STEP {st.step}
                         </span>
-                        <span className="font-bold text-white">{st.action}</span>
+                        <span className="font-bold text-white font-sans">{st.action}</span>
                       </div>
-                      <div>
-                        <DecisionBadge decision={st.decision} />
-                      </div>
+                      <DecisionBadge decision={st.decision} />
                     </div>
 
-                    <div className="font-mono text-slate-400 text-[11px]">
-                      Tool: <span className="text-cyan-300">{st.tool}</span> | Status:{' '}
-                      <span className="text-slate-300">{st.execution_status}</span>
+                    <div className="text-[11px] text-slate-400">
+                      TOOL: <span className="text-kali-cyan font-bold">{st.tool}</span> • STATUS:{' '}
+                      <span className="text-white">{st.execution_status}</span>
                     </div>
 
-                    <div className="text-slate-300 text-[11px]">
-                      <span className="font-semibold text-slate-400">Gateway Enforcement: </span>
+                    <div className="text-[11px] text-slate-300 font-sans">
+                      <span className="font-mono text-slate-400 font-bold">GATEWAY VERDICT: </span>
                       {st.reason}
                     </div>
 
                     {st.result_preview && (
                       <div className="mt-2">
-                        <span className="font-semibold text-slate-400 text-[11px]">Execution Result Preview:</span>
-                        <pre className="mt-1 max-h-32 overflow-auto rounded bg-slate-900 p-2 font-mono text-[10px] text-cyan-300 border border-slate-800">
-                          {JSON.stringify(st.result_preview, null, 2)}
-                        </pre>
+                        <span className="text-[10px] text-slate-400 font-bold block mb-1">Payload Output Preview:</span>
+                        <TerminalBox
+                          title={`STEP ${st.step} OUTPUT`}
+                          copyContent={JSON.stringify(st.result_preview, null, 2)}
+                          maxHeight="max-h-32"
+                        >
+                          <pre>{JSON.stringify(st.result_preview, null, 2)}</pre>
+                        </TerminalBox>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="flex h-64 flex-col items-center justify-center text-xs text-slate-500 space-y-2">
-                <Bot className="h-10 w-10 text-slate-600 mb-1" />
-                <p>Click &quot;Execute Agent Workflow&quot; on the left to watch AgentTrust intercept each step in real time.</p>
+              <div className="flex h-64 flex-col items-center justify-center text-xs text-slate-500 font-mono space-y-2">
+                <Bot className="h-8 w-8 text-slate-600 mb-1" />
+                <p>// CLICK &quot;DISPATCH AGENT WORKFLOW&quot; TO OBSERVE MULTI-STEP GUARDRAIL INTERCEPTION.</p>
               </div>
             )}
           </div>

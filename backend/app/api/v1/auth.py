@@ -22,6 +22,16 @@ async def register_user(req: UserCreate, db: AsyncSession = Depends(get_db)):
             detail="Username or email is already registered"
         )
 
+    # Prevent unauthenticated privilege escalation in production:
+    # If an ADMIN user already exists, public registration cannot create another ADMIN account
+    if req.role == UserRole.ADMIN and settings.ENVIRONMENT.lower() == "production":
+        admin_check = await db.execute(select(User).where(User.role == UserRole.ADMIN))
+        if admin_check.scalars().first():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Privilege Escalation Blocked: Administrator accounts cannot be created via public registration when an administrator already exists."
+            )
+
     user = User(
         id=str(uuid.uuid4()),
         username=req.username,
@@ -61,3 +71,22 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
         token_type="bearer",
         expires_in_minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
+
+
+@router.post("/token", response_model=Token, tags=["Authentication"])
+async def token_endpoint(
+    req: LoginRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """OAuth2 / JSON login endpoint returning access token."""
+    return await login(req, db)
+
+
+from app.api.deps import get_current_user
+
+
+@router.get("/me", response_model=UserResponse, tags=["Authentication"])
+async def get_my_profile(current_user: User = Depends(get_current_user)):
+    """Returns currently authenticated user profile and roles."""
+    return current_user
+

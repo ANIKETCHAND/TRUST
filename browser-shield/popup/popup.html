@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AgentTrust Browser Shield</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <span class="icon">🛡️</span>
+      <span class="title">AgentTrust</span>
+      <span class="subtitle">Browser Shield</span>
+    </div>
+    <span id="status-pill" class="pill pill-offline">OFFLINE</span>
+  </div>
+
+  <div class="section toggle-section">
+    <label class="switch-container">
+      <span>Active AI Workflow Protection</span>
+      <input type="checkbox" id="protection-toggle" checked>
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div id="enrollment-section" class="section">
+    <div class="section-title">Device Enrollment</div>
+    <p class="section-desc">Connect this browser instance to your enterprise AgentTrust Core Gateway.</p>
+    <input type="text" id="gateway-input" placeholder="http://localhost:8080/api/v1" />
+    <input type="password" id="secret-input" placeholder="Enrollment Secret Key" />
+    <button id="enroll-btn" class="btn btn-primary">Enroll Extension</button>
+    <div id="enroll-msg" class="msg"></div>
+  </div>
+
+  <div id="enrolled-details" class="section hidden">
+    <div class="section-title">Protected AI Services</div>
+    <div class="service-list">
+      <div class="service-item"><span class="bullet green">●</span> OpenAI ChatGPT (chatgpt.com)</div>
+      <div class="service-item"><span class="bullet green">●</span> Anthropic Claude (claude.ai)</div>
+      <div class="service-item"><span class="bullet green">●</span> AgentTrust Gateway (localhost:8080)</div>
+    </div>
+    <div class="token-info">Token: <code id="token-preview">None</code></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Recent Intercepted Violations</div>
+    <div id="blocked-list" class="blocked-list">
+      <div class="empty-state">No violations recorded. All outbound AI actions verified.</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>AgentTrust Browser Shield v0.2.0</span>
+    <a href="#" id="view-dashboard-link">Dashboard</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

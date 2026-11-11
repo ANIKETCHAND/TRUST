@@ -14,7 +14,9 @@ class IncidentSeverity(str, enum.Enum):
 
 class IncidentStatus(str, enum.Enum):
     OPEN = "OPEN"
+    ACKNOWLEDGED = "ACKNOWLEDGED"
     INVESTIGATING = "INVESTIGATING"
+    CONTAINED = "CONTAINED"
     RESOLVED = "RESOLVED"
     FALSE_POSITIVE = "FALSE_POSITIVE"
 

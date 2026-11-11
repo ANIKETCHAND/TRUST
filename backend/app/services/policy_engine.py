@@ -1,4 +1,5 @@
 import fnmatch
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 import httpx
@@ -8,12 +9,14 @@ from app.core.config import settings
 from app.models.agent import Agent, AgentStatus
 from app.models.audit import PolicyDecision
 from app.models.permission import Permission, PermissionEffect
+from app.models.policy import Policy, PolicyEffectDefault
 
 
 class PolicyEngine:
     """
     Deterministic Authorization Engine for AgentTrust.
     Enforces deny-by-default, explicit deny overrides, permission expiration,
+    enterprise Policy rules (filesystem prefixes, forbidden statements, HTTPS enforcement),
     resource pattern matching, agent status validation, and optional external OPA evaluations.
     """
 
@@ -52,7 +55,6 @@ class PolicyEngine:
                 res = await client.post(settings.OPA_URL, json={"input": payload})
                 if res.status_code == 200:
                     data = res.json()
-                    # OPA standard structure: {"result": {"allow": true}} or {"result": true}
                     result = data.get("result", False)
                     if isinstance(result, dict):
                         is_allowed = result.get("allow", False)
@@ -62,7 +64,6 @@ class PolicyEngine:
                 else:
                     return False, f"OPA returned status code {res.status_code} (fail-closed)"
         except Exception as e:
-            # Crucial security guarantee: FAIL CLOSED when policy service is unreachable
             return False, f"OPA service unreachable: {str(e)} (fail-closed)"
 
     async def evaluate(
@@ -72,7 +73,8 @@ class PolicyEngine:
         tool_name: str,
         operation: str,
         resource: str,
-        context: Dict[str, Any]
+        context: Dict[str, Any],
+        parameters: Optional[Dict[str, Any]] = None
     ) -> Tuple[PolicyDecision, str, Optional[str]]:
         """
         Determines whether the given agent is authorized to execute the specified operation.
@@ -89,12 +91,12 @@ class PolicyEngine:
 
         now = datetime.now(timezone.utc)
 
-        # 2. Query Applicable Active Permissions
-        # Retrieve permissions belonging specifically to this agent, or global permissions (agent_id is null)
+        # 3. Query Applicable Active Permissions (Enforcing Tenant Isolation)
         stmt = (
             select(Permission)
             .where(
                 or_(Permission.agent_id == agent.id, Permission.agent_id.is_(None)),
+                Permission.tenant_id == agent.tenant_id,
                 Permission.is_active == True,
                 or_(Permission.expires_at.is_(None), Permission.expires_at > now)
             )
@@ -122,13 +124,13 @@ class PolicyEngine:
             elif perm.effect == PermissionEffect.ALLOW:
                 matching_allows.append(perm)
 
-        # 3. Explicit DENY Rules Take Precedence
+        # 4. Explicit DENY Rules Take Precedence
         if matching_denies:
             deny_rule = matching_denies[0]
             reason = f"Explicit DENY policy '{deny_rule.id}' matches tool '{tool_name}', operation '{operation}', resource '{resource}'"
             return PolicyDecision.BLOCKED, reason, deny_rule.id
 
-        # 4. Check for ALLOW Rule
+        # 5. Check for ALLOW Rule (Deny-by-default for unauthorized agents)
         if not matching_allows:
             return (
                 PolicyDecision.BLOCKED,
@@ -138,7 +140,87 @@ class PolicyEngine:
 
         allow_rule = matching_allows[0]
 
-        # 5. Optional OPA Secondary Verification
+        # Dynamic Taint Containment Policy Enforcement
+        if context and context.get("tainted") is True:
+            # Tainted context cannot perform external egress (prevents indirect injection exfiltration)
+            if tool_name == "http_api_tool" and not context.get("allow_tainted_egress", False):
+                return (
+                    PolicyDecision.BLOCKED,
+                    f"Taint Policy Violation: Agent '{agent.name}' execution context is tainted by untrusted data. Outbound network egress is strictly blocked to prevent data exfiltration.",
+                    "taint_containment_policy"
+                )
+
+        # 6. Evaluate Active Enterprise Policies (SEC-04 Unification & Tenant Isolation)
+        stmt_policies = select(Policy).where(
+            Policy.tenant_id == agent.tenant_id,
+            Policy.is_active == True
+        )
+        res_policies = await db.execute(stmt_policies)
+        active_policies: List[Policy] = list(res_policies.scalars().all())
+
+        for policy in active_policies:
+            rules = policy.rules or {}
+
+            # Filesystem rules
+            if tool_name == "filesystem_tool" or "file" in tool_name:
+                fs_rules = rules.get("sandbox_filesystem", {})
+                allowed_prefixes = fs_rules.get("allowed_prefixes", [])
+                blocked_exts = fs_rules.get("blocked_extensions", [])
+
+                if any(resource.lower().endswith(ext.lower()) for ext in blocked_exts):
+                    return (
+                        PolicyDecision.BLOCKED,
+                        f"Policy '{policy.name}' violation: Target file extension is blocked by security policy.",
+                        policy.id
+                    )
+
+                if allowed_prefixes:
+                    clean_res = resource.replace("file:", "").lstrip("/").lstrip("\\")
+                    if not any(clean_res.startswith(p.lstrip("/").lstrip("\\")) for p in allowed_prefixes):
+                        return (
+                            PolicyDecision.BLOCKED,
+                            f"Policy '{policy.name}' violation: Resource path '{resource}' is outside allowed prefixes: {allowed_prefixes}",
+                            policy.id
+                        )
+
+            # Relational database rules
+            if tool_name in ("postgres_tool", "db_tool"):
+                db_rules = rules.get("database_access", {})
+                forbidden_stmts = db_rules.get("forbidden_statements", [])
+                sql = ""
+                if parameters and isinstance(parameters, dict):
+                    sql = parameters.get("sql", "")
+                elif context and isinstance(context, dict):
+                    sql = context.get("sql", "")
+
+                if forbidden_stmts and sql:
+                    for forbidden in forbidden_stmts:
+                        if re.search(rf"\b{re.escape(forbidden)}\b", sql, re.IGNORECASE):
+                            return (
+                                PolicyDecision.BLOCKED,
+                                f"Policy '{policy.name}' violation: Destructive statement '{forbidden}' forbidden by enterprise policy.",
+                                policy.id
+                            )
+
+            # Outbound HTTP rules
+            if tool_name == "http_api_tool":
+                http_rules = rules.get("http_external", {})
+                if http_rules.get("enforce_https") is True and resource.lower().startswith("http://"):
+                    return (
+                        PolicyDecision.BLOCKED,
+                        f"Policy '{policy.name}' violation: Insecure HTTP protocol strictly blocked. HTTPS is required by enterprise policy.",
+                        policy.id
+                    )
+                allowed_domains = http_rules.get("allowed_domains", [])
+                if allowed_domains:
+                    if not any(d.lower() in resource.lower() for d in allowed_domains):
+                        return (
+                            PolicyDecision.BLOCKED,
+                            f"Policy '{policy.name}' violation: Target URL '{resource}' is not in allowed domains: {allowed_domains}",
+                            policy.id
+                        )
+
+        # 6. Optional OPA Secondary Verification
         if settings.OPA_ENABLED:
             opa_input = {
                 "agent_id": agent.id,
@@ -152,7 +234,7 @@ class PolicyEngine:
             if not opa_allowed:
                 return PolicyDecision.BLOCKED, f"Denied by OPA policy engine: {opa_reason}", "opa_policy"
 
-        # 6. Granted Access
+        # 7. Granted Access
         reason = f"Authorized by permission '{allow_rule.id}' (pattern: {allow_rule.resource_pattern})"
         return PolicyDecision.ALLOWED, reason, allow_rule.id
 

@@ -4,9 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.agent import Agent
 from app.models.policy import Policy, PolicyEffectDefault, PolicyVersion
+from app.models.user import User
 from app.services.policy_engine import policy_engine
 
 router = APIRouter()
@@ -35,7 +37,11 @@ class PolicyTestRequest(BaseModel):
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, tags=["Policies"])
-async def create_policy(req: PolicyCreateRequest, db: AsyncSession = Depends(get_db)):
+async def create_policy(
+    req: PolicyCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Creates a versioned security policy."""
     policy = Policy(
         id=str(uuid.uuid4()),
@@ -64,7 +70,10 @@ async def create_policy(req: PolicyCreateRequest, db: AsyncSession = Depends(get
 
 
 @router.get("", tags=["Policies"])
-async def list_policies(db: AsyncSession = Depends(get_db)):
+async def list_policies(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Lists all security policies with version history."""
     stmt = select(Policy).order_by(Policy.created_at.desc())
     res = await db.execute(stmt)
@@ -74,7 +83,7 @@ async def list_policies(db: AsyncSession = Depends(get_db)):
     if not policies:
         baseline_rules = {
             "sandbox_filesystem": {
-                "allowed_prefixes": ["reports/", "public/", "temp/"],
+                "allowed_prefixes": ["reports/", "public/", "temp/", "data/"],
                 "blocked_extensions": [".pem", ".key", ".env", ".bashrc"]
             },
             "database_access": {
@@ -104,7 +113,10 @@ async def list_policies(db: AsyncSession = Depends(get_db)):
 
 @router.put("/{policy_id}", tags=["Policies"])
 async def update_policy(
-    policy_id: str, req: PolicyUpdateRequest, db: AsyncSession = Depends(get_db)
+    policy_id: str,
+    req: PolicyUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Updates an existing policy and commits an immutable PolicyVersion record."""
     policy = await db.get(Policy, policy_id)
@@ -125,7 +137,7 @@ async def update_policy(
             policy_id=policy.id,
             version=policy.version,
             rules=req.rules,
-            changed_by="admin",
+            changed_by=current_user.username,
             change_summary=req.change_summary
         )
         db.add(ver)
@@ -136,7 +148,11 @@ async def update_policy(
 
 
 @router.post("/test", tags=["Policies"])
-async def test_policy_evaluation(req: PolicyTestRequest, db: AsyncSession = Depends(get_db)):
+async def test_policy_evaluation(
+    req: PolicyTestRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Simulates a dry-run policy evaluation for a target agent and operation
     without executing the tool or producing side-effects.

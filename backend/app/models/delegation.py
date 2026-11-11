@@ -21,6 +21,9 @@ class Delegation(TimeStampedModel):
     child_agent_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    parent_delegation_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("delegations.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     # Subscoped permissions granted to the child
     scope: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     # Maximum delegation depth permitted downstream

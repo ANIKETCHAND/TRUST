@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.models.audit import AuditEvent, PolicyDecision
 from app.models.incident import IncidentSeverity, IncidentStatus, SecurityIncident
 from app.schemas.audit import AuditEventResponse
+from app.services.audit_service import audit_service
 
 router = APIRouter()
 
@@ -17,6 +18,12 @@ router = APIRouter()
 class IncidentUpdateRequest(BaseModel):
     status: Optional[IncidentStatus] = None
     resolution_notes: Optional[str] = Field(None, min_length=3)
+
+
+@router.get("/verify-chain", tags=["Audit"])
+async def verify_audit_chain(db: AsyncSession = Depends(get_db)):
+    """Cryptographically verifies the HMAC hash chain integrity of all audit events."""
+    return await audit_service.verify_chain(db)
 
 
 @router.get("", response_model=List[AuditEventResponse], tags=["Audit"])
