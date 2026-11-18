@@ -162,6 +162,27 @@ class InputRails:
                     risk_score += 25.0
                     break
 
+        # 4. Machine Learning Cybercrime & Regulatory Threat Classification
+        try:
+            try:
+                from app.services.ml_security_model import MLSecurityModelService
+            except ImportError:
+                from backend.app.services.ml_security_model import MLSecurityModelService
+            ml_svc = MLSecurityModelService.get_instance()
+            ml_res = ml_svc.predict(raw_text_corpus)
+            if ml_res.get("is_threat"):
+                score_pts = ml_res["threat_score"] * 55.0
+                findings.append({
+                    "category": f"ML_{ml_res['category']}",
+                    "pattern": f"CrossX ML Security Detection ({ml_res['threat_percentage']}) - {ml_res['category']}",
+                    "severity": ml_res["severity"],
+                    "regulations": ml_res["violated_regulations"],
+                    "action": ml_res["recommended_action"]
+                })
+                risk_score += score_pts
+        except Exception:
+            pass
+
         risk_score = min(risk_score, 100.0)
 
         threat_level = "CLEAN"

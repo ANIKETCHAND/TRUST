@@ -18,6 +18,7 @@ from app.api.v1 import (
     attribution,
     active_defense,
     reports,
+    ml_security,
 )
 
 api_router = APIRouter()
@@ -40,3 +41,4 @@ api_router.include_router(integrations.router, prefix="/integrations")
 api_router.include_router(attribution.router)
 api_router.include_router(active_defense.router)
 api_router.include_router(reports.router)
+api_router.include_router(ml_security.router)
