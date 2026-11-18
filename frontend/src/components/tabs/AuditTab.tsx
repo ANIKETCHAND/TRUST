@@ -62,47 +62,42 @@ export const AuditTab: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-kali-border pb-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-center">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold text-kali-primary">// THREAT_OPERATIONS</span>
-            <span className="text-slate-500 font-mono">/</span>
-            <span className="font-mono text-xs text-kali-cyan">AUDIT_LOGS</span>
-          </div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 mt-1">
-            <FileCheck className="h-6 w-6 text-kali-primary" />
-            Security Audit Trail & Compliance Verification
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
+            <FileCheck className="h-6 w-6 text-kali-cyan" />
+            Security Audit Trail
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Cryptographically bounded, persistent audit log recording every tool invocation, policy decision, latency metric, and context hash.
+          <p className="text-xs text-slate-400 mt-1">
+            Cryptographically bounded audit log recording tool invocations, policy decisions, and context hashes.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           <a
             href={api.exportAuditUrl('csv')}
-            download="agenttrust_audit.csv"
-            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:text-white transition-colors"
+            download="crossx_audit.csv"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-slate-200 hover:border-kali-cyan/40 hover:bg-white/[0.06] hover:text-white transition-all"
           >
             <Download className="h-3.5 w-3.5 text-kali-cyan" />
             <span>CSV</span>
           </a>
           <a
             href={api.exportAuditUrl('json')}
-            download="agenttrust_audit.json"
-            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:text-white transition-colors"
+            download="crossx_audit.json"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-slate-200 hover:border-kali-cyan/40 hover:bg-white/[0.06] hover:text-white transition-all"
           >
-            <Download className="h-3.5 w-3.5 text-kali-primary" />
+            <Download className="h-3.5 w-3.5 text-kali-cyan" />
             <span>JSON</span>
           </a>
           <button
             onClick={fetchAudit}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:bg-kali-elevated transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-slate-200 hover:border-kali-cyan/40 hover:bg-white/[0.06] hover:text-white transition-all disabled:opacity-50"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-kali-primary ${loading ? 'animate-spin' : ''}`} />
-            <span>SYNC</span>
+            <RefreshCw className={`h-3.5 w-3.5 text-kali-cyan ${loading ? 'animate-spin' : ''}`} />
+            <span>Sync</span>
           </button>
         </div>
       </div>
@@ -116,61 +111,59 @@ export const AuditTab: React.FC = () => {
           className="max-w-md w-full"
         />
 
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-slate-400">DECISION:</span>
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={decisionFilter}
             onChange={(e) => setDecisionFilter(e.target.value)}
-            className="rounded border border-kali-border bg-kali-bg px-2.5 py-1.5 font-mono text-xs text-white focus:border-kali-primary focus:outline-none"
+            className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white focus:border-kali-primary focus:outline-none transition-colors"
           >
-            <option value="">ALL DECISIONS</option>
-            <option value="ALLOWED">ALLOWED CALLS</option>
-            <option value="BLOCKED">BLOCKED VIOLATIONS</option>
+            <option value="" className="bg-[#0a0d14] text-white">All Decisions</option>
+            <option value="ALLOWED" className="bg-[#0a0d14] text-white">Allowed</option>
+            <option value="BLOCKED" className="bg-[#0a0d14] text-white">Blocked</option>
           </select>
 
-          <span className="font-mono text-xs text-slate-400 ml-2">TOOL:</span>
           <select
             value={toolFilter}
             onChange={(e) => setToolFilter(e.target.value)}
-            className="rounded border border-kali-border bg-kali-bg px-2.5 py-1.5 font-mono text-xs text-white focus:border-kali-primary focus:outline-none"
+            className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white focus:border-kali-primary focus:outline-none transition-colors"
           >
-            <option value="">ALL TOOLS</option>
-            <option value="filesystem_tool">filesystem_tool</option>
-            <option value="postgres_tool">postgres_tool</option>
-            <option value="http_api_tool">http_api_tool</option>
-            <option value="mcp_tool">mcp_tool</option>
+            <option value="" className="bg-[#0a0d14] text-white">All Tools</option>
+            <option value="filesystem_tool" className="bg-[#0a0d14] text-white">filesystem_tool</option>
+            <option value="postgres_tool" className="bg-[#0a0d14] text-white">postgres_tool</option>
+            <option value="http_api_tool" className="bg-[#0a0d14] text-white">http_api_tool</option>
+            <option value="mcp_tool" className="bg-[#0a0d14] text-white">mcp_tool</option>
           </select>
         </div>
       </div>
 
       {/* Audit Events Table */}
       {loading && events.length === 0 ? (
-        <LoadingSpinner message="TRAVERSING AUDIT HASH CHAIN..." />
+        <LoadingSpinner message="Parsing audit trail..." />
       ) : (
-        <div className="rounded-lg border border-kali-border bg-kali-card overflow-hidden shadow-kali-card">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden shadow-2xl backdrop-blur-xl">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono">
-              <thead className="border-b border-kali-border bg-kali-bg/95 text-[11px] text-slate-400">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-white/10 text-[11px] text-slate-400 font-medium">
                 <tr>
-                  <th className="py-3 px-3.5 font-semibold">Timestamp</th>
-                  <th className="py-3 px-3.5 font-semibold">Request ID</th>
-                  <th className="py-3 px-3.5 font-semibold">Principal Agent</th>
-                  <th className="py-3 px-3.5 font-semibold">Tool & Op</th>
-                  <th className="py-3 px-3.5 font-semibold">Target Resource</th>
-                  <th className="py-3 px-3.5 font-semibold">Decision</th>
-                  <th className="py-3 px-3.5 font-semibold">Duration</th>
-                  <th className="py-3 px-3.5 font-semibold text-right">Inspect</th>
+                  <th className="py-3.5 px-4">Timestamp</th>
+                  <th className="py-3.5 px-4">Request ID</th>
+                  <th className="py-3.5 px-4">Principal Agent</th>
+                  <th className="py-3.5 px-4">Tool & Operation</th>
+                  <th className="py-3.5 px-4">Target Resource</th>
+                  <th className="py-3.5 px-4">Decision</th>
+                  <th className="py-3.5 px-4">Duration</th>
+                  <th className="py-3.5 px-4 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-kali-border text-slate-300">
+              <tbody className="divide-y divide-white/5 text-slate-300">
                 {filteredEvents.map((ev) => (
-                  <tr key={ev.id} className="hover:bg-kali-elevated/40 transition-colors">
-                    <td className="py-2.5 px-3.5 text-slate-400 text-[11px]">
+                  <tr key={ev.id} className="hover:bg-white/[0.03] transition-colors">
+                    <td className="py-3 px-4 text-slate-400 text-[11px]">
                       {formatTimestamp(ev.created_at)}
                     </td>
-                    <td className="py-2.5 px-3.5">
+                    <td className="py-3 px-4">
                       <div className="flex items-center gap-1.5">
-                        <span className="rounded bg-kali-bg px-1.5 py-0.5 border border-kali-border text-slate-400 text-[11px]">
+                        <span className="rounded-md bg-white/[0.04] px-2 py-0.5 border border-white/10 text-slate-300 font-mono text-[11px]">
                           {truncateId(ev.request_id, 10)}
                         </span>
                         <button
@@ -186,26 +179,26 @@ export const AuditTab: React.FC = () => {
                         </button>
                       </div>
                     </td>
-                    <td className="py-2.5 px-3.5 font-sans font-semibold text-white">
+                    <td className="py-3 px-4 font-medium text-white">
                       {ev.agent_name || truncateId(ev.agent_id)}
                     </td>
-                    <td className="py-2.5 px-3.5 text-kali-cyan font-bold">
+                    <td className="py-3 px-4 text-kali-cyan font-mono text-[11px]">
                       {ev.tool_name}:{ev.operation}
                     </td>
                     <td
-                      className="py-2.5 px-3.5 text-slate-300 max-w-[220px] truncate"
+                      className="py-3 px-4 text-slate-300 max-w-[220px] truncate font-mono text-[11px]"
                       title={ev.target_resource}
                     >
                       {ev.target_resource}
                     </td>
-                    <td className="py-2.5 px-3.5 font-sans">
+                    <td className="py-3 px-4">
                       <DecisionBadge decision={ev.decision} />
                     </td>
-                    <td className="py-2.5 px-3.5 text-slate-400">{formatLatency(ev.execution_duration_ms)}</td>
-                    <td className="py-2.5 px-3.5 text-right">
+                    <td className="py-3 px-4 text-slate-400 font-mono text-[11px]">{formatLatency(ev.execution_duration_ms)}</td>
+                    <td className="py-3 px-4 text-right">
                       <button
                         onClick={() => setSelectedEvent(ev)}
-                        className="inline-flex items-center gap-1 rounded border border-kali-border bg-kali-elevated px-2 py-1 text-[11px] text-slate-300 hover:border-kali-primary hover:text-white transition-colors"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-200 hover:border-kali-primary/50 hover:bg-white/[0.06] hover:text-white transition-colors"
                       >
                         <Eye className="h-3.5 w-3.5 text-kali-cyan" />
                         <span>Inspect</span>
@@ -215,8 +208,8 @@ export const AuditTab: React.FC = () => {
                 ))}
                 {filteredEvents.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-500 font-mono">
-                      // ZERO AUDIT LOGS MATCHING QUERY FILTER
+                    <td colSpan={8} className="py-12 text-center text-slate-500 text-xs">
+                      No audit events found matching query
                     </td>
                   </tr>
                 )}
@@ -230,56 +223,56 @@ export const AuditTab: React.FC = () => {
       <Modal
         isOpen={!!selectedEvent}
         onClose={() => setSelectedEvent(null)}
-        title="IMMUTABLE AUDIT RECORD"
-        subtitle={`REQUEST: ${selectedEvent?.request_id || ''}`}
+        title="Audit Record"
+        subtitle={`Request ID: ${selectedEvent?.request_id || ''}`}
         maxWidth="2xl"
       >
         {selectedEvent && (
-          <div className="space-y-4 font-mono text-xs">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 rounded border border-kali-border bg-kali-bg p-3">
+          <div className="space-y-4 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
               <div>
-                <span className="text-slate-400 text-[10px] uppercase block">Principal Agent</span>
-                <span className="text-white font-bold">{selectedEvent.agent_name || selectedEvent.agent_id}</span>
+                <span className="text-slate-400 text-[10px] uppercase font-semibold block">Principal Agent</span>
+                <span className="text-white font-semibold mt-0.5 block">{selectedEvent.agent_name || selectedEvent.agent_id}</span>
               </div>
               <div>
-                <span className="text-slate-400 text-[10px] uppercase block">Decision</span>
-                <div className="mt-0.5">
+                <span className="text-slate-400 text-[10px] uppercase font-semibold block">Decision</span>
+                <div className="mt-1">
                   <DecisionBadge decision={selectedEvent.decision} />
                 </div>
               </div>
               <div>
-                <span className="text-slate-400 text-[10px] uppercase block">Duration</span>
-                <span className="text-kali-cyan font-bold">{formatLatency(selectedEvent.execution_duration_ms)}</span>
+                <span className="text-slate-400 text-[10px] uppercase font-semibold block">Duration</span>
+                <span className="text-kali-cyan font-mono text-[11px] mt-0.5 block">{formatLatency(selectedEvent.execution_duration_ms)}</span>
               </div>
               <div>
-                <span className="text-slate-400 text-[10px] uppercase block">Target Tool</span>
-                <span className="text-kali-primary font-bold">{selectedEvent.tool_name}</span>
+                <span className="text-slate-400 text-[10px] uppercase font-semibold block">Target Tool</span>
+                <span className="text-kali-primary font-mono text-[11px] mt-0.5 block">{selectedEvent.tool_name}</span>
               </div>
               <div>
-                <span className="text-slate-400 text-[10px] uppercase block">Operation</span>
-                <span className="text-slate-200">{selectedEvent.operation}</span>
+                <span className="text-slate-400 text-[10px] uppercase font-semibold block">Operation</span>
+                <span className="text-slate-200 font-mono text-[11px] mt-0.5 block">{selectedEvent.operation}</span>
               </div>
               <div>
-                <span className="text-slate-400 text-[10px] uppercase block">Status</span>
-                <span className="text-slate-300">{selectedEvent.execution_status}</span>
+                <span className="text-slate-400 text-[10px] uppercase font-semibold block">Status</span>
+                <span className="text-slate-300 mt-0.5 block">{selectedEvent.execution_status}</span>
               </div>
-              <div className="col-span-2 sm:col-span-3">
-                <span className="text-slate-400 text-[10px] uppercase block">Target Resource</span>
-                <span className="text-white break-all">{selectedEvent.target_resource}</span>
+              <div className="col-span-2 sm:col-span-3 pt-2 border-t border-white/10">
+                <span className="text-slate-400 text-[10px] uppercase font-semibold block">Target Resource</span>
+                <span className="text-white break-all font-mono text-[11px] mt-0.5 block">{selectedEvent.target_resource}</span>
               </div>
             </div>
 
             <div>
-              <span className="text-slate-300 font-semibold block mb-1">Decision Reasoning</span>
-              <div className="rounded border border-kali-border bg-kali-bg p-3 text-slate-300 leading-relaxed">
+              <span className="text-slate-300 font-semibold block mb-1.5">Decision Reasoning</span>
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3.5 text-slate-300 leading-relaxed">
                 {selectedEvent.decision_reason}
               </div>
             </div>
 
             <div>
-              <span className="text-slate-300 font-semibold block mb-1">Sanitized Context Payload</span>
+              <span className="text-slate-300 font-semibold block mb-1.5">Context Payload</span>
               <TerminalBox
-                title={`AUDIT PAYLOAD // ${truncateId(selectedEvent.request_id, 8)}`}
+                title={`Payload: ${truncateId(selectedEvent.request_id, 8)}`}
                 copyContent={JSON.stringify(selectedEvent.context_metadata || {}, null, 2)}
                 maxHeight="max-h-48"
               >

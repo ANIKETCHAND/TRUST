@@ -50,7 +50,7 @@ async def list_audit_events(
 
 @router.get("/export", tags=["Audit"])
 async def export_audit_events(
-    format: str = Query("json", enum=["json", "csv"]),
+    format: str = Query("json", pattern="^(json|csv)$"),
     limit: int = Query(500, ge=1, le=5000),
     db: AsyncSession = Depends(get_db)
 ):

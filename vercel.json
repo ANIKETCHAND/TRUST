@@ -1,0 +1,39 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
+  "rewrites": [
+    {
+      "source": "/api/health",
+      "destination": "/api/index.py?_url=/api/health"
+    },
+    {
+      "source": "/api/v1/:path*",
+      "destination": "/api/index.py?_url=/api/v1/:path*"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index.py?_url=/api/:path*"
+    },
+    {
+      "source": "/api",
+      "destination": "/api/index.py?_url=/api/health"
+    },
+    {
+      "source": "/docs",
+      "destination": "/api/index.py?_url=/docs"
+    },
+    {
+      "source": "/redoc",
+      "destination": "/api/index.py?_url=/redoc"
+    },
+    {
+      "source": "/openapi.json",
+      "destination": "/api/index.py?_url=/openapi.json"
+    },
+    {
+      "source": "/((?!api|docs|redoc|openapi.json|spark-badge\\.html|assets|favicon\\.svg|icons\\.svg).*)$",
+      "destination": "/index.html"
+    }
+  ]
+}

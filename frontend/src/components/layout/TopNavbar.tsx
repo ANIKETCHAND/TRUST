@@ -10,9 +10,11 @@ import {
   Bell,
   ChevronDown,
   ShieldAlert,
+  Globe,
 } from 'lucide-react';
 import { useSecurityPlatform, type ActiveTabId } from '../../context/SecurityPlatformContext';
 import { useAuth } from '../../context/AuthContext';
+import { useRouter } from '../../context/RouterContext';
 import { api } from '../../services/api.client';
 import { SeverityBadge } from '../ui/Badge';
 import { formatTimeOnly, truncateId } from '../../utils/formatters';
@@ -23,23 +25,23 @@ interface TabMeta {
 }
 
 const tabMetaMap: Record<ActiveTabId, TabMeta> = {
-  overview: { title: 'Security Posture Overview', category: 'OVERVIEW' },
-  'threat-map': { title: 'Threat Radar & Geolocation', category: 'OVERVIEW' },
-  'active-defense': { title: 'Active Defense & Process Killer', category: 'OVERVIEW' },
-  agents: { title: 'Agent Management & Identity', category: 'AGENT_SECURITY' },
-  monitor: { title: 'Gateway Telemetry Monitor', category: 'AGENT_SECURITY' },
-  tools: { title: 'Protected Tool Registry', category: 'AGENT_SECURITY' },
-  policies: { title: 'Deterministic Policy Engine', category: 'AGENT_SECURITY' },
-  delegations: { title: 'Delegation Control Graph', category: 'AGENT_SECURITY' },
-  provenance: { title: 'Data Provenance & Lineage', category: 'AGENT_SECURITY' },
-  'agent-runner': { title: 'Agent Sandbox Playground', category: 'AGENT_SECURITY' },
-  incidents: { title: 'SOC Incident Center', category: 'THREAT_OPERATIONS' },
-  reports: { title: 'Forensic Dossier & Threat Intel', category: 'THREAT_OPERATIONS' },
-  audit: { title: 'Security Audit Logs & Events', category: 'THREAT_OPERATIONS' },
-  'browser-shield': { title: 'Browser Shield DLP Extension', category: 'PROTECTION' },
-  endpoints: { title: 'Endpoint Security Sentry', category: 'PROTECTION' },
-  integrations: { title: 'Integration Center & Defense Mesh', category: 'PROTECTION' },
-  settings: { title: 'System Health & Settings', category: 'ADMINISTRATION' },
+  overview: { title: 'Security Overview', category: 'Overview' },
+  'threat-map': { title: 'Threat Radar & Geolocation', category: 'Overview' },
+  'active-defense': { title: 'Active Defense', category: 'Overview' },
+  agents: { title: 'Agent Management', category: 'Agent Security' },
+  monitor: { title: 'Gateway Monitor', category: 'Agent Security' },
+  tools: { title: 'Tool Registry', category: 'Agent Security' },
+  policies: { title: 'Policy Engine', category: 'Agent Security' },
+  delegations: { title: 'Delegation Control', category: 'Agent Security' },
+  provenance: { title: 'Provenance Explorer', category: 'Agent Security' },
+  'agent-runner': { title: 'Agent Playground', category: 'Agent Security' },
+  incidents: { title: 'Incident Center', category: 'Threat Operations' },
+  reports: { title: 'Forensic Dossiers & Reports', category: 'Threat Operations' },
+  audit: { title: 'Security Audit Logs', category: 'Threat Operations' },
+  'browser-shield': { title: 'Browser Shield', category: 'Protection' },
+  endpoints: { title: 'Endpoint Security', category: 'Protection' },
+  integrations: { title: 'Integrations', category: 'Protection' },
+  settings: { title: 'Settings & Health', category: 'System' },
 };
 
 export const TopNavbar: React.FC = () => {
@@ -56,6 +58,7 @@ export const TopNavbar: React.FC = () => {
     setSelectedOrg,
   } = useSecurityPlatform();
   const { user, logout } = useAuth();
+  const { navigate } = useRouter();
 
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
@@ -86,70 +89,71 @@ export const TopNavbar: React.FC = () => {
   }, []);
 
   const currentMeta = tabMetaMap[activeTab] || {
-    title: activeTab.toUpperCase(),
-    category: 'CONSOLE',
+    title: activeTab,
+    category: 'Console',
   };
 
   const isHealthOk = health?.status === 'healthy' || health?.status === 'ok';
   const unreadAlertsCount = notifications.filter((n) => n.status === 'OPEN' || n.status === 'INVESTIGATING').length;
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-kali-border bg-kali-bg/95 px-4 md:px-6 backdrop-blur-md shrink-0 z-30 select-none">
-      {/* Left: Mobile toggle & Technical Breadcrumbs */}
+    <header className="flex h-16 items-center justify-between border-b border-white/10 bg-black/80 px-6 backdrop-blur-xl shrink-0 z-30 select-none">
+      {/* Left: Mobile toggle & Clean Breadcrumbs */}
       <div className="flex items-center gap-3">
         <button
           onClick={() => setIsMobileMenuOpen(true)}
-          className="flex md:hidden p-1.5 rounded border border-kali-border bg-kali-card text-slate-300 hover:text-white"
+          className="flex md:hidden p-2 rounded-lg border border-white/10 bg-white/[0.03] text-slate-300 hover:text-white"
           aria-label="Open navigation menu"
         >
           <Menu className="h-4 w-4" />
         </button>
 
-        <div className="flex items-center gap-1.5 font-mono text-xs">
-          <span className="text-slate-400 font-semibold tracking-wide hidden sm:inline">
-            AGENTTRUST //
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-slate-400 font-medium hidden sm:inline">
+            CrossX
           </span>
-          <span className="text-kali-primary font-bold tracking-wide">
+          <span className="text-slate-600">/</span>
+          <span className="text-kali-cyan font-medium">
             {currentMeta.category}
           </span>
-          <span className="text-slate-400">/</span>
+          <span className="text-slate-600">/</span>
           <h1 className="text-xs font-semibold text-white tracking-wide truncate max-w-[200px] sm:max-w-xs md:max-w-none">
             {currentMeta.title}
           </h1>
         </div>
       </div>
 
-      {/* Center: Command Palette Trigger Button / Search */}
-      <div className="hidden lg:flex items-center max-w-xs w-full mx-4">
+      {/* Center: Search / Command Palette */}
+      <div className="hidden lg:flex items-center max-w-sm w-full mx-6">
         <button
           type="button"
           onClick={() => setIsSearchOpen(true)}
-          className="w-full flex items-center justify-between rounded-md border border-kali-border bg-kali-card/80 py-1.5 px-3 font-mono text-xs text-slate-400 hover:border-kali-primary hover:bg-kali-secondary hover:text-white transition-colors"
+          className="w-full flex items-center justify-between rounded-full border border-white/10 bg-white/[0.03] py-2 px-4 text-xs text-slate-400 hover:border-white/20 hover:bg-white/[0.05] hover:text-slate-200 transition-all"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <Search className="h-3.5 w-3.5 text-kali-cyan" />
-            <span>Search or jump...</span>
+            <span>Search or jump to...</span>
           </div>
-          <kbd className="rounded border border-kali-border bg-kali-bg px-1.5 py-0.5 text-[10px] text-slate-400">
+          <kbd className="rounded border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-slate-400">
             Ctrl+K
           </kbd>
         </button>
       </div>
 
-      {/* Right Controls: Telemetry, Refresh, Notifications, Gateway Health, Profile */}
-      <div className="flex items-center gap-2.5 font-mono text-xs">
+      {/* Right Controls */}
+      <div className="flex items-center gap-2.5 text-xs">
         {/* Gateway Health Indicator */}
         <div
-          className="hidden sm:flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-2.5 py-1 text-[11px]"
+          className="hidden sm:flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs"
           title="Gateway Enforcer Telemetry Status"
         >
           <span
             className={`h-2 w-2 rounded-full ${
-              isHealthOk ? 'bg-kali-secure animate-pulse' : 'bg-kali-warning'
+              isHealthOk ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
             }`}
           />
-          <span className="text-slate-400 font-mono">GW:</span>
-          <span className={`font-bold font-mono ${isHealthOk ? 'text-kali-secure' : 'text-kali-warning'}`}>
+          <span className="text-slate-400">Gateway:</span>
+          <span className={`font-semibold ${isHealthOk ? 'text-emerald-400' : 'text-amber-400'}`}>
             {health?.status ? health.status.toUpperCase() : 'ONLINE'}
           </span>
         </div>
@@ -157,38 +161,48 @@ export const TopNavbar: React.FC = () => {
         {/* Live Polling Toggle */}
         <button
           onClick={() => setAutoRefresh(!autoRefresh)}
-          className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-[11px] border font-mono transition-colors ${
+          className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs border transition-all ${
             autoRefresh
-              ? 'border-kali-secure/50 bg-[#0E2E22] text-kali-secure'
-              : 'border-kali-border bg-kali-card text-slate-400'
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+              : 'border-white/10 bg-white/[0.03] text-slate-400 hover:text-white'
           }`}
-          title="Toggle telemetry background polling"
+          title="Toggle telemetry live polling"
         >
-          <Activity className={`h-3 w-3 ${autoRefresh ? 'animate-pulse' : ''}`} />
-          <span className="hidden md:inline">{autoRefresh ? 'LIVE POLLING' : 'PAUSED'}</span>
+          <Activity className={`h-3.5 w-3.5 ${autoRefresh ? 'animate-pulse' : ''}`} />
+          <span className="hidden md:inline font-medium">{autoRefresh ? 'Live' : 'Paused'}</span>
         </button>
 
         {/* Global Manual Refresh Button */}
         <button
           onClick={triggerGlobalRefresh}
-          className="flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-2.5 py-1 text-[11px] text-slate-300 hover:border-kali-primary hover:bg-kali-elevated hover:text-white transition-colors"
+          className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-300 hover:border-white/20 hover:bg-white/[0.06] hover:text-white transition-all"
           title="Trigger global refresh across all telemetry widgets"
         >
-          <RefreshCw className="h-3 w-3 text-kali-cyan" />
-          <span className="hidden md:inline">SYNC</span>
+          <RefreshCw className="h-3.5 w-3.5 text-kali-cyan" />
+          <span className="hidden md:inline font-medium">Sync</span>
+        </button>
+
+        {/* Return to Landing Page Button */}
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-300 hover:border-kali-cyan/40 hover:text-white transition-all"
+          title="Return to CrossX Landing Page"
+        >
+          <Globe className="h-3.5 w-3.5 text-kali-cyan" />
+          <span className="hidden lg:inline font-medium">Landing</span>
         </button>
 
         {/* Notifications Center */}
         <div className="relative">
           <button
             onClick={() => setShowNotifDropdown(!showNotifDropdown)}
-            className="relative flex items-center justify-center h-8 w-8 rounded border border-kali-border bg-kali-card text-slate-300 hover:border-kali-primary hover:text-white transition-colors"
-            title="SOC Security Alerts & Notifications"
+            className="relative flex items-center justify-center h-9 w-9 rounded-full border border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:text-white transition-all"
+            title="Security Notifications"
             aria-label="Security Notifications"
           >
-            <Bell className="h-3.5 w-3.5 text-kali-cyan" />
+            <Bell className="h-4 w-4 text-slate-300" />
             {unreadAlertsCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-kali-critical text-[9px] font-bold text-white shadow-sm">
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-sm">
                 {unreadAlertsCount}
               </span>
             )}
@@ -196,18 +210,18 @@ export const TopNavbar: React.FC = () => {
 
           {showNotifDropdown && (
             <div
-              className="absolute right-0 mt-2 w-80 rounded-lg border border-kali-border bg-kali-secondary p-2 shadow-2xl z-50 animate-fade-in font-mono"
+              className="absolute right-0 mt-2 w-80 rounded-2xl border border-white/10 bg-[#0a0d14]/95 p-3 shadow-2xl z-50 animate-fade-in backdrop-blur-2xl"
               onMouseLeave={() => setShowNotifDropdown(false)}
             >
-              <div className="flex items-center justify-between border-b border-kali-border pb-2 px-2 pt-1">
-                <div className="text-[11px] font-bold text-white flex items-center gap-1.5">
-                  <ShieldAlert className="h-3.5 w-3.5 text-kali-critical" />
-                  <span>SECURITY NOTIFICATIONS</span>
+              <div className="flex items-center justify-between border-b border-white/10 pb-2.5 px-2">
+                <div className="text-xs font-semibold text-white flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-rose-400" />
+                  <span>Security Alerts</span>
                 </div>
-                <span className="text-[10px] text-kali-cyan font-bold">{unreadAlertsCount} ACTIVE</span>
+                <span className="text-[11px] text-kali-cyan font-medium">{unreadAlertsCount} Active</span>
               </div>
 
-              <div className="divide-y divide-kali-border/50 max-h-64 overflow-y-auto py-1">
+              <div className="divide-y divide-white/5 max-h-64 overflow-y-auto py-1">
                 {notifications.slice(0, 4).map((notif) => (
                   <div
                     key={notif.id}
@@ -215,35 +229,35 @@ export const TopNavbar: React.FC = () => {
                       setShowNotifDropdown(false);
                       setActiveTab('incidents');
                     }}
-                    className="p-2 hover:bg-kali-card/80 cursor-pointer rounded transition-colors"
+                    className="p-2.5 hover:bg-white/[0.04] cursor-pointer rounded-xl transition-all"
                   >
                     <div className="flex items-center justify-between gap-1">
                       <SeverityBadge severity={notif.severity} />
-                      <span className="text-[10px] text-slate-400">{formatTimeOnly(notif.created_at)}</span>
+                      <span className="text-[10px] text-slate-500">{formatTimeOnly(notif.created_at)}</span>
                     </div>
-                    <div className="font-semibold text-white text-xs mt-1 truncate">{notif.title}</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5 truncate">
-                      Agent: {truncateId(notif.agent_id || 'system', 8)} • Status: {notif.status}
+                    <div className="font-medium text-white text-xs mt-1.5 truncate">{notif.title}</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5 truncate">
+                      Agent: {truncateId(notif.agent_id || 'system', 8)}
                     </div>
                   </div>
                 ))}
 
                 {notifications.length === 0 && (
-                  <div className="py-6 text-center text-[11px] text-slate-500">
-                    No open security notifications.
+                  <div className="py-8 text-center text-xs text-slate-500">
+                    No active notifications.
                   </div>
                 )}
               </div>
 
-              <div className="border-t border-kali-border pt-1.5 px-1 flex justify-between items-center text-[10px]">
+              <div className="border-t border-white/10 pt-2 px-1 flex justify-center">
                 <button
                   onClick={() => {
                     setShowNotifDropdown(false);
                     setActiveTab('incidents');
                   }}
-                  className="text-kali-primary hover:text-kali-cyan font-bold"
+                  className="text-kali-cyan hover:underline text-xs font-medium"
                 >
-                  VIEW INCIDENT CENTER ›
+                  View Incident Center
                 </button>
               </div>
             </div>
@@ -254,21 +268,21 @@ export const TopNavbar: React.FC = () => {
         <div className="relative hidden xl:block">
           <button
             onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-            className="flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-2.5 py-1 text-[11px] text-slate-300 hover:border-kali-primary transition-colors"
-            title="Switch Organization / Tenant Context"
+            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-1.5 text-xs text-slate-300 hover:border-white/20 transition-all"
+            title="Switch Tenant Context"
           >
-            <Building className="h-3 w-3 text-kali-primary" />
-            <span className="font-bold">{selectedOrg}</span>
-            <ChevronDown className="h-3 w-3 text-slate-500" />
+            <Building className="h-3.5 w-3.5 text-kali-cyan" />
+            <span className="font-medium">{selectedOrg}</span>
+            <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
           </button>
 
           {showOrgDropdown && (
             <div
-              className="absolute right-0 mt-2 w-64 rounded-lg border border-kali-border bg-kali-secondary p-1.5 shadow-2xl z-50 animate-fade-in font-mono text-xs"
+              className="absolute right-0 mt-2 w-64 rounded-2xl border border-white/10 bg-[#0a0d14]/95 p-2 shadow-2xl z-50 animate-fade-in backdrop-blur-2xl text-xs"
               onMouseLeave={() => setShowOrgDropdown(false)}
             >
-              <div className="px-2 py-1 text-[10px] text-slate-400 font-bold border-b border-kali-border/60">
-                ACTIVE TENANT CONTEXT
+              <div className="px-3 py-1.5 text-[10px] text-slate-500 uppercase font-semibold border-b border-white/10">
+                Tenant Context
               </div>
               <div className="space-y-1 mt-1">
                 {organizations.map((org) => (
@@ -278,14 +292,14 @@ export const TopNavbar: React.FC = () => {
                       setSelectedOrg(org.id);
                       setShowOrgDropdown(false);
                     }}
-                    className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-xs transition-colors ${
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-all ${
                       selectedOrg === org.id
-                        ? 'bg-kali-elevated text-white font-bold border-l-2 border-kali-primary'
-                        : 'text-slate-300 hover:bg-kali-card hover:text-white'
+                        ? 'bg-white/[0.08] text-white font-medium border-l-2 border-kali-cyan'
+                        : 'text-slate-400 hover:bg-white/[0.04] hover:text-white'
                     }`}
                   >
                     <span>{org.id}</span>
-                    {selectedOrg === org.id && <span className="text-[10px] text-kali-secure font-bold">ACTIVE</span>}
+                    {selectedOrg === org.id && <span className="text-[10px] text-emerald-400 font-medium">Active</span>}
                   </button>
                 ))}
               </div>
@@ -297,14 +311,14 @@ export const TopNavbar: React.FC = () => {
         <div className="relative">
           <button
             onClick={() => setShowUserDropdown(!showUserDropdown)}
-            className="flex items-center gap-2 rounded border border-kali-border bg-kali-card px-2.5 py-1 text-[11px] hover:border-kali-primary transition-colors"
-            title="Operator Identity & RBAC"
+            className="flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs hover:border-white/20 transition-all"
+            title="User Profile"
           >
-            <div className="flex h-5 w-5 items-center justify-center rounded bg-kali-primary/20 text-kali-primary">
+            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-kali-cyan/15 text-kali-cyan">
               <UserIcon className="h-3 w-3" />
             </div>
-            <span className="text-slate-200 font-semibold">{user?.username || 'admin'}</span>
-            <span className="font-mono text-[9px] px-1 py-0.2 rounded bg-kali-bg text-kali-cyan border border-kali-border">
+            <span className="text-slate-200 font-medium">{user?.username || 'admin'}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-kali-cyan border border-white/10 uppercase">
               {user?.role?.toUpperCase() || 'ADMIN'}
             </span>
           </button>
@@ -312,24 +326,34 @@ export const TopNavbar: React.FC = () => {
           {/* User Dropdown */}
           {showUserDropdown && (
             <div
-              className="absolute right-0 mt-2 w-56 rounded-lg border border-kali-border bg-kali-secondary p-2 shadow-2xl z-50 animate-fade-in font-mono"
+              className="absolute right-0 mt-2 w-56 rounded-2xl border border-white/10 bg-[#0a0d14]/95 p-2 shadow-2xl z-50 animate-fade-in backdrop-blur-2xl"
               onMouseLeave={() => setShowUserDropdown(false)}
             >
-              <div className="border-b border-kali-border pb-2 px-2 pt-1">
-                <div className="text-[11px] font-bold text-white">{user?.username || 'admin'}</div>
-                <div className="text-[10px] text-slate-400">ROLE: {user?.role?.toUpperCase() || 'ADMINISTRATOR'}</div>
-                <div className="text-[10px] text-kali-cyan">MODE: ZERO_TRUST_ENFORCED</div>
+              <div className="border-b border-white/10 pb-2.5 px-3 pt-1.5">
+                <div className="text-xs font-semibold text-white">{user?.username || 'admin'}</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">Role: {user?.role?.toUpperCase() || 'ADMINISTRATOR'}</div>
               </div>
-              <div className="pt-2">
+              <div className="pt-2 space-y-1">
+                <button
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    navigate('/');
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-slate-300 hover:bg-white/[0.04] hover:text-white transition-all"
+                >
+                  <Globe className="h-3.5 w-3.5 text-kali-cyan" />
+                  <span>Landing Page</span>
+                </button>
                 <button
                   onClick={() => {
                     setShowUserDropdown(false);
                     logout();
+                    navigate('/login');
                   }}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-kali-critical hover:bg-[#331418] transition-colors"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-rose-400 hover:bg-rose-500/10 transition-all"
                 >
                   <LogOut className="h-3.5 w-3.5" />
-                  <span>TERMINATE SESSION</span>
+                  <span>Sign Out</span>
                 </button>
               </div>
             </div>

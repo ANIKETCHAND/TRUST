@@ -65,29 +65,29 @@ export const GlobalSearchModal: React.FC = () => {
   if (!isSearchOpen) return null;
 
   const navItems: SearchItem[] = [
-    { id: 'nav-overview', title: 'Security Overview', subtitle: 'Executive & Technical Command Dashboard', category: 'NAVIGATION', icon: LayoutDashboard, tab: 'overview' },
-    { id: 'nav-threat-map', title: 'Threat Radar & Geolocation', subtitle: 'Active IP Sinkholes & ARP Forensics', category: 'NAVIGATION', icon: Globe, tab: 'threat-map' },
-    { id: 'nav-active-defense', title: 'Active Defense & Process Killer', subtitle: 'Autonomous Process Sentinel & YARA Vault', category: 'NAVIGATION', icon: Skull, tab: 'active-defense' },
-    { id: 'nav-agents', title: 'Agent Management & Identity', subtitle: 'Cryptographic API Keys & Zero-Trust Grants', category: 'NAVIGATION', icon: Bot, tab: 'agents' },
-    { id: 'nav-monitor', title: 'Gateway Monitor', subtitle: 'Pre-flight Interception & Telemetry Feed', category: 'NAVIGATION', icon: Activity, tab: 'monitor' },
-    { id: 'nav-tools', title: 'Tool Registry', subtitle: 'Deterministic Tool Sandboxing & Execution Testbench', category: 'NAVIGATION', icon: Wrench, tab: 'tools' },
-    { id: 'nav-policies', title: 'Policy Engine', subtitle: 'Declarative Rule Editor & Evaluation Simulator', category: 'NAVIGATION', icon: ShieldCheck, tab: 'policies' },
-    { id: 'nav-delegations', title: 'Delegation Control', subtitle: 'Cryptographic Subscoping Graph & Bounds', category: 'NAVIGATION', icon: GitFork, tab: 'delegations' },
-    { id: 'nav-provenance', title: 'Provenance Explorer', subtitle: 'Immutable Data Lineage Graph', category: 'NAVIGATION', icon: Network, tab: 'provenance' },
-    { id: 'nav-agent-runner', title: 'Agent Sandbox Playground', subtitle: 'Prompt Injection Simulation & Execution', category: 'NAVIGATION', icon: Layers, tab: 'agent-runner' },
-    { id: 'nav-incidents', title: 'Incident Center', subtitle: 'SOC Alert Triage & Remediation Actions', category: 'NAVIGATION', icon: ShieldAlert, tab: 'incidents' },
-    { id: 'nav-reports', title: 'Forensic Dossiers & Reports', subtitle: 'MITRE ATT&CK Matrix & Threat Intel', category: 'NAVIGATION', icon: FileText, tab: 'reports' },
-    { id: 'nav-audit', title: 'Audit Logs & Security Events', subtitle: 'Tamper-Evident SHA-256 Ledger', category: 'NAVIGATION', icon: FileCheck, tab: 'audit' },
-    { id: 'nav-browser-shield', title: 'Browser Shield DLP', subtitle: 'Pre-Submission Prompt DLP Interception', category: 'NAVIGATION', icon: Globe, tab: 'browser-shield' },
-    { id: 'nav-endpoints', title: 'Endpoint Security Sentry', subtitle: 'Host Containment & OS Process Inspection', category: 'NAVIGATION', icon: Monitor, tab: 'endpoints' },
-    { id: 'nav-integrations', title: 'Integration Center', subtitle: 'OPA, Pipelock, YARA, ClamAV, OpenTelemetry', category: 'NAVIGATION', icon: Cpu, tab: 'integrations' },
-    { id: 'nav-settings', title: 'System Health & Settings', subtitle: 'Platform Infrastructure & Zero-Trust Config', category: 'NAVIGATION', icon: Settings, tab: 'settings' },
+    { id: 'nav-overview', title: 'Security Overview', subtitle: 'Platform health and core security metrics', category: 'NAVIGATION', icon: LayoutDashboard, tab: 'overview' },
+    { id: 'nav-threat-map', title: 'Threat Radar & Geolocation', subtitle: 'Global attack vectors and network map', category: 'NAVIGATION', icon: Globe, tab: 'threat-map' },
+    { id: 'nav-active-defense', title: 'Active Defense', subtitle: 'Process termination and IP sinkholes', category: 'NAVIGATION', icon: Skull, tab: 'active-defense' },
+    { id: 'nav-agents', title: 'Agent Management', subtitle: 'Cryptographic identities and status', category: 'NAVIGATION', icon: Bot, tab: 'agents' },
+    { id: 'nav-monitor', title: 'Gateway Monitor', subtitle: 'Live telemetry and intercepted requests', category: 'NAVIGATION', icon: Activity, tab: 'monitor' },
+    { id: 'nav-tools', title: 'Tool Registry', subtitle: 'Sandboxed tools and dispatch sandbox', category: 'NAVIGATION', icon: Wrench, tab: 'tools' },
+    { id: 'nav-policies', title: 'Policy Engine', subtitle: 'Rule definitions and simulation testbench', category: 'NAVIGATION', icon: ShieldCheck, tab: 'policies' },
+    { id: 'nav-delegations', title: 'Delegation Control', subtitle: 'Subscoping hierarchy and tokens', category: 'NAVIGATION', icon: GitFork, tab: 'delegations' },
+    { id: 'nav-provenance', title: 'Provenance Explorer', subtitle: 'Data lineage and source verification', category: 'NAVIGATION', icon: Network, tab: 'provenance' },
+    { id: 'nav-agent-runner', title: 'Agent Playground', subtitle: 'Prompt sandbox and injection testing', category: 'NAVIGATION', icon: Layers, tab: 'agent-runner' },
+    { id: 'nav-incidents', title: 'Incident Center', subtitle: 'Active threat triage and resolution', category: 'NAVIGATION', icon: ShieldAlert, tab: 'incidents' },
+    { id: 'nav-reports', title: 'Forensics & Reports', subtitle: 'Executive dossiers and audit compliance', category: 'NAVIGATION', icon: FileText, tab: 'reports' },
+    { id: 'nav-audit', title: 'Audit Trail', subtitle: 'Immutable security log and events', category: 'NAVIGATION', icon: FileCheck, tab: 'audit' },
+    { id: 'nav-browser-shield', title: 'Browser Shield', subtitle: 'Pre-flight prompt DLP inspection', category: 'NAVIGATION', icon: Globe, tab: 'browser-shield' },
+    { id: 'nav-endpoints', title: 'Endpoint Security', subtitle: 'Host containment and agent telemetry', category: 'NAVIGATION', icon: Monitor, tab: 'endpoints' },
+    { id: 'nav-integrations', title: 'Integrations', subtitle: 'Security mesh and external connectors', category: 'NAVIGATION', icon: Cpu, tab: 'integrations' },
+    { id: 'nav-settings', title: 'Settings', subtitle: 'Platform configurations and health', category: 'NAVIGATION', icon: Settings, tab: 'settings' },
   ];
 
   const agentItems: SearchItem[] = agents.map((a) => ({
     id: `agent-${a.id}`,
     title: a.name,
-    subtitle: `Agent ID: ${truncateId(a.id, 12)} • Status: ${a.status.toUpperCase()} • Role: ${a.role}`,
+    subtitle: `Agent ID: ${truncateId(a.id, 12)} • Status: ${a.status} • Role: ${a.role}`,
     category: 'AGENT',
     icon: Bot,
     tab: 'agents',
@@ -96,7 +96,7 @@ export const GlobalSearchModal: React.FC = () => {
   const incidentItems: SearchItem[] = incidents.map((i) => ({
     id: `incident-${i.id}`,
     title: i.title,
-    subtitle: `Severity: ${i.severity} • Status: ${i.status} • Affected: ${i.agent_id ? truncateId(i.agent_id, 8) : 'System'}`,
+    subtitle: `Severity: ${i.severity} • Status: ${i.status} • Agent: ${i.agent_id ? truncateId(i.agent_id, 8) : 'System'}`,
     category: 'INCIDENT',
     icon: ShieldAlert,
     tab: 'incidents',
@@ -114,7 +114,7 @@ export const GlobalSearchModal: React.FC = () => {
   const endpointItems: SearchItem[] = endpoints.map((e) => ({
     id: `endpoint-${e.id}`,
     title: e.hostname || 'Unknown Host',
-    subtitle: `Platform: ${e.os_platform || 'Windows'} • Status: ${e.status?.toUpperCase() || 'ONLINE'} • IP: ${e.ip_address || '127.0.0.1'}`,
+    subtitle: `Platform: ${e.os_platform || 'Windows'} • Status: ${e.status || 'ONLINE'} • IP: ${e.ip_address || '127.0.0.1'}`,
     category: 'ENDPOINT',
     icon: Monitor,
     tab: 'endpoints',
@@ -139,34 +139,15 @@ export const GlobalSearchModal: React.FC = () => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-kali-bg/85 backdrop-blur-md p-4 animate-fade-in"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/80 backdrop-blur-xl p-4 animate-fade-in"
       onClick={() => setIsSearchOpen(false)}
     >
       <div
-        className="w-full max-w-2xl rounded-lg border border-kali-border bg-kali-secondary shadow-2xl overflow-hidden font-mono"
+        className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#0a0d14]/95 shadow-[0_16px_60px_rgba(0,0,0,0.85)] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Terminal Header */}
-        <div className="flex items-center justify-between border-b border-kali-border bg-kali-card px-4 py-2.5">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="h-2 w-2 rounded-full bg-kali-primary animate-pulse" />
-            <span className="font-bold text-white tracking-wider">COMMAND PALETTE // GLOBAL SEARCH</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-400 bg-kali-bg px-1.5 py-0.5 rounded border border-kali-border">
-              ESC to close
-            </span>
-            <button
-              onClick={() => setIsSearchOpen(false)}
-              className="text-slate-400 hover:text-white transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
         {/* Search Input Bar */}
-        <div className="relative border-b border-kali-border bg-kali-bg px-4 py-3 flex items-center gap-3">
+        <div className="relative border-b border-white/10 bg-white/[0.02] px-5 py-4 flex items-center gap-3">
           <Search className="h-4 w-4 text-kali-cyan shrink-0" />
           <input
             ref={inputRef}
@@ -179,55 +160,45 @@ export const GlobalSearchModal: React.FC = () => {
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="text-xs text-slate-400 hover:text-white"
+              className="text-slate-500 hover:text-white transition-colors"
             >
-              CLEAR
+              <X className="h-4 w-4" />
             </button>
           )}
+          <kbd className="hidden sm:inline-block rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] text-slate-400">
+            ESC
+          </kbd>
         </div>
 
-        {/* Results Stream */}
-        <div className="max-h-[60vh] overflow-y-auto p-2 space-y-1">
-          {filteredItems.slice(0, 20).map((item) => {
+        {/* Results List */}
+        <div className="max-h-96 overflow-y-auto p-2 space-y-1">
+          {filteredItems.slice(0, 10).map((item) => {
             const Icon = item.icon;
-            const categoryColors: Record<string, string> = {
-              NAVIGATION: 'text-kali-primary border-kali-primary/40 bg-kali-primary/10',
-              AGENT: 'text-kali-cyan border-kali-cyan/40 bg-kali-cyan/10',
-              INCIDENT: 'text-kali-critical border-kali-critical/40 bg-kali-critical/10',
-              TOOL: 'text-kali-warning border-kali-warning/40 bg-kali-warning/10',
-              ENDPOINT: 'text-kali-secure border-kali-secure/40 bg-kali-secure/10',
-            };
-
             return (
               <button
                 key={item.id}
                 onClick={() => handleSelect(item.tab)}
-                className="group flex w-full items-center justify-between rounded-md p-2.5 text-left hover:bg-kali-elevated transition-colors border border-transparent hover:border-kali-border"
+                className="w-full flex items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-white/[0.04] transition-all group border border-transparent hover:border-white/10"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-kali-border bg-kali-bg text-slate-300 group-hover:text-white group-hover:border-kali-primary transition-colors">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 group-hover:text-kali-cyan group-hover:border-kali-cyan/30 transition-colors">
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-xs text-white truncate group-hover:text-kali-cyan transition-colors">
-                        {item.title}
-                      </span>
-                      <span
-                        className={`text-[9px] px-1.5 py-0.2 rounded border uppercase font-bold ${
-                          categoryColors[item.category] || 'text-slate-400 border-slate-700'
-                        }`}
-                      >
-                        {item.category}
-                      </span>
+                    <div className="text-xs font-semibold text-white group-hover:text-kali-cyan transition-colors truncate">
+                      {item.title}
                     </div>
-                    <p className="text-[11px] text-slate-400 truncate mt-0.5">{item.subtitle}</p>
+                    <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                      {item.subtitle}
+                    </div>
                   </div>
                 </div>
 
-                <div className="hidden sm:flex items-center gap-1 text-[11px] text-slate-500 group-hover:text-kali-primary transition-colors shrink-0 ml-2">
-                  <span>JUMP</span>
-                  <ArrowRight className="h-3 w-3" />
+                <div className="flex items-center gap-2 shrink-0 ml-3">
+                  <span className="font-mono text-[9px] uppercase px-2 py-0.5 rounded-full border border-white/10 bg-white/[0.02] text-slate-400">
+                    {item.category}
+                  </span>
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-600 group-hover:text-kali-cyan group-hover:translate-x-0.5 transition-all" />
                 </div>
               </button>
             );
@@ -235,15 +206,9 @@ export const GlobalSearchModal: React.FC = () => {
 
           {filteredItems.length === 0 && (
             <div className="py-12 text-center text-xs text-slate-500">
-              // NO INDICATORS OR ROUTES MATCH QUERY: "{query}"
+              No matching results found for "{query}".
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-kali-border bg-kali-bg/90 px-4 py-2 flex items-center justify-between text-[10px] text-slate-400">
-          <span>PRESS [ENTER] OR CLICK TO NAVIGATE</span>
-          <span>AGENTTRUST INTELLIGENCE INDEX</span>
         </div>
       </div>
     </div>

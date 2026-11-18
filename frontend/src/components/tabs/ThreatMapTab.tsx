@@ -85,7 +85,7 @@ export const ThreatMapTab: React.FC = () => {
         const arpJson = await api.getLocalArp();
         setArpTable(arpJson);
       } catch {
-        // Fallback for non-admin accounts where local-arp requires admin role
+        // Fallback for non-admin accounts
       }
     } catch (err: any) {
       console.error('Failed to load threat map data:', err);
@@ -102,21 +102,20 @@ export const ThreatMapTab: React.FC = () => {
     try {
       await api.createSinkhole({
         ip,
-        reason: 'Operator 1-click active perimeter sinkhole',
-        duration_seconds: 86400,
+        reason: 'Operator manual containment from Threat Radar',
+        duration_seconds: 3600,
       });
-      showToast('success', 'IP Sinkholed', `Host ${ip} has been null-routed at the gateway and OS firewall.`);
+      showToast('success', 'IP Sinkholed', `Firewall rule applied. Ingress from ${ip} is blocked.`);
       fetchThreatMap();
     } catch (err: any) {
       showToast('error', 'Sinkhole Failed', err.message);
     }
   };
 
-  // Convert (lat, lon) to SVG (x, y) on 1000x500 canvas
-  const projectCoordinates = (lat: number, lon: number): { x: number; y: number } => {
+  const projectCoordinates = (lat: number, lon: number) => {
     const x = ((lon + 180) / 360) * 1000;
     const y = ((90 - lat) / 180) * 500;
-    return { x: Math.max(20, Math.min(980, x)), y: Math.max(20, Math.min(480, y)) };
+    return { x, y };
   };
 
   const filteredThreats = useMemo(() => {
@@ -127,59 +126,55 @@ export const ThreatMapTab: React.FC = () => {
       (t) =>
         t.ip.toLowerCase().includes(q) ||
         t.country.toLowerCase().includes(q) ||
-        t.city.toLowerCase().includes(q) ||
+        t.country_code.toLowerCase().includes(q) ||
         t.asn.toLowerCase().includes(q)
     );
-  }, [data, searchQuery]);
+  }, [data?.active_threats, searchQuery]);
 
   return (
-    <div className="space-y-6">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-kali-border pb-4">
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-center">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-kali-cyan font-bold tracking-wider">[RADAR_GEOLOC]</span>
-            <span className="text-xs text-kali-muted">INTERACTIVE THREAT ATTRIBUTION</span>
-          </div>
-          <h1 className="text-xl font-bold text-kali-text flex items-center gap-2 mt-1">
-            <Globe className="h-5 w-5 text-kali-cyan" />
-            Global Threat Attribution & Interactive Defense Map
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
+            <Globe className="h-6 w-6 text-kali-cyan" />
+            Threat Radar & Geolocation
           </h1>
-          <p className="text-xs text-kali-muted mt-0.5">
-            Real-time visual geolocation of adversarial AI exploit probes, WAN ingress vectors, and Layer-2 intranet telemetry.
+          <p className="text-xs text-slate-400 mt-1">
+            Global attack vector tracking, live origin rays, and local subnet topology.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex bg-kali-bg rounded-lg p-1 border border-kali-border">
+        <div className="flex items-center gap-2.5">
+          <div className="flex bg-white/[0.03] rounded-xl p-1 border border-white/10 text-xs">
             <button
               onClick={() => setActiveView('map')}
-              className={`px-3 py-1.5 rounded text-xs font-mono font-semibold transition-colors ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 activeView === 'map'
-                  ? 'bg-kali-card text-kali-cyan border border-kali-cyan/40 shadow-sm'
-                  : 'text-kali-muted hover:text-kali-text'
+                  ? 'bg-kali-primary text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              [GEO_RADAR]
+              Geo Radar
             </button>
             <button
               onClick={() => setActiveView('arp')}
-              className={`px-3 py-1.5 rounded text-xs font-mono font-semibold transition-colors ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 activeView === 'arp'
-                  ? 'bg-kali-card text-kali-cyan border border-kali-cyan/40 shadow-sm'
-                  : 'text-kali-muted hover:text-kali-text'
+                  ? 'bg-kali-primary text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              [ARP_TABLE ({arpTable.length})]
+              ARP Subnet ({arpTable.length})
             </button>
           </div>
 
           <button
             onClick={fetchThreatMap}
-            className="flex items-center gap-1.5 rounded-lg border border-kali-border bg-kali-card px-3 py-1.5 text-xs font-mono text-kali-text hover:bg-kali-elevated hover:border-kali-primary transition-colors"
+            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-slate-200 hover:border-kali-cyan/40 hover:bg-white/[0.06] hover:text-white transition-all"
           >
             <RefreshCw className={`h-3.5 w-3.5 text-kali-cyan ${loading ? 'animate-spin' : ''}`} />
-            SYNC
+            <span>Sync</span>
           </button>
         </div>
       </div>
@@ -187,7 +182,7 @@ export const ThreatMapTab: React.FC = () => {
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Total Probes Logged"
+          label="Total Probes"
           value={data?.summary.total_threats_logged ?? 0}
           icon={<Radio className="h-4 w-4 text-kali-cyan" />}
           subValue="+14% this hour"
@@ -200,8 +195,9 @@ export const ThreatMapTab: React.FC = () => {
         <StatCard
           label="Critical Attacks"
           value={data?.summary.critical_threats ?? 0}
-          icon={<Flame className="h-4 w-4 text-kali-critical" />}
-          subValue="Perimeter Held"
+          icon={<Flame className="h-4 w-4 text-rose-400" />}
+          subValue="Held"
+          subValueColor="text-emerald-400"
         />
         <StatCard
           label="Intranet Vectors"
@@ -212,31 +208,31 @@ export const ThreatMapTab: React.FC = () => {
 
       {activeView === 'map' ? (
         <>
-          {/* Interactive SVG World Map Canvas */}
-          <div className="relative rounded-xl border border-kali-border bg-kali-card overflow-hidden shadow-kali-card">
+          {/* Interactive World Map Canvas */}
+          <div className="relative rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden backdrop-blur-md shadow-2xl">
             {/* Map Top Bar */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-kali-border bg-kali-bg/80 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-kali-cyan animate-ping" />
-                <span className="font-mono text-xs font-bold text-kali-text tracking-wider">LIVE DEFENSE RADAR</span>
-                <span className="text-kali-border">|</span>
-                <span className="font-mono text-[11px] text-kali-muted">TARGET SOC: {data?.soc_center.label || 'AGENTTRUST-PRIMARY'}</span>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02] text-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="h-2 w-2 rounded-full bg-kali-cyan animate-pulse" />
+                <span className="text-xs font-semibold text-white">Live Defense Radar</span>
+                <span className="text-white/20">|</span>
+                <span className="text-[11px] text-slate-400">Target Node: {data?.soc_center.label || 'CrossX SOC'}</span>
               </div>
-              <div className="flex items-center gap-4 text-[11px] font-mono">
-                <span className="flex items-center gap-1.5 text-kali-critical">
-                  <span className="h-2 w-2 rounded-full bg-kali-critical" /> CRITICAL ATTACK
+              <div className="flex items-center gap-4 text-xs">
+                <span className="flex items-center gap-1.5 text-rose-400">
+                  <span className="h-2 w-2 rounded-full bg-rose-400" /> Critical
                 </span>
-                <span className="flex items-center gap-1.5 text-kali-warning">
-                  <span className="h-2 w-2 rounded-full bg-kali-warning" /> HIGH THREAT
+                <span className="flex items-center gap-1.5 text-amber-400">
+                  <span className="h-2 w-2 rounded-full bg-amber-400" /> High Threat
                 </span>
                 <span className="flex items-center gap-1.5 text-kali-cyan">
-                  <span className="h-2 w-2 rounded-full bg-kali-cyan" /> SOC DEFENSE NODE
+                  <span className="h-2 w-2 rounded-full bg-kali-cyan" /> SOC Defense Node
                 </span>
               </div>
             </div>
 
             {/* SVG Visualizer */}
-            <div className="relative w-full aspect-[2/1] min-h-[380px] bg-kali-bg flex items-center justify-center p-4">
+            <div className="relative w-full aspect-[2/1] min-h-[380px] bg-black flex items-center justify-center p-4">
               <svg
                 viewBox="0 0 1000 500"
                 className="w-full h-full"
@@ -244,17 +240,17 @@ export const ThreatMapTab: React.FC = () => {
               >
                 <defs>
                   <linearGradient id="rayGradRed" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#DC4C55" stopOpacity="0.85" />
+                    <stop offset="0%" stopColor="#EF4444" stopOpacity="0.85" />
                     <stop offset="100%" stopColor="#367BF5" stopOpacity="0.25" />
                   </linearGradient>
                   <linearGradient id="rayGradAmber" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#D99A35" stopOpacity="0.8" />
+                    <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.8" />
                     <stop offset="100%" stopColor="#367BF5" stopOpacity="0.25" />
                   </linearGradient>
                 </defs>
 
                 {/* Grid Lines */}
-                <g stroke="#1F2E45" strokeWidth="0.5" strokeDasharray="3 3">
+                <g stroke="rgba(255, 255, 255, 0.04)" strokeWidth="0.5" strokeDasharray="3 3">
                   <line x1="0" y1="125" x2="1000" y2="125" />
                   <line x1="0" y1="250" x2="1000" y2="250" />
                   <line x1="0" y1="375" x2="1000" y2="375" />
@@ -266,38 +262,38 @@ export const ThreatMapTab: React.FC = () => {
                 {/* Continents Outlines */}
                 <path
                   d="M150,110 Q200,90 280,100 Q310,140 280,210 Q220,240 180,200 Z"
-                  fill="#151E2D"
-                  stroke="#1F2E45"
+                  fill="#0a0f1d"
+                  stroke="rgba(255, 255, 255, 0.08)"
                   strokeWidth="1"
                 />
                 <path
                   d="M260,250 Q310,260 330,330 Q300,430 260,440 Q220,360 240,280 Z"
-                  fill="#151E2D"
-                  stroke="#1F2E45"
+                  fill="#0a0f1d"
+                  stroke="rgba(255, 255, 255, 0.08)"
                   strokeWidth="1"
                 />
                 <path
                   d="M450,100 Q560,90 560,160 Q510,190 470,150 Z"
-                  fill="#151E2D"
-                  stroke="#1F2E45"
+                  fill="#0a0f1d"
+                  stroke="rgba(255, 255, 255, 0.08)"
                   strokeWidth="1"
                 />
                 <path
                   d="M480,200 Q550,210 560,280 Q540,380 490,370 Q460,290 470,220 Z"
-                  fill="#151E2D"
-                  stroke="#1F2E45"
+                  fill="#0a0f1d"
+                  stroke="rgba(255, 255, 255, 0.08)"
                   strokeWidth="1"
                 />
                 <path
                   d="M600,90 Q850,70 880,170 Q810,240 700,210 Q610,170 600,110 Z"
-                  fill="#151E2D"
-                  stroke="#1F2E45"
+                  fill="#0a0f1d"
+                  stroke="rgba(255, 255, 255, 0.08)"
                   strokeWidth="1"
                 />
                 <path
                   d="M750,300 Q840,290 850,370 Q790,410 740,360 Z"
-                  fill="#151E2D"
-                  stroke="#1F2E45"
+                  fill="#0a0f1d"
+                  stroke="rgba(255, 255, 255, 0.08)"
                   strokeWidth="1"
                 />
 
@@ -339,7 +335,7 @@ export const ThreatMapTab: React.FC = () => {
                         cy={p.y}
                         r={isSelected ? 14 : 9}
                         fill="none"
-                        stroke={isCritical ? '#DC4C55' : '#D99A35'}
+                        stroke={isCritical ? '#EF4444' : '#F59E0B'}
                         strokeWidth="1"
                         opacity="0.6"
                       >
@@ -362,7 +358,7 @@ export const ThreatMapTab: React.FC = () => {
                         cx={p.x}
                         cy={p.y}
                         r={isSelected ? 6 : 4}
-                        fill={isCritical ? '#DC4C55' : '#D99A35'}
+                        fill={isCritical ? '#EF4444' : '#F59E0B'}
                       />
 
                       {/* Tooltip */}
@@ -371,8 +367,7 @@ export const ThreatMapTab: React.FC = () => {
                         y={p.y + 4}
                         fill="#E2E8F0"
                         fontSize="9"
-                        fontFamily="JetBrains Mono, monospace"
-                        className="pointer-events-none opacity-80 group-hover:opacity-100"
+                        className="pointer-events-none opacity-80 group-hover:opacity-100 font-mono"
                       >
                         {threat.country_code} ({threat.ip})
                       </text>
@@ -400,14 +395,13 @@ export const ThreatMapTab: React.FC = () => {
                           <circle cx={pSoc.x} cy={pSoc.y} r="6" fill="#2563EB" />
                           <circle cx={pSoc.x} cy={pSoc.y} r="3" fill="#22B8CF" />
                           <text
-                            x={pSoc.x - 45}
+                            x={pSoc.x - 35}
                             y={pSoc.y + 18}
                             fill="#367BF5"
                             fontSize="9"
-                            fontFamily="JetBrains Mono, monospace"
                             fontWeight="bold"
                           >
-                            AGENTTRUST SOC
+                            CROSSX SOC
                           </text>
                         </>
                       );
@@ -419,31 +413,31 @@ export const ThreatMapTab: React.FC = () => {
 
             {/* Selected Threat Quick-Inspection Tray */}
             {selectedThreat && (
-              <div className="border-t border-kali-border bg-kali-elevated/70 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="border-t border-white/10 bg-white/[0.02] px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-kali-critical/15 border border-kali-critical/40 flex items-center justify-center shrink-0">
-                    <Crosshair className="h-5 w-5 text-kali-critical" />
+                  <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
+                    <Crosshair className="h-5 w-5 text-rose-400" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-bold text-kali-text">{selectedThreat.ip}</span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono text-sm font-bold text-white">{selectedThreat.ip}</span>
                       <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           selectedThreat.threat_level === 'CRITICAL'
-                            ? 'bg-kali-critical/15 text-kali-critical border border-kali-critical/40'
-                            : 'bg-kali-warning/15 text-kali-warning border border-kali-warning/40'
+                            ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                         }`}
                       >
                         <AlertTriangle className="h-3 w-3" />
-                        {selectedThreat.threat_level} (SCORE: {selectedThreat.threat_score}/100)
+                        {selectedThreat.threat_level} (Score: {selectedThreat.threat_score}/100)
                       </span>
                       {selectedThreat.is_internal && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-kali-card text-kali-muted border border-kali-border">
-                          INTRANET_HOST
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-slate-400 border border-white/10">
+                          Intranet Host
                         </span>
                       )}
                     </div>
-                    <div className="text-xs font-mono text-kali-muted mt-0.5">
+                    <div className="text-xs text-slate-400 mt-1">
                       {selectedThreat.city}, {selectedThreat.country} &bull; ASN: {selectedThreat.asn}
                     </div>
                   </div>
@@ -452,10 +446,10 @@ export const ThreatMapTab: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleSinkhole(selectedThreat.ip)}
-                    className="flex items-center gap-1.5 rounded-lg bg-kali-critical hover:bg-kali-critical/90 text-white px-3 py-1.5 text-xs font-mono font-semibold shadow-lg shadow-kali-critical/20 transition-colors"
+                    className="flex items-center gap-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 text-xs font-semibold transition-all shadow-sm"
                   >
                     <Lock className="h-3.5 w-3.5" />
-                    SINKHOLE_IP
+                    <span>Sinkhole IP</span>
                   </button>
                 </div>
               </div>
@@ -463,43 +457,46 @@ export const ThreatMapTab: React.FC = () => {
           </div>
 
           {/* Real-Time Attack Stream Table */}
-          <div className="rounded-xl border border-kali-border bg-kali-card p-4 space-y-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 space-y-4 backdrop-blur-md">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h2 className="text-xs font-mono font-bold text-kali-text uppercase tracking-wider flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-kali-cyan" />
-                Live Ingress Threat Stream ({filteredThreats.length})
-              </h2>
+              <div>
+                <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-kali-cyan" />
+                  Live Ingress Threat Stream ({filteredThreats.length})
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">Real-time perimeter probes and risk ratings</p>
+              </div>
 
               <div className="w-full sm:w-72">
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-kali-muted" />
+                  <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Filter IP, country, ASN..."
-                    className="w-full rounded-lg border border-kali-border bg-kali-bg pl-8 pr-3 py-1.5 text-xs font-mono text-kali-text placeholder-kali-muted focus:outline-none focus:border-kali-primary"
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-kali-cyan/50"
                   />
                 </div>
               </div>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs font-mono">
+              <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-kali-border text-kali-muted">
-                    <th className="py-2.5 px-3">IP ADDRESS</th>
-                    <th className="py-2.5 px-3">GEOLOCATION</th>
-                    <th className="py-2.5 px-3">ASN / PROVIDER</th>
-                    <th className="py-2.5 px-3">RISK SCORE</th>
-                    <th className="py-2.5 px-3">SCOPE</th>
-                    <th className="py-2.5 px-3 text-right">ACTION</th>
+                  <tr className="border-b border-white/10 text-slate-400">
+                    <th className="py-3 px-4 font-medium">IP Address</th>
+                    <th className="py-3 px-4 font-medium">Geolocation</th>
+                    <th className="py-3 px-4 font-medium">ASN / Provider</th>
+                    <th className="py-3 px-4 font-medium">Risk Score</th>
+                    <th className="py-3 px-4 font-medium">Scope</th>
+                    <th className="py-3 px-4 font-medium text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-kali-border/60">
+                <tbody className="divide-y divide-white/5 text-slate-300">
                   {filteredThreats.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-6 text-center text-kali-muted">
+                      <td colSpan={6} className="py-8 text-center text-slate-500">
                         No ingress threats matching filter criteria.
                       </td>
                     </tr>
@@ -508,40 +505,40 @@ export const ThreatMapTab: React.FC = () => {
                       <tr
                         key={threat.id}
                         onClick={() => setSelectedThreat(threat)}
-                        className={`hover:bg-kali-elevated/40 cursor-pointer transition-colors ${
-                          selectedThreat?.id === threat.id ? 'bg-kali-primary/10 border-l-2 border-kali-primary' : ''
+                        className={`hover:bg-white/[0.03] cursor-pointer transition-colors ${
+                          selectedThreat?.id === threat.id ? 'bg-white/[0.04] border-l-2 border-kali-cyan' : ''
                         }`}
                       >
-                        <td className="py-2.5 px-3 font-bold text-kali-text">{threat.ip}</td>
-                        <td className="py-2.5 px-3 text-kali-text">
+                        <td className="py-3 px-4 font-mono font-medium text-white">{threat.ip}</td>
+                        <td className="py-3 px-4 text-slate-300">
                           {threat.city}, {threat.country} ({threat.country_code})
                         </td>
-                        <td className="py-2.5 px-3 text-kali-muted max-w-[220px] truncate">{threat.asn}</td>
-                        <td className="py-2.5 px-3">
+                        <td className="py-3 px-4 text-slate-400 max-w-[220px] truncate">{threat.asn}</td>
+                        <td className="py-3 px-4">
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold ${
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               threat.threat_score >= 80
-                                ? 'bg-kali-critical/15 text-kali-critical border border-kali-critical/40'
-                                : 'bg-kali-warning/15 text-kali-warning border border-kali-warning/40'
+                                ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                             }`}
                           >
                             {threat.threat_score} / 100
                           </span>
                         </td>
-                        <td className="py-2.5 px-3">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-kali-bg text-kali-muted border border-kali-border">
-                            {threat.is_internal ? 'INTRANET' : 'WAN'}
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-slate-400 border border-white/10">
+                            {threat.is_internal ? 'Intranet' : 'WAN'}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 text-right">
+                        <td className="py-3 px-4 text-right">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleSinkhole(threat.ip);
                             }}
-                            className="rounded border border-kali-critical/40 bg-kali-critical/15 text-kali-critical hover:bg-kali-critical hover:text-white px-2.5 py-1 text-[11px] font-mono transition-colors"
+                            className="rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white px-3 py-1 text-xs font-medium transition-all"
                           >
-                            SINKHOLE
+                            Sinkhole
                           </button>
                         </td>
                       </tr>
@@ -554,46 +551,44 @@ export const ThreatMapTab: React.FC = () => {
         </>
       ) : (
         /* Intranet ARP Table View */
-        <div className="rounded-xl border border-kali-border bg-kali-card p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xs font-mono font-bold text-kali-text uppercase tracking-wider flex items-center gap-2">
-                <Cpu className="h-4 w-4 text-kali-cyan" />
-                Local Subnet ARP Cache & Hardware NIC Vendor Forensics
-              </h2>
-              <p className="text-xs text-kali-muted mt-0.5">
-                Layer-2 Ethernet inspection resolving local insider IP addresses to hardware MAC addresses and manufacturer OUIs.
-              </p>
-            </div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 space-y-4 backdrop-blur-md">
+          <div>
+            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+              <Cpu className="h-4 w-4 text-kali-cyan" />
+              Subnet ARP Cache & Device NIC Forensics
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Layer-2 Ethernet resolution from local IP addresses to hardware MAC addresses and vendors.
+            </p>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono">
+            <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-kali-border text-kali-muted">
-                  <th className="py-2.5 px-3">LOCAL IPV4</th>
-                  <th className="py-2.5 px-3">LAYER-2 MAC ADDRESS</th>
-                  <th className="py-2.5 px-3">OUI PREFIX</th>
-                  <th className="py-2.5 px-3">HARDWARE VENDOR</th>
-                  <th className="py-2.5 px-3">TYPE</th>
+                <tr className="border-b border-white/10 text-slate-400">
+                  <th className="py-3 px-4 font-medium">Local IPv4</th>
+                  <th className="py-3 px-4 font-medium">MAC Address</th>
+                  <th className="py-3 px-4 font-medium">OUI Prefix</th>
+                  <th className="py-3 px-4 font-medium">Hardware Vendor</th>
+                  <th className="py-3 px-4 font-medium">Type</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-kali-border/60">
+              <tbody className="divide-y divide-white/5 text-slate-300">
                 {arpTable.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-6 text-center text-kali-muted">
+                    <td colSpan={5} className="py-8 text-center text-slate-500">
                       No ARP entries discovered in local subnet cache.
                     </td>
                   </tr>
                 ) : (
                   arpTable.map((entry, idx) => (
-                    <tr key={idx} className="hover:bg-kali-elevated/40">
-                      <td className="py-2.5 px-3 font-bold text-kali-cyan">{entry.ip}</td>
-                      <td className="py-2.5 px-3 text-kali-text">{entry.mac}</td>
-                      <td className="py-2.5 px-3 text-kali-muted">{entry.oui_prefix}</td>
-                      <td className="py-2.5 px-3 font-sans text-kali-text">{entry.vendor}</td>
-                      <td className="py-2.5 px-3">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-kali-bg text-kali-muted border border-kali-border">
+                    <tr key={idx} className="hover:bg-white/[0.03]">
+                      <td className="py-3 px-4 font-mono font-medium text-kali-cyan">{entry.ip}</td>
+                      <td className="py-3 px-4 font-mono text-slate-300">{entry.mac}</td>
+                      <td className="py-3 px-4 font-mono text-slate-400">{entry.oui_prefix}</td>
+                      <td className="py-3 px-4 text-slate-200">{entry.vendor}</td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-slate-400 border border-white/10">
                           {entry.type}
                         </span>
                       </td>

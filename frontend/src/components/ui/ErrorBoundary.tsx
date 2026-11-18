@@ -20,7 +20,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('AgentTrust ErrorBoundary caught unhandled error:', error, errorInfo);
+    console.error('CrossX ErrorBoundary caught unhandled error:', error, errorInfo);
   }
 
   public override render() {

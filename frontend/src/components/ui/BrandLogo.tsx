@@ -65,7 +65,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       {showText && (
         <div className="flex flex-col leading-none">
           <div className={`${titleSize} font-bold tracking-wider text-white`}>
-            AGENT<span className="text-kali-primary font-extrabold ml-0.5">TRUST</span>
+            CROSS<span className="text-kali-primary font-extrabold ml-0.5">X</span>
           </div>
           {showSubtitle && (
             <div className="text-[9px] font-mono tracking-widest text-kali-cyan/90 uppercase mt-0.5">

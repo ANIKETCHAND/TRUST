@@ -70,38 +70,39 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         {toasts.map((t) => {
           const config = {
             success: {
-              border: 'border-emerald-700 bg-emerald-950/90 text-emerald-200',
-              icon: <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />,
+              card: 'border-emerald-500/30 bg-[#0a0d14]/95 text-emerald-400',
+              icon: <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />,
             },
             error: {
-              border: 'border-rose-700 bg-rose-950/90 text-rose-200',
-              icon: <XCircle className="h-5 w-5 text-rose-400 shrink-0" />,
+              card: 'border-rose-500/30 bg-[#0a0d14]/95 text-rose-400',
+              icon: <XCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />,
             },
             warning: {
-              border: 'border-amber-700 bg-amber-950/90 text-amber-200',
-              icon: <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />,
+              card: 'border-amber-500/30 bg-[#0a0d14]/95 text-amber-400',
+              icon: <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />,
             },
             info: {
-              border: 'border-cyan-700 bg-cyan-950/90 text-cyan-200',
-              icon: <Info className="h-5 w-5 text-cyan-400 shrink-0" />,
+              card: 'border-kali-cyan/30 bg-[#0a0d14]/95 text-kali-cyan',
+              icon: <Info className="h-4 w-4 text-kali-cyan shrink-0 mt-0.5" />,
             },
           }[t.type];
 
           return (
             <div
               key={t.id}
-              className={`pointer-events-auto flex items-start gap-3 rounded-lg border p-3.5 shadow-xl backdrop-blur transition-all animate-slide-in ${config.border}`}
+              className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-[0_12px_40px_rgba(0,0,0,0.8)] backdrop-blur-2xl transition-all ${config.card}`}
             >
               {config.icon}
               <div className="flex-1 text-xs">
-                <div className="font-bold text-white">{t.title}</div>
-                {t.message && <div className="mt-0.5 text-slate-300">{t.message}</div>}
+                <div className="font-semibold text-white tracking-wide">{t.title}</div>
+                {t.message && <div className="mt-1 text-slate-400 leading-relaxed">{t.message}</div>}
               </div>
               <button
                 onClick={() => removeToast(t.id)}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-slate-500 hover:text-white transition-colors p-0.5"
+                aria-label="Dismiss notification"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
           );

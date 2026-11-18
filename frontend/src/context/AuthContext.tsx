@@ -24,14 +24,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<UserProfile | null>(null);
   const [token, setToken] = useState<string | null>(() => {
     return typeof window !== 'undefined'
-      ? localStorage.getItem('agenttrust_token') || localStorage.getItem('access_token')
+      ? localStorage.getItem('crossx_token') || localStorage.getItem('agenttrust_token') || localStorage.getItem('access_token')
       : null;
   });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadUser() {
-      const storedToken = localStorage.getItem('agenttrust_token') || localStorage.getItem('access_token');
+      const storedToken = localStorage.getItem('crossx_token') || localStorage.getItem('agenttrust_token') || localStorage.getItem('access_token');
       if (!storedToken) {
         setIsLoading(false);
         return;

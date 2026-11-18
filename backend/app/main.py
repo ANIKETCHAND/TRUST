@@ -1,9 +1,10 @@
 from contextlib import asynccontextmanager
 import logging
+import os
 from pathlib import Path
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -46,7 +47,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="AgentTrust: Production-Oriented AI Agent Security Platform",
+    description="CrossX: Production-Oriented AI Agent Security Platform",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc"
@@ -78,11 +79,42 @@ async def agenttrust_exception_handler(request: Request, exc: AgentTrustExceptio
 
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+if settings.API_V1_STR != "/v1":
+    app.include_router(api_router, prefix="/v1")
+
+
+@app.get("/api", tags=["System"])
+@app.get("/api/health", tags=["System"])
+@app.get("/api/index.py", include_in_schema=False)
+@app.get("/api/index", include_in_schema=False)
+async def api_health_root():
+    return {
+        "status": "healthy",
+        "platform": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "docs": "/docs",
+        "health": f"{settings.API_V1_STR}/health"
+    }
 
 # Serve compiled frontend if present
 frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
-    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
+    assets_dir = frontend_dist / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="frontend_assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        # Prevent catching unmatched API or documentation endpoints
+        if full_path == "api" or full_path.startswith("api/") or full_path in ("docs", "redoc", "openapi.json"):
+            return JSONResponse(status_code=404, content={"detail": f"Path /{full_path} not found"})
+        file_path = frontend_dist / full_path
+        if file_path.is_file():
+            return FileResponse(str(file_path))
+        index_file = frontend_dist / "index.html"
+        if index_file.exists():
+            return FileResponse(str(index_file))
+        return JSONResponse(status_code=404, content={"detail": "Not found"})
 else:
     @app.get("/", tags=["System"])
     async def root():

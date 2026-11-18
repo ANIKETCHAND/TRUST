@@ -1,14 +1,9 @@
 import React from 'react';
 import {
   CheckCircle,
-  ShieldAlert,
   ShieldCheck,
   ShieldX,
-  Sparkles,
-  XCircle,
   AlertTriangle,
-  Clock,
-  Info,
 } from 'lucide-react';
 import type {
   AgentStatus,
@@ -31,54 +26,54 @@ export const StatusBadge: React.FC<{
   if (norm === 'active' || norm === 'resolved' || norm === 'healthy' || norm === 'online') {
     return (
       <span
-        className={`inline-flex items-center gap-1 rounded font-mono font-semibold ${text} ${px} ${py} bg-[#0E2E22] text-[#16A36A] border border-[#155E42]`}
+        className={`inline-flex items-center gap-1.5 rounded-full font-medium ${text} ${px} ${py} bg-emerald-500/10 text-emerald-400 border border-emerald-500/20`}
         title={`Status: ${status}`}
       >
-        <CheckCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
-        <span>{status.toUpperCase()}</span>
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        <span className="capitalize">{status.toLowerCase()}</span>
       </span>
     );
   }
   if (norm === 'revoked' || norm === 'open' || norm === 'critical' || norm === 'blocked' || norm === 'contained') {
     return (
       <span
-        className={`inline-flex items-center gap-1 rounded font-mono font-semibold ${text} ${px} ${py} bg-[#331418] text-[#DC4C55] border border-[#7A1F26]`}
+        className={`inline-flex items-center gap-1.5 rounded-full font-medium ${text} ${px} ${py} bg-rose-500/10 text-rose-400 border border-rose-500/20`}
         title={`Status: ${status}`}
       >
-        <ShieldX className="h-3 w-3 shrink-0" aria-hidden="true" />
-        <span>{status.toUpperCase()}</span>
+        <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+        <span className="capitalize">{status.toLowerCase()}</span>
       </span>
     );
   }
   if (norm === 'investigating' || norm === 'acknowledged' || norm === 'held') {
     return (
       <span
-        className={`inline-flex items-center gap-1 rounded font-mono font-semibold ${text} ${px} ${py} bg-[#0F2240] text-[#367BF5] border border-[#1D4ED8]`}
+        className={`inline-flex items-center gap-1.5 rounded-full font-medium ${text} ${px} ${py} bg-blue-500/10 text-blue-400 border border-blue-500/20`}
         title={`Status: ${status}`}
       >
-        <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
-        <span>{status.toUpperCase()}</span>
+        <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+        <span className="capitalize">{status.toLowerCase()}</span>
       </span>
     );
   }
   if (norm === 'warning' || norm === 'false_positive' || norm === 'suspended') {
     return (
       <span
-        className={`inline-flex items-center gap-1 rounded font-mono font-semibold ${text} ${px} ${py} bg-[#2E200C] text-[#D99A35] border border-[#6E4C19]`}
+        className={`inline-flex items-center gap-1.5 rounded-full font-medium ${text} ${px} ${py} bg-amber-500/10 text-amber-400 border border-amber-500/20`}
         title={`Status: ${status}`}
       >
-        <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
-        <span>{status.toUpperCase()}</span>
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+        <span className="capitalize">{status.toLowerCase().replace('_', ' ')}</span>
       </span>
     );
   }
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded font-mono font-semibold ${text} ${px} ${py} bg-[#151E2D] text-slate-300 border border-[#1E293B]`}
+      className={`inline-flex items-center gap-1.5 rounded-full font-medium ${text} ${px} ${py} bg-white/5 text-slate-300 border border-white/10`}
       title={`Status: ${status}`}
     >
-      <Info className="h-3 w-3 shrink-0" aria-hidden="true" />
-      <span>{(status || 'UNKNOWN').toUpperCase()}</span>
+      <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+      <span className="capitalize">{(status || 'unknown').toLowerCase()}</span>
     </span>
   );
 };
@@ -88,32 +83,32 @@ export const DecisionBadge: React.FC<{ decision: PolicyDecision | string }> = ({
   if (norm === 'ALLOWED' || norm === 'PERMIT') {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded bg-[#0E2E22] px-2 py-0.5 text-[10px] font-mono font-bold text-[#16A36A] border border-[#155E42]"
+        className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400 border border-emerald-500/20"
         title="Decision: ALLOWED"
       >
         <CheckCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
-        <span>[PASS] ALLOWED</span>
+        <span>Allowed</span>
       </span>
     );
   }
   if (norm === 'REQUIRES_APPROVAL' || norm === 'HELD') {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded bg-[#2E200C] px-2 py-0.5 text-[10px] font-mono font-bold text-[#D99A35] border border-[#6E4C19]"
+        className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400 border border-amber-500/20"
         title="Decision: HELD"
       >
         <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
-        <span>[HELD] REVIEW</span>
+        <span>Review</span>
       </span>
     );
   }
   return (
     <span
-      className="inline-flex items-center gap-1 rounded bg-[#331418] px-2 py-0.5 text-[10px] font-mono font-bold text-[#DC4C55] border border-[#7A1F26]"
+      className="inline-flex items-center gap-1.5 rounded-md bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-400 border border-rose-500/20"
       title="Decision: BLOCKED"
     >
-      <XCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
-      <span>[DENY] BLOCKED</span>
+      <ShieldX className="h-3 w-3 shrink-0" aria-hidden="true" />
+      <span>Blocked</span>
     </span>
   );
 };
@@ -124,41 +119,41 @@ export const SeverityBadge: React.FC<{ severity: IncidentSeverity | string }> = 
     case 'CRITICAL':
       return (
         <span
-          className="inline-flex items-center gap-1 rounded bg-[#331418] px-2 py-0.5 text-[10px] font-mono font-bold text-[#DC4C55] border border-[#7A1F26]"
+          className="inline-flex items-center gap-1.5 rounded-md bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-400 border border-rose-500/25"
           title="Incident Severity: CRITICAL"
         >
-          <ShieldAlert className="h-3 w-3 shrink-0" aria-hidden="true" />
-          <span>[SEV-1] CRITICAL</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+          <span>Critical</span>
         </span>
       );
     case 'HIGH':
       return (
         <span
-          className="inline-flex items-center gap-1 rounded bg-[#2E200C] px-2 py-0.5 text-[10px] font-mono font-bold text-[#D99A35] border border-[#6E4C19]"
+          className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400 border border-amber-500/25"
           title="Incident Severity: HIGH"
         >
-          <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
-          <span>[SEV-2] HIGH</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+          <span>High</span>
         </span>
       );
     case 'MEDIUM':
       return (
         <span
-          className="inline-flex items-center gap-1 rounded bg-[#0F2240] px-2 py-0.5 text-[10px] font-mono font-bold text-[#367BF5] border border-[#1D4ED8]"
+          className="inline-flex items-center gap-1.5 rounded-md bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-400 border border-blue-500/25"
           title="Incident Severity: MEDIUM"
         >
-          <Info className="h-3 w-3 shrink-0" aria-hidden="true" />
-          <span>[SEV-3] MEDIUM</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+          <span>Medium</span>
         </span>
       );
     default:
       return (
         <span
-          className="inline-flex items-center gap-1 rounded bg-[#151E2D] px-2 py-0.5 text-[10px] font-mono font-bold text-slate-400 border border-[#1E293B]"
+          className="inline-flex items-center gap-1.5 rounded-md bg-white/5 px-2 py-0.5 text-[11px] font-medium text-slate-400 border border-white/10"
           title="Incident Severity: LOW"
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden="true" />
-          <span>[SEV-4] LOW</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+          <span>Low</span>
         </span>
       );
   }
@@ -172,31 +167,30 @@ export const TrustBadge: React.FC<{ level?: TrustLevel | string; trust?: TrustLe
   if (effective === 'HIGH' || effective === 'ADMIN' || effective === 'VERIFIED') {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded bg-[#0A2633] px-2 py-0.5 text-[10px] font-mono font-semibold text-[#22B8CF] border border-[#125866]"
+        className="inline-flex items-center gap-1.5 rounded-md bg-cyan-500/10 px-2 py-0.5 text-[11px] font-medium text-kali-cyan border border-cyan-500/25"
         title={`Trust Level: ${effective}`}
       >
         <ShieldCheck className="h-3 w-3 shrink-0" aria-hidden="true" />
-        <span>TRUST:{effective}</span>
+        <span>Verified</span>
       </span>
     );
   }
   if (effective === 'MEDIUM') {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded bg-[#0F2240] px-2 py-0.5 text-[10px] font-mono font-semibold text-[#367BF5] border border-[#1D4ED8]"
+        className="inline-flex items-center gap-1.5 rounded-md bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-400 border border-blue-500/25"
         title={`Trust Level: ${effective}`}
       >
-        <Sparkles className="h-3 w-3 shrink-0" aria-hidden="true" />
-        <span>TRUST:{effective}</span>
+        <span>Standard</span>
       </span>
     );
   }
   return (
     <span
-      className="inline-flex items-center gap-1 rounded bg-[#151E2D] px-2 py-0.5 text-[10px] font-mono font-semibold text-slate-400 border border-[#1E293B]"
+      className="inline-flex items-center gap-1.5 rounded-md bg-white/5 px-2 py-0.5 text-[11px] font-medium text-slate-400 border border-white/10"
       title={`Trust Level: ${effective}`}
     >
-      <span>TRUST:{effective}</span>
+      <span>Restricted</span>
     </span>
   );
 };

@@ -1,0 +1,12 @@
+.git
+.github
+.pytest_cache
+*.db
+*.sqlite
+*.sqlite3
+backend/agenttrust.db
+test_agenttrust.db
+audit_reports*
+docs
+.env
+.env.local

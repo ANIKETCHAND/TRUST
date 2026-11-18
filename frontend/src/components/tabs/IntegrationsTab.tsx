@@ -2,9 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   Cpu,
   RefreshCw,
-  CheckCircle2,
   AlertTriangle,
-  XCircle,
   ExternalLink,
   FileSearch,
   Search,
@@ -275,36 +273,36 @@ export const IntegrationsTab: React.FC = () => {
     switch (status) {
       case 'CONNECTED':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded border border-kali-secure/50 bg-[#0E2E22] px-2 py-0.5 font-mono text-[10px] font-bold text-kali-secure">
-            <CheckCircle2 className="h-3 w-3" />
-            <span>CONNECTED</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-kali-secure/30 bg-kali-secure/10 px-2.5 py-0.5 text-[10px] font-medium text-kali-secure">
+            <span className="h-1.5 w-1.5 rounded-full bg-kali-secure" />
+            <span>Connected</span>
           </span>
         );
       case 'DISCONNECTED':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded border border-kali-critical/50 bg-[#331418] px-2 py-0.5 font-mono text-[10px] font-bold text-kali-critical">
-            <XCircle className="h-3 w-3" />
-            <span>DISCONNECTED</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-[10px] font-medium text-rose-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+            <span>Disconnected</span>
           </span>
         );
       case 'NOT_CONFIGURED':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-bg px-2 py-0.5 font-mono text-[10px] text-slate-400">
-            <AlertTriangle className="h-3 w-3 text-kali-warning" />
-            <span>NOT CONFIGURED</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[10px] font-medium text-slate-400">
+            <AlertTriangle className="h-3 w-3 text-amber-400" />
+            <span>Not Configured</span>
           </span>
         );
       case 'ERROR':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded border border-kali-critical/50 bg-[#331418] px-2 py-0.5 font-mono text-[10px] font-bold text-kali-critical">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-[10px] font-medium text-rose-400">
             <AlertTriangle className="h-3 w-3" />
-            <span>ERROR</span>
+            <span>Error</span>
           </span>
         );
       case 'PLANNED':
         return (
-          <span className="inline-flex items-center gap-1.5 rounded border border-kali-primary/40 bg-kali-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold text-kali-cyan">
-            <span>[PLANNED]</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-kali-cyan/30 bg-kali-cyan/10 px-2.5 py-0.5 text-[10px] font-medium text-kali-cyan">
+            <span>Planned</span>
           </span>
         );
       default:
@@ -313,85 +311,80 @@ export const IntegrationsTab: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-kali-border pb-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-center">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold text-kali-primary">// PROTECTION</span>
-            <span className="text-slate-500 font-mono">/</span>
-            <span className="font-mono text-xs text-kali-cyan">INTEGRATION_CENTER</span>
-          </div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 mt-1">
-            <Cpu className="h-6 w-6 text-kali-primary" />
-            Open-Source Security Integrations & Defense Mesh
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
+            <Cpu className="h-6 w-6 text-kali-cyan" />
+            Security Integrations & Defense Mesh
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Operational status, fail-closed enforcement modes, heuristic YARA scanners, and enterprise SIEM connectors.
+          <p className="text-xs text-slate-400 mt-1">
+            Operational status, fail-closed enforcement modes, heuristic file scanners, and enterprise SIEM connectors.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={fetchIntegrations}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3.5 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:bg-kali-elevated transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-slate-200 hover:border-kali-cyan/40 hover:bg-white/[0.06] hover:text-white transition-all disabled:opacity-50"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-kali-primary ${loading ? 'animate-spin' : ''}`} />
-            <span>SYNC MESH</span>
+            <RefreshCw className={`h-3.5 w-3.5 text-kali-cyan ${loading ? 'animate-spin' : ''}`} />
+            <span>Sync</span>
           </button>
         </div>
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-kali-border gap-2 font-mono text-xs">
+      <div className="flex border-b border-white/10 gap-2 text-xs">
         <button
           onClick={() => setActiveSubTab('inventory')}
-          className={`px-4 py-2 border-b-2 font-bold transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2.5 border-b-2 font-medium transition-colors flex items-center gap-2 rounded-t-xl ${
             activeSubTab === 'inventory'
-              ? 'border-kali-primary text-white bg-kali-card/40'
+              ? 'border-kali-primary text-white bg-white/[0.04] font-semibold'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
           <Layers className="h-4 w-4 text-kali-primary" />
-          <span>INTEGRATION INVENTORY ({integrationsList.length})</span>
+          <span>Integration Inventory ({integrationsList.length})</span>
         </button>
         <button
           onClick={() => setActiveSubTab('scanner')}
-          className={`px-4 py-2 border-b-2 font-bold transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2.5 border-b-2 font-medium transition-colors flex items-center gap-2 rounded-t-xl ${
             activeSubTab === 'scanner'
-              ? 'border-kali-primary text-white bg-kali-card/40'
+              ? 'border-kali-primary text-white bg-white/[0.04] font-semibold'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
           <FileSearch className="h-4 w-4 text-kali-cyan" />
-          <span>FILE SCAN TESTBENCH</span>
+          <span>File Scanner</span>
         </button>
         <button
           onClick={() => setActiveSubTab('quarantine')}
-          className={`px-4 py-2 border-b-2 font-bold transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2.5 border-b-2 font-medium transition-colors flex items-center gap-2 rounded-t-xl ${
             activeSubTab === 'quarantine'
-              ? 'border-kali-primary text-white bg-kali-card/40'
+              ? 'border-kali-primary text-white bg-white/[0.04] font-semibold'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Lock className="h-4 w-4 text-kali-warning" />
-          <span>QUARANTINE VAULT</span>
+          <Lock className="h-4 w-4 text-amber-400" />
+          <span>Quarantine Vault</span>
         </button>
         <button
           onClick={() => setActiveSubTab('intel')}
-          className={`px-4 py-2 border-b-2 font-bold transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2.5 border-b-2 font-medium transition-colors flex items-center gap-2 rounded-t-xl ${
             activeSubTab === 'intel'
-              ? 'border-kali-primary text-white bg-kali-card/40'
+              ? 'border-kali-primary text-white bg-white/[0.04] font-semibold'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
           <Search className="h-4 w-4 text-kali-secure" />
-          <span>THREAT INTEL IoC LOOKUP</span>
+          <span>Threat Intel (IoC)</span>
         </button>
       </div>
 
       {loading && integrationsList.length === 0 ? (
-        <LoadingSpinner message="ENUMERATING INTEGRATION MESH NODES..." />
+        <LoadingSpinner message="Enumerating integration mesh nodes..." />
       ) : (
         <>
           {/* TAB 1: INTEGRATION INVENTORY */}
@@ -400,35 +393,35 @@ export const IntegrationsTab: React.FC = () => {
               {integrationsList.map((item) => (
                 <div
                   key={item.name}
-                  className="rounded-lg border border-kali-border bg-kali-card p-4 shadow-kali-card flex flex-col justify-between hover:border-kali-borderLight transition-all"
+                  className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl flex flex-col justify-between hover:border-white/20 hover:bg-white/[0.04] transition-all"
                 >
                   <div>
-                    <div className="flex items-center justify-between border-b border-kali-border pb-2.5">
-                      <span className="font-mono text-[10px] text-slate-400 uppercase font-semibold">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold">
                         {item.category}
                       </span>
                       {getStatusBadge(item.connStatus)}
                     </div>
 
-                    <div className="mt-3">
-                      <h3 className="text-sm font-bold text-white flex items-center justify-between">
+                    <div className="mt-3.5">
+                      <h3 className="text-sm font-semibold text-white flex items-center justify-between">
                         <span>{item.name}</span>
-                        <span className="font-mono text-[10px] text-kali-cyan font-normal">
+                        <span className="text-[11px] text-kali-cyan font-normal">
                           {item.version}
                         </span>
                       </h3>
-                      <p className="mt-1 text-xs text-slate-400 leading-relaxed font-sans line-clamp-3">
+                      <p className="mt-1.5 text-xs text-slate-400 leading-relaxed line-clamp-3">
                         {item.purpose}
                       </p>
                     </div>
 
                     {/* Technical Configuration Details */}
-                    <div className="mt-4 space-y-1.5 rounded border border-kali-border bg-kali-bg p-2.5 font-mono text-[11px]">
-                      <div className="text-[10px] text-slate-500 uppercase font-bold">// CONFIGURATION</div>
+                    <div className="mt-4 space-y-1.5 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-[11px]">
+                      <div className="text-[10px] text-slate-400 uppercase font-semibold">Configuration</div>
                       {Object.entries(item.configuration).map(([k, v]) => (
                         <div key={k} className="flex items-center justify-between truncate text-slate-300">
                           <span className="text-slate-400">{k}:</span>
-                          <span className="text-white font-semibold truncate ml-2 max-w-[130px]">
+                          <span className="text-white font-medium truncate ml-2 max-w-[130px] font-mono text-[10px]">
                             {String(v)}
                           </span>
                         </div>
@@ -436,15 +429,15 @@ export const IntegrationsTab: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="mt-4 border-t border-kali-border pt-2.5 flex items-center justify-between font-mono text-[11px]">
-                    <span className="text-slate-500 text-[10px]">
+                  <div className="mt-4 border-t border-white/10 pt-3 flex items-center justify-between text-xs">
+                    <span className="text-slate-500 text-[11px]">
                       {item.installStatus === 'INSTALLED' ? '✓ Installed' : item.installStatus === 'STANDALONE' ? '⚡ Standalone' : '○ Planned'}
                     </span>
                     <a
                       href={item.docsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-kali-primary hover:text-kali-cyan transition-colors"
+                      className="inline-flex items-center gap-1 text-kali-primary hover:text-kali-cyan transition-colors font-medium"
                     >
                       <span>Docs</span>
                       <ExternalLink className="h-3 w-3" />
@@ -458,34 +451,34 @@ export const IntegrationsTab: React.FC = () => {
           {/* TAB 2: FILE SCAN TESTBENCH */}
           {activeSubTab === 'scanner' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="rounded-lg border border-kali-border bg-kali-card p-4 shadow-kali-card space-y-4">
-                <div className="border-b border-kali-border pb-3">
-                  <div className="font-mono text-[10px] text-kali-primary font-bold">// SANDBOX_INSPECTION</div>
-                  <h2 className="text-base font-bold text-white mt-0.5">YARA & ClamAV Heuristic File Scanner</h2>
-                  <p className="text-xs text-slate-400 mt-1 font-sans">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl space-y-4">
+                <div className="border-b border-white/10 pb-3.5">
+                  <div className="text-xs text-kali-primary font-medium">Sandbox Inspection</div>
+                  <h2 className="text-base font-bold text-white mt-1">YARA & ClamAV Heuristic File Scanner</h2>
+                  <p className="text-xs text-slate-400 mt-1">
                     Inspect files generated by autonomous agents before allowing exfiltration or execution outside sandbox limits.
                   </p>
                 </div>
 
-                <form onSubmit={handleScanFile} className="space-y-4 font-mono text-xs">
+                <form onSubmit={handleScanFile} className="space-y-4 text-xs">
                   <div>
-                    <label className="text-slate-300 font-semibold block mb-1">Sandbox Relative File Path</label>
+                    <label className="text-slate-300 font-medium block mb-1.5">Sandbox Relative File Path</label>
                     <input
                       type="text"
                       required
                       value={scanPath}
                       onChange={(e) => setScanPath(e.target.value)}
                       placeholder="e.g. agent_outputs/payload.py"
-                      className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-primary focus:outline-none"
                     />
                   </div>
 
-                  <label className="flex items-center gap-2 cursor-pointer text-slate-300">
+                  <label className="flex items-center gap-2.5 cursor-pointer text-slate-300">
                     <input
                       type="checkbox"
                       checked={autoQuarantine}
                       onChange={(e) => setAutoQuarantine(e.target.checked)}
-                      className="rounded border-kali-border bg-kali-bg text-kali-primary focus:ring-0"
+                      className="rounded border-white/20 bg-black/40 text-kali-primary focus:ring-0"
                     />
                     <span>Automatically quarantine into isolation vault if threat detected</span>
                   </label>
@@ -493,29 +486,29 @@ export const IntegrationsTab: React.FC = () => {
                   <button
                     type="submit"
                     disabled={scanning}
-                    className="inline-flex items-center gap-2 rounded bg-kali-primary px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-kali-glow hover:bg-kali-secondaryBlue transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-kali-primary px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-kali-primary/20 hover:bg-kali-secondaryBlue transition-colors disabled:opacity-50"
                   >
                     <FileSearch className={`h-4 w-4 ${scanning ? 'animate-spin' : ''}`} />
-                    <span>{scanning ? 'SCANNING ARTIFACT...' : 'DISPATCH SCANNER'}</span>
+                    <span>{scanning ? 'Scanning Artifact...' : 'Dispatch Scanner'}</span>
                   </button>
                 </form>
               </div>
 
               {/* Scan Results Panel */}
-              <div className="rounded-lg border border-kali-border bg-kali-card p-4 shadow-kali-card space-y-3">
-                <div className="font-mono text-[10px] text-slate-400 font-bold">// SCANNER_OUTPUT_BUFFER</div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl space-y-3">
+                <div className="text-xs text-slate-400 font-medium">Scanner Output Buffer</div>
                 {scanResult ? (
                   <TerminalBox
-                    title={`SCAN RESULT // ${scanPath}`}
+                    title={`Scan Result: ${scanPath}`}
                     copyContent={JSON.stringify(scanResult, null, 2)}
                     maxHeight="max-h-72"
                   >
                     <pre>{JSON.stringify(scanResult, null, 2)}</pre>
                   </TerminalBox>
                 ) : (
-                  <div className="h-64 flex flex-col items-center justify-center rounded border border-dashed border-kali-border text-slate-500 font-mono text-xs">
+                  <div className="h-64 flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 text-slate-500 text-xs">
                     <FileSearch className="h-8 w-8 text-slate-600 mb-2" />
-                    <span>Ready to scan sandbox files. Submit file path above.</span>
+                    <span>Ready to scan sandbox files. Submit file path on the left.</span>
                   </div>
                 )}
               </div>
@@ -524,28 +517,28 @@ export const IntegrationsTab: React.FC = () => {
 
           {/* TAB 3: QUARANTINE VAULT */}
           {activeSubTab === 'quarantine' && (
-            <div className="rounded-lg border border-kali-border bg-kali-card p-4 shadow-kali-card space-y-4">
-              <div className="flex items-center justify-between border-b border-kali-border pb-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3.5">
                 <div>
-                  <div className="font-mono text-[10px] text-kali-warning font-bold">// ISOLATION_VAULT</div>
-                  <h2 className="text-base font-bold text-white mt-0.5">Non-Destructive Malware Quarantine Storage</h2>
-                  <p className="text-xs text-slate-400 mt-1 font-sans">
+                  <div className="text-xs text-amber-400 font-medium">Isolation Vault</div>
+                  <h2 className="text-base font-bold text-white mt-1">Non-Destructive Malware Quarantine Storage</h2>
+                  <p className="text-xs text-slate-400 mt-1">
                     Malicious artifacts are cryptographically hashed, quarantined, and secured from execution.
                   </p>
                 </div>
                 <button
                   onClick={fetchQuarantine}
                   disabled={loadingQuarantine}
-                  className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-bg px-3 py-1 font-mono text-xs text-slate-200 hover:border-kali-primary transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-1.5 text-xs font-semibold text-slate-200 hover:border-kali-primary/50 transition-colors"
                 >
                   <RefreshCw className={`h-3 w-3 text-kali-cyan ${loadingQuarantine ? 'animate-spin' : ''}`} />
-                  <span>REFRESH VAULT</span>
+                  <span>Refresh Vault</span>
                 </button>
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-mono">
-                  <thead className="border-b border-kali-border bg-kali-bg/90 text-[10px] text-slate-400">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-white/10 text-[11px] text-slate-400 font-medium">
                     <tr>
                       <th className="py-2.5 px-3">Quarantine ID</th>
                       <th className="py-2.5 px-3">Threat Signature</th>
@@ -555,18 +548,18 @@ export const IntegrationsTab: React.FC = () => {
                       <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-kali-border text-slate-300">
+                  <tbody className="divide-y divide-white/5 text-slate-300">
                     {quarantineItems.map((item) => (
-                      <tr key={item.quarantine_id || item.id} className="hover:bg-kali-elevated/40">
-                        <td className="py-2.5 px-3 font-bold text-white">{item.quarantine_id || item.id}</td>
-                        <td className="py-2.5 px-3 text-kali-critical font-bold">{item.threat_name || 'Generic.Malware'}</td>
-                        <td className="py-2.5 px-3 text-slate-400 max-w-[180px] truncate">{item.original_path}</td>
-                        <td className="py-2.5 px-3 text-kali-cyan font-mono text-[10px] truncate max-w-[140px]">{item.file_hash}</td>
-                        <td className="py-2.5 px-3 text-slate-500 text-[10px]">{item.timestamp || 'Recent'}</td>
-                        <td className="py-2.5 px-3 text-right">
+                      <tr key={item.quarantine_id || item.id} className="hover:bg-white/[0.03] transition-colors">
+                        <td className="py-3 px-3 font-semibold text-white">{item.quarantine_id || item.id}</td>
+                        <td className="py-3 px-3 text-rose-400 font-medium">{item.threat_name || 'Generic.Malware'}</td>
+                        <td className="py-3 px-3 text-slate-400 max-w-[180px] truncate font-mono text-[11px]">{item.original_path}</td>
+                        <td className="py-3 px-3 text-kali-cyan font-mono text-[11px] truncate max-w-[140px]">{item.file_hash}</td>
+                        <td className="py-3 px-3 text-slate-400 text-[11px]">{item.timestamp || 'Recent'}</td>
+                        <td className="py-3 px-3 text-right">
                           <button
                             onClick={() => handleRestoreFile(item.quarantine_id || item.id)}
-                            className="rounded border border-kali-border bg-kali-bg px-2.5 py-1 text-[11px] text-kali-secure hover:border-kali-secure transition-colors"
+                            className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-kali-secure hover:border-kali-secure/50 transition-colors"
                           >
                             Restore
                           </button>
@@ -575,8 +568,8 @@ export const IntegrationsTab: React.FC = () => {
                     ))}
                     {quarantineItems.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="py-10 text-center text-slate-500">
-                          // QUARANTINE VAULT IS EMPTY. NO ACTIVE MALICIOUS PAYLOADS ISOLATED.
+                        <td colSpan={6} className="py-12 text-center text-slate-500 text-xs">
+                          Quarantine vault is empty. No active malicious payloads isolated.
                         </td>
                       </tr>
                     )}
@@ -589,67 +582,67 @@ export const IntegrationsTab: React.FC = () => {
           {/* TAB 4: THREAT INTEL IoC LOOKUP */}
           {activeSubTab === 'intel' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="rounded-lg border border-kali-border bg-kali-card p-4 shadow-kali-card space-y-4">
-                <div className="border-b border-kali-border pb-3">
-                  <div className="font-mono text-[10px] text-kali-secure font-bold">// THREAT_INTELLIGENCE</div>
-                  <h2 className="text-base font-bold text-white mt-0.5">Indicator of Compromise (IoC) Evaluator</h2>
-                  <p className="text-xs text-slate-400 mt-1 font-sans">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl space-y-4">
+                <div className="border-b border-white/10 pb-3.5">
+                  <div className="text-xs text-kali-secure font-medium">Threat Intelligence</div>
+                  <h2 className="text-base font-bold text-white mt-1">Indicator of Compromise (IoC) Evaluator</h2>
+                  <p className="text-xs text-slate-400 mt-1">
                     Cross-reference external IP addresses, domains, and payload hashes against global threat feeds.
                   </p>
                 </div>
 
-                <form onSubmit={handleQueryIntel} className="space-y-4 font-mono text-xs">
+                <form onSubmit={handleQueryIntel} className="space-y-4 text-xs">
                   <div>
-                    <label className="text-slate-300 font-semibold block mb-1">Indicator Type</label>
+                    <label className="text-slate-300 font-medium block mb-1.5">Indicator Type</label>
                     <select
                       value={intelType}
                       onChange={(e) => setIntelType(e.target.value)}
-                      className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-primary focus:outline-none"
                     >
-                      <option value="ip">IP Address (IPv4 / IPv6)</option>
-                      <option value="domain">Domain Name</option>
-                      <option value="hash">Cryptographic Hash (MD5 / SHA-256)</option>
+                      <option value="ip" className="bg-[#0a0d14] text-white">IP Address (IPv4 / IPv6)</option>
+                      <option value="domain" className="bg-[#0a0d14] text-white">Domain Name</option>
+                      <option value="hash" className="bg-[#0a0d14] text-white">Cryptographic Hash (MD5 / SHA-256)</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="text-slate-300 font-semibold block mb-1">Indicator Value</label>
+                    <label className="text-slate-300 font-medium block mb-1.5">Indicator Value</label>
                     <input
                       type="text"
                       required
                       value={intelValue}
                       onChange={(e) => setIntelValue(e.target.value)}
                       placeholder="e.g. 198.51.100.42"
-                      className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-primary focus:outline-none"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={queryingIntel}
-                    className="inline-flex items-center gap-2 rounded bg-kali-primary px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-kali-glow hover:bg-kali-secondaryBlue transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-kali-primary px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-kali-primary/20 hover:bg-kali-secondaryBlue transition-colors disabled:opacity-50"
                   >
                     <Search className={`h-4 w-4 ${queryingIntel ? 'animate-spin' : ''}`} />
-                    <span>{queryingIntel ? 'QUERYING FEEDS...' : 'EVALUATE IoC'}</span>
+                    <span>{queryingIntel ? 'Querying Feeds...' : 'Evaluate IoC'}</span>
                   </button>
                 </form>
               </div>
 
               {/* IoC Results */}
-              <div className="rounded-lg border border-kali-border bg-kali-card p-4 shadow-kali-card space-y-3">
-                <div className="font-mono text-[10px] text-slate-400 font-bold">// THREAT_INTEL_REPORT</div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl space-y-3">
+                <div className="text-xs text-slate-400 font-medium">Threat Intelligence Report</div>
                 {intelResult ? (
                   <TerminalBox
-                    title={`IoC REPORT // ${intelValue}`}
+                    title={`IoC Report: ${intelValue}`}
                     copyContent={JSON.stringify(intelResult, null, 2)}
                     maxHeight="max-h-72"
                   >
                     <pre>{JSON.stringify(intelResult, null, 2)}</pre>
                   </TerminalBox>
                 ) : (
-                  <div className="h-64 flex flex-col items-center justify-center rounded border border-dashed border-kali-border text-slate-500 font-mono text-xs">
+                  <div className="h-64 flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 text-slate-500 text-xs">
                     <Search className="h-8 w-8 text-slate-600 mb-2" />
-                    <span>Submit an IP or hash to query threat intelligence telemetry.</span>
+                    <span>Submit an IP or hash on the left to query threat intelligence telemetry.</span>
                   </div>
                 )}
               </div>

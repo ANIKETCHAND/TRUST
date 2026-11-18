@@ -111,7 +111,7 @@ export const ReportsTab: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `agenttrust_incident_${selectedIncidentId}_forensics.${format}`;
+      a.download = `crossx_incident_${selectedIncidentId}_forensics.${format}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -124,31 +124,26 @@ export const ReportsTab: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-kali-border pb-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-center">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold text-kali-primary">// THREAT_OPERATIONS</span>
-            <span className="text-slate-500 font-mono">/</span>
-            <span className="font-mono text-xs text-kali-cyan">FORENSICS_AND_REPORTS</span>
-          </div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 mt-1">
-            <FileText className="h-6 w-6 text-kali-primary" />
-            Forensic Incident Dossier & Executive Compliance Reports
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
+            <FileText className="h-6 w-6 text-kali-cyan" />
+            Forensics & Threat Reports
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Automated MITRE ATT&CK framework mapping, microsecond timeline reconstruction, and publication-ready SOC incident reporting.
+          <p className="text-xs text-slate-400 mt-1">
+            Automated MITRE ATT&CK framework mapping, timeline reconstruction, and executive compliance dossiers.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={loadData}
-            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:bg-kali-elevated transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-slate-200 hover:border-kali-cyan/40 hover:bg-white/[0.06] hover:text-white transition-all"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-kali-primary ${loading ? 'animate-spin' : ''}`} />
-            <span>SYNC DOSSIER</span>
+            <RefreshCw className={`h-3.5 w-3.5 text-kali-cyan ${loading ? 'animate-spin' : ''}`} />
+            <span>Sync</span>
           </button>
         </div>
       </div>
@@ -156,7 +151,6 @@ export const ReportsTab: React.FC = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
-          tag="REP-01"
           label="Posture Score"
           value={summary ? `${summary.posture_score}/100` : '100/100'}
           icon={<Shield className="h-4 w-4" />}
@@ -165,16 +159,14 @@ export const ReportsTab: React.FC = () => {
           description="Overall defensive posture rating"
         />
         <StatCard
-          tag="REP-02"
           label="Blocked Violations"
           value={summary?.blocked_violations ?? 0}
           icon={<ShieldAlert className="h-4 w-4 text-kali-critical" />}
           subValue="Pre-Flight"
-          subValueColor="text-kali-critical"
+          subValueColor="text-rose-400"
           description="Unauthorized tool invocations"
         />
         <StatCard
-          tag="REP-03"
           label="Guardrails Active"
           value={summary?.guardrails_active.length ?? 3}
           icon={<Layers className="h-4 w-4 text-kali-cyan" />}
@@ -183,7 +175,6 @@ export const ReportsTab: React.FC = () => {
           description="NeMo, Regex, Heuristic Checks"
         />
         <StatCard
-          tag="REP-04"
           label="Sinkholes Active"
           value={summary?.active_defense_status.perimeter_sinkholes_active ?? 0}
           icon={<CheckCircle2 className="h-4 w-4 text-kali-secure" />}
@@ -194,20 +185,20 @@ export const ReportsTab: React.FC = () => {
       </div>
 
       {/* Incident Selection & Export Actions */}
-      <div className="rounded-lg border border-kali-border bg-kali-card p-5 shadow-kali-card space-y-4 font-mono text-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-kali-border pb-3">
-          <div className="space-y-1">
-            <label className="font-bold text-white block">// SELECT_INCIDENT_DOSSIER:</label>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-white block">Select Incident Dossier</label>
             <select
               value={selectedIncidentId}
               onChange={(e) => setSelectedIncidentId(e.target.value)}
-              className="rounded border border-kali-border bg-kali-bg px-3 py-1.5 font-mono text-xs text-white focus:border-kali-primary focus:outline-none min-w-[280px]"
+              className="rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs text-white focus:border-kali-primary focus:outline-none min-w-[280px]"
             >
               {incidents.length === 0 ? (
-                <option value="">No incidents recorded</option>
+                <option value="" className="bg-[#0a0d14] text-white">No incidents recorded</option>
               ) : (
                 incidents.map((inc) => (
-                  <option key={inc.id} value={inc.id}>
+                  <option key={inc.id} value={inc.id} className="bg-[#0a0d14] text-white">
                     {inc.id.slice(0, 12)} • {inc.title} ({inc.severity})
                   </option>
                 ))
@@ -215,19 +206,19 @@ export const ReportsTab: React.FC = () => {
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => handleExport('html')}
               disabled={!selectedIncidentId}
-              className="inline-flex items-center gap-1.5 rounded bg-kali-primary px-3 py-1.5 font-mono text-xs font-bold text-white shadow-kali-glow hover:bg-kali-secondaryBlue transition-colors disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-kali-primary px-3.5 py-2 text-xs font-semibold text-white shadow-lg shadow-kali-primary/20 hover:bg-kali-secondaryBlue transition-colors disabled:opacity-40"
             >
               <Download className="h-3.5 w-3.5" />
-              <span>Export HTML / PDF</span>
+              <span>Export HTML</span>
             </button>
             <button
               onClick={() => handleExport('json')}
               disabled={!selectedIncidentId}
-              className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-bg px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:text-white transition-colors disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-semibold text-slate-200 hover:border-kali-primary/50 hover:text-white transition-colors disabled:opacity-40"
             >
               <Code className="h-3.5 w-3.5 text-kali-primary" />
               <span>JSON</span>
@@ -235,7 +226,7 @@ export const ReportsTab: React.FC = () => {
             <button
               onClick={() => handleExport('csv')}
               disabled={!selectedIncidentId}
-              className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-bg px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-secure hover:text-white transition-colors disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-semibold text-slate-200 hover:border-kali-secure/50 hover:text-white transition-colors disabled:opacity-40"
             >
               <FileSpreadsheet className="h-3.5 w-3.5 text-kali-secure" />
               <span>CSV</span>
@@ -244,13 +235,13 @@ export const ReportsTab: React.FC = () => {
         </div>
 
         {/* Live HTML Dossier Render Sandbox */}
-        <div className="rounded border border-kali-border overflow-hidden bg-kali-bg">
-          <div className="flex items-center justify-between px-4 py-2 border-b border-kali-border bg-kali-secondary text-xs text-slate-400">
-            <span className="font-mono">FORENSIC REPORT PREVIEW // {selectedIncidentId || 'NO_INCIDENT_SELECTED'}</span>
+        <div className="rounded-xl border border-white/10 overflow-hidden bg-black/60">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 bg-white/[0.02] text-xs text-slate-400 font-medium">
+            <span>Dossier Live Preview: {selectedIncidentId ? `${selectedIncidentId.slice(0, 16)}...` : 'No Incident Selected'}</span>
             {generating && <span className="text-kali-cyan animate-pulse">Rendering Dossier...</span>}
           </div>
 
-          <div className="p-1 max-h-[600px] overflow-y-auto bg-[#070A0F]">
+          <div className="p-1 max-h-[600px] overflow-y-auto bg-black">
             {reportPreviewHtml ? (
               <iframe
                 title="Incident Report Preview"
@@ -259,10 +250,10 @@ export const ReportsTab: React.FC = () => {
                 sandbox="allow-same-origin"
               />
             ) : (
-              <div className="py-20 text-center text-slate-500 font-mono text-xs">
+              <div className="py-20 text-center text-slate-500 text-xs">
                 {incidents.length === 0
-                  ? '// NO ACTIVE SECURITY INCIDENTS. ZERO ROGUE TOOL ACTIVITY DETECTED.'
-                  : '// SELECT AN INCIDENT DOSSIER ABOVE TO PREVIEW COMPLIANCE REPORT.'}
+                  ? 'No active security incidents detected. System is clean.'
+                  : 'Select an incident dossier above to render the forensic report.'}
               </div>
             )}
           </div>
@@ -271,16 +262,18 @@ export const ReportsTab: React.FC = () => {
 
       {/* Compliance Frameworks & Recommendations */}
       {summary && (
-        <div className="rounded-lg border border-kali-border bg-kali-card p-5 shadow-kali-card space-y-3 font-mono text-xs">
-          <h2 className="text-xs font-bold text-white flex items-center gap-2 border-b border-kali-border pb-2.5">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl space-y-3.5 text-xs">
+          <h2 className="text-sm font-semibold text-white flex items-center gap-2 border-b border-white/10 pb-3">
             <CheckCircle2 className="h-4 w-4 text-kali-secure" />
-            <span>// POSTURE_ASSESSMENT_AND_REMEDIATION_RECOMMENDATIONS</span>
+            <span>Posture Assessment & Recommendations</span>
           </h2>
-          <ul className="space-y-2 text-slate-300 font-sans text-xs">
+          <ul className="space-y-2.5 text-slate-300 text-xs">
             {summary.recommendations.map((rec, idx) => (
-              <li key={idx} className="flex items-start gap-2">
-                <span className="text-kali-cyan font-bold font-mono">[{idx + 1}]</span>
-                <span className="leading-relaxed">{rec}</span>
+              <li key={idx} className="flex items-start gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-kali-cyan/10 border border-kali-cyan/20 text-[10px] font-semibold text-kali-cyan">
+                  {idx + 1}
+                </span>
+                <span className="leading-relaxed mt-0.5">{rec}</span>
               </li>
             ))}
           </ul>

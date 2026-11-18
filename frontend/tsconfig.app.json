@@ -9,6 +9,10 @@
     "skipLibCheck": true,
 
     /* Bundler mode */
+    "paths": {
+      "@designcodeio/threeui": ["./src/shaders/spark-badge/SparkBadge.tsx"],
+      "@designcodeio/threeui/style.css": ["./src/shaders/threeui.css"]
+    },
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,

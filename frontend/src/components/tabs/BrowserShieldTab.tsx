@@ -6,12 +6,12 @@ import {
   XCircle,
   Play,
   Layers,
-  AlertTriangle,
   RefreshCw,
   Terminal,
 } from 'lucide-react';
 import { api } from '../../services/api.client';
 import { useToast } from '../../context/ToastContext';
+import { StatCard } from '../ui/StatCard';
 import { truncateId } from '../../utils/formatters';
 
 export const BrowserShieldTab: React.FC = () => {
@@ -70,118 +70,101 @@ export const BrowserShieldTab: React.FC = () => {
   const isProtectionActive = status?.status === 'active' || status?.enrolled;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-kali-border pb-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-center">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold text-kali-primary">// PROTECTION</span>
-            <span className="text-slate-500 font-mono">/</span>
-            <span className="font-mono text-xs text-kali-cyan">BROWSER_SHIELD_DLP</span>
-          </div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 mt-1">
-            <Globe className="h-6 w-6 text-kali-primary" />
-            Enterprise Browser Shield & Prompt DLP Sentry
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
+            <Globe className="h-6 w-6 text-kali-cyan" />
+            Browser Shield & Prompt DLP
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Client-side Manifest V3 browser extension for pre-submission prompt inspection, secret redaction, and exfiltration prevention.
+          <p className="text-xs text-slate-400 mt-1">
+            Client-side browser extension for pre-submission prompt inspection, secret redaction, and exfiltration prevention.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={fetchStatus}
-            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:bg-kali-elevated transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-slate-200 hover:border-kali-cyan/40 hover:bg-white/[0.06] hover:text-white transition-all"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-kali-primary ${loading ? 'animate-spin' : ''}`} />
-            <span>SYNC</span>
+            <RefreshCw className={`h-3.5 w-3.5 text-kali-cyan ${loading ? 'animate-spin' : ''}`} />
+            <span>Sync</span>
           </button>
         </div>
       </div>
 
-      {/* Real Extension Connection Status Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
-          <div className="font-mono text-[10px] text-slate-400 uppercase">[EXT-01] Enrollment Status</div>
-          <div className="mt-1 flex items-center gap-2">
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${
-                isProtectionActive ? 'bg-kali-secure animate-pulse' : 'bg-kali-warning'
-              }`}
-            />
-            <span
-              className={`font-mono text-base font-bold ${
-                isProtectionActive ? 'text-kali-secure' : 'text-kali-warning'
-              }`}
-            >
-              {isProtectionActive ? 'ENROLLED' : 'DISCONNECTED'}
-            </span>
-          </div>
-          <div className="font-mono text-[10px] text-slate-400 mt-0.5">
-            {isProtectionActive ? 'Extension Paired & Heartbeating' : 'Requires Extension Installation'}
-          </div>
-        </div>
-
-        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
-          <div className="font-mono text-[10px] text-slate-400 uppercase">[EXT-02] Target Engine</div>
-          <div className="mt-1 font-mono text-base font-bold text-white">CHROMIUM (MV3)</div>
-          <div className="font-mono text-[10px] text-kali-cyan mt-0.5">Chrome, Brave, Edge</div>
-        </div>
-
-        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
-          <div className="font-mono text-[10px] text-slate-400 uppercase">[EXT-03] Workflows Guarded</div>
-          <div className="mt-1 font-mono text-base font-bold text-kali-primary">
-            {status?.supported_workflows?.length || 4} TARGETS
-          </div>
-          <div className="font-mono text-[10px] text-slate-400 mt-0.5">ChatGPT, Claude, Custom LLM</div>
-        </div>
-
-        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
-          <div className="font-mono text-[10px] text-slate-400 uppercase">[EXT-04] Intercept Mode</div>
-          <div className="mt-1 font-mono text-base font-bold text-kali-secure">PRE-FLIGHT</div>
-          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Zero Outbound Leakage</div>
-        </div>
+      {/* Connection Status KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard
+          label="Enrollment Status"
+          value={isProtectionActive ? 'Enrolled' : 'Disconnected'}
+          subValue={isProtectionActive ? 'Active' : 'Offline'}
+          subValueColor={isProtectionActive ? 'text-emerald-400' : 'text-amber-400'}
+          description={isProtectionActive ? 'Extension paired and reporting' : 'Requires extension setup'}
+          icon={<Globe className="h-4 w-4 text-kali-cyan" />}
+        />
+        <StatCard
+          label="Target Engine"
+          value="Chromium (MV3)"
+          subValue="Supported"
+          subValueColor="text-kali-cyan"
+          description="Chrome, Brave, Edge"
+          icon={<Layers className="h-4 w-4 text-kali-primary" />}
+        />
+        <StatCard
+          label="Active DLP Rules"
+          value={status?.rules_count ?? 8}
+          subValue="Enforced"
+          subValueColor="text-emerald-400"
+          description="API keys, PII, sensitive tokens"
+          icon={<Shield className="h-4 w-4 text-emerald-400" />}
+        />
+        <StatCard
+          label="Interceptions"
+          value={status?.interceptions_count ?? 0}
+          subValue="Blocked"
+          subValueColor="text-rose-400"
+          description="Exfiltrations prevented"
+          icon={<Shield className="h-4 w-4 text-rose-400" />}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Left: Pre-flight Prompt Inspection Simulator */}
-        <div className="rounded-lg border border-kali-border bg-kali-card p-5 shadow-kali-card space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-kali-border">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded border border-kali-primary/40 bg-kali-bg text-kali-primary">
+        {/* Left: Pre-Flight Prompt Simulator */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-6 backdrop-blur-md space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-white/10">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-white/[0.03] border border-white/5 text-kali-cyan">
                 <Play className="h-4 w-4" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-white">Browser Pre-Submission DLP Simulator</h2>
-                <span className="font-mono text-[10px] text-kali-cyan">[LOCAL_CONTENT_SCRIPT_DRY_RUN]</span>
+                <h2 className="text-sm font-semibold text-white">Pre-Submission DLP Simulator</h2>
+                <p className="text-xs text-slate-400">Test prompt redaction and exfiltration rules</p>
               </div>
             </div>
-            <span className="font-mono text-[10px] px-2 py-0.5 rounded border border-kali-border bg-kali-bg text-slate-400">
-              PORT 8080 DLP
+            <span className="text-[11px] px-2.5 py-0.5 rounded-full border border-white/10 bg-white/5 text-slate-400">
+              DLP Engine
             </span>
           </div>
 
-          <p className="text-xs text-slate-400 font-sans leading-relaxed">
-            Replicates the exact pre-submission intercept evaluated by the Browser Shield content script before an operator or agent submits text to third-party web LLMs.
-          </p>
-
-          <div className="font-mono text-xs space-y-3">
+          <div className="text-xs space-y-4">
             <div>
-              <label className="text-slate-300 font-semibold block mb-1">Target AI Application URL</label>
+              <label className="text-slate-300 font-medium block mb-1.5">Target AI Application URL</label>
               <input
                 type="text"
                 value={testUrl}
                 onChange={(e) => setTestUrl(e.target.value)}
-                className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-cyan focus:outline-none font-mono"
               />
             </div>
 
             <div>
-              <label className="text-slate-300 font-semibold block mb-1">Prompt Payload Body</label>
+              <label className="text-slate-300 font-medium block mb-1.5">Prompt Payload Body</label>
               <textarea
                 rows={4}
                 value={testPrompt}
                 onChange={(e) => setTestPrompt(e.target.value)}
-                className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-kali-cyan focus:border-kali-primary focus:outline-none font-mono"
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 text-kali-cyan focus:border-kali-cyan focus:outline-none font-mono text-xs"
               />
             </div>
 
@@ -189,7 +172,7 @@ export const BrowserShieldTab: React.FC = () => {
               <button
                 onClick={handleTestSubmit}
                 disabled={evaluating}
-                className="inline-flex items-center gap-2 rounded bg-kali-primary px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-kali-glow hover:bg-kali-secondaryBlue transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-kali-primary to-kali-secondaryBlue px-5 py-2 text-xs font-semibold text-white shadow-kali-glow hover:opacity-95 transition-all disabled:opacity-50"
               >
                 <Shield className="h-3.5 w-3.5" />
                 <span>{evaluating ? 'Evaluating DLP...' : 'Run Pre-Flight Test'}</span>
@@ -200,31 +183,31 @@ export const BrowserShieldTab: React.FC = () => {
           {/* Test Result Breakdown */}
           {testResult && (
             <div
-              className={`rounded border p-3.5 text-xs font-mono space-y-2 mt-4 ${
+              className={`rounded-xl border p-4 text-xs space-y-2 mt-4 ${
                 testResult.decision === 'BLOCKED'
-                  ? 'border-kali-critical/60 bg-[#331418] text-slate-200'
-                  : 'border-kali-secure/60 bg-[#0E2E22] text-slate-200'
+                  ? 'border-rose-500/30 bg-rose-500/10 text-slate-200'
+                  : 'border-emerald-500/30 bg-emerald-500/10 text-slate-200'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 font-bold">
+                <span className="flex items-center gap-2 font-semibold">
                   {testResult.decision === 'BLOCKED' ? (
-                    <XCircle className="h-4 w-4 text-kali-critical" />
+                    <XCircle className="h-4 w-4 text-rose-400" />
                   ) : (
-                    <CheckCircle className="h-4 w-4 text-kali-secure" />
+                    <CheckCircle className="h-4 w-4 text-emerald-400" />
                   )}
-                  <span>DECISION: {testResult.decision}</span>
+                  <span>Decision: {testResult.decision}</span>
                 </span>
                 {testResult.incident_id && (
-                  <span className="text-[10px] text-kali-critical">
-                    INCIDENT #{truncateId(testResult.incident_id, 8)}
+                  <span className="text-xs text-rose-400 font-mono">
+                    Incident #{truncateId(testResult.incident_id, 8)}
                   </span>
                 )}
               </div>
-              <p className="font-sans text-xs">{testResult.reason}</p>
+              <p className="text-xs text-slate-300 leading-relaxed">{testResult.reason}</p>
               {testResult.findings?.length > 0 && (
-                <div className="rounded border border-kali-border bg-kali-bg p-2.5 text-[11px] text-kali-cyan">
-                  <span className="text-slate-400 font-bold block mb-1">DLP Rule Violation Detected:</span>
+                <div className="rounded-lg border border-white/10 bg-black/40 p-2.5 text-xs text-kali-cyan font-mono">
+                  <span className="text-slate-400 font-medium block mb-1">DLP Rule Violation Detected:</span>
                   <span>{testResult.findings[0].description} (Pattern: {testResult.findings[0].pattern})</span>
                 </div>
               )}
@@ -233,15 +216,15 @@ export const BrowserShieldTab: React.FC = () => {
         </div>
 
         {/* Right: Supported Platforms & Setup Instructions */}
-        <div className="space-y-5">
+        <div className="space-y-6">
           {/* Supported Workflows */}
-          <div className="rounded-lg border border-kali-border bg-kali-card p-5 shadow-kali-card space-y-3">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2 pb-3 border-b border-kali-border">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-6 backdrop-blur-md space-y-4">
+            <h2 className="text-sm font-semibold text-white flex items-center gap-2 pb-3 border-b border-white/10">
               <Layers className="h-4 w-4 text-kali-cyan" />
-              <span>Protected AI Workflow Endpoints</span>
+              <span>Protected AI Applications</span>
             </h2>
 
-            <div className="space-y-2 font-mono text-xs">
+            <div className="space-y-2.5 text-xs">
               {(status?.supported_workflows || [
                 { service: 'OpenAI ChatGPT', domain: 'chatgpt.com' },
                 { service: 'Anthropic Claude', domain: 'claude.ai' },
@@ -250,49 +233,41 @@ export const BrowserShieldTab: React.FC = () => {
               ]).map((wf: any, idx: number) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-2.5 rounded border border-kali-border bg-kali-bg"
+                  className="flex items-center justify-between p-3 rounded-xl border border-white/10 bg-white/[0.02]"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <span className="h-2 w-2 rounded-full bg-kali-secure" />
+                  <div className="flex items-center gap-3">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
                     <div>
-                      <div className="font-semibold text-white font-sans">{wf.service}</div>
-                      <div className="text-[10px] text-slate-400 font-mono">{wf.domain}</div>
+                      <div className="font-medium text-white">{wf.service}</div>
+                      <div className="text-[11px] text-slate-400 font-mono mt-0.5">{wf.domain}</div>
                     </div>
                   </div>
-                  <span className="rounded bg-[#0E2E22] text-kali-secure border border-[#155E42] px-2 py-0.5 text-[10px] font-bold">
-                    [INTERCEPT_ENABLED]
+                  <span className="rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 text-xs font-medium">
+                    Protected
                   </span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Setup & Troubleshooting Instructions */}
-          <div className="rounded-lg border border-kali-border bg-kali-card p-5 shadow-kali-card space-y-3 font-mono text-xs">
-            <div className="flex items-center gap-2 pb-2 border-b border-kali-border text-white font-bold">
-              <Terminal className="h-4 w-4 text-kali-primary" />
-              <span>EXTENSION SETUP & TROUBLESHOOTING</span>
+          {/* Setup Instructions */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-6 backdrop-blur-md space-y-4 text-xs">
+            <div className="flex items-center gap-2 pb-3 border-b border-white/10 text-white font-semibold">
+              <Terminal className="h-4 w-4 text-kali-cyan" />
+              <span>Extension Setup</span>
             </div>
 
-            <ol className="list-decimal list-inside space-y-2 text-slate-300 font-sans text-xs">
+            <ol className="list-decimal list-inside space-y-2.5 text-slate-300 text-xs leading-relaxed">
               <li>
-                <strong className="text-white">Load Extension:</strong> Open <code className="text-kali-cyan font-mono bg-kali-bg px-1.5 py-0.5 rounded border border-kali-border">chrome://extensions</code>, enable Developer Mode, and click <em>Load Unpacked</em> selecting the <code className="text-kali-cyan font-mono bg-kali-bg px-1.5 py-0.5 rounded border border-kali-border">extension/</code> directory.
+                <strong className="text-white">Load Extension:</strong> Open <code className="text-kali-cyan bg-white/5 px-2 py-0.5 rounded font-mono border border-white/10">chrome://extensions</code>, enable Developer Mode, and click <em>Load Unpacked</em> pointing to the <code className="text-kali-cyan bg-white/5 px-2 py-0.5 rounded font-mono border border-white/10">extension/</code> directory.
               </li>
               <li>
-                <strong className="text-white">Enrollment Token:</strong> Input the AgentTrust Gateway base URL <code className="text-kali-cyan font-mono bg-kali-bg px-1.5 py-0.5 rounded border border-kali-border">http://127.0.0.1:8080</code> and your operator token.
+                <strong className="text-white">Configuration:</strong> Specify Gateway base URL <code className="text-kali-cyan bg-white/5 px-2 py-0.5 rounded font-mono border border-white/10">http://127.0.0.1:8080</code> and verify pairing.
               </li>
               <li>
-                <strong className="text-white">Active Interception:</strong> Navigating to supported AI web clients will activate the pre-submission shield indicator.
+                <strong className="text-white">Automatic Protection:</strong> Web prompts sent to supported LLM domains are intercepted and evaluated before submission.
               </li>
             </ol>
-
-            <div className="rounded border border-kali-warning/50 bg-[#2E200C] p-3 text-[11px] text-slate-300 font-sans mt-3">
-              <div className="flex items-center gap-1.5 font-bold text-kali-warning font-mono mb-1">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                <span>TROUBLESHOOTING DISCONNECTED STATE:</span>
-              </div>
-              Verify that the background worker can ping <code className="text-white font-mono">/api/v1/browser-shield/status</code> and ensure no CORS policy or ad-blocker interferes with the local port 8080 socket.
-            </div>
           </div>
         </div>
       </div>

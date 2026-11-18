@@ -20,37 +20,35 @@ export const StatCard: React.FC<StatCardProps> = ({
   tag,
 }) => {
   return (
-    <div className="relative overflow-hidden rounded-lg border border-kali-border bg-kali-card p-4 transition-all duration-150 hover:border-kali-borderLight hover:bg-kali-elevated/70 shadow-kali-card">
-      {/* Subtle top indicator bar */}
-      <div className="flex items-center justify-between text-slate-400">
-        <div className="flex items-center gap-1.5">
+    <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.025] p-5 backdrop-blur-md transition-all duration-200 hover:border-white/20 hover:bg-white/[0.045] shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
           {tag && (
-            <span className="font-mono text-[9px] uppercase tracking-wider text-kali-primary/80">
-              [{tag}]
+            <span className="font-mono text-[9px] uppercase tracking-wider text-kali-cyan bg-kali-cyan/10 border border-kali-cyan/20 px-1.5 py-0.5 rounded">
+              {tag.replace(/[\[\]]/g, '')}
             </span>
           )}
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">
+          <span className="text-xs font-medium text-slate-400 tracking-wide uppercase">
             {label}
           </span>
         </div>
-        <div className="text-kali-primary shrink-0 opacity-90">{icon}</div>
+        <div className="text-slate-400 p-1.5 rounded-lg bg-white/[0.03] border border-white/5">{icon}</div>
       </div>
 
-      <div className="mt-3 flex items-baseline gap-2">
+      <div className="mt-3 flex items-baseline gap-2.5">
         <span className="font-mono text-2xl lg:text-3xl font-bold tracking-tight text-white">
           {value}
         </span>
         {subValue && (
-          <span className={`font-mono text-xs font-semibold ${subValueColor}`}>
+          <span className={`text-xs font-medium ${subValueColor}`}>
             {subValue}
           </span>
         )}
       </div>
 
       {description && (
-        <div className="mt-2 text-[11px] text-slate-400/90 font-sans flex items-center gap-1">
-          <span className="text-kali-borderLight font-mono">›</span>
-          <span className="truncate">{description}</span>
+        <div className="mt-2 text-xs text-slate-400 line-clamp-1">
+          {description}
         </div>
       )}
     </div>

@@ -19,6 +19,7 @@ import { SeverityBadge, StatusBadge } from '../ui/Badge';
 import { Modal } from '../ui/Modal';
 import { SearchInput } from '../ui/SearchInput';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { StatCard } from '../ui/StatCard';
 import { formatTimestamp, truncateId } from '../../utils/formatters';
 import { api } from '../../services/api.client';
 import { useToast } from '../../context/ToastContext';
@@ -154,8 +155,8 @@ export const AgentsTab: React.FC = () => {
       } else {
         setAgentIncidents([]);
       }
-    } catch {
-      toast.error('Inspect Error', 'Failed to retrieve agent relationships.');
+    } catch (e) {
+      console.error('Failed to load full agent details:', e);
     } finally {
       setLoadingDetails(false);
     }
@@ -166,20 +167,20 @@ export const AgentsTab: React.FC = () => {
     if (!inspectAgent) return;
     setGrantingPerm(true);
     try {
-      await api.createPermission({
+      await api.grantPermission({
         agent_id: inspectAgent.id,
         tool_name: permTool,
         operation: permOp,
-        effect: permEffect,
         resource_pattern: permRes,
-        priority: Number(permPriority),
+        effect: permEffect,
+        priority: permPriority,
         description: permDesc || undefined,
       });
-      toast.success('Permission Granted', `Rule ${permEffect} ${permTool}:${permOp} committed.`);
+      toast.success('Permission Granted', `Rule added for ${inspectAgent.name}.`);
       setIsGrantPermOpen(false);
-      // Reload permissions
-      const updatedPerms = await api.listPermissions(inspectAgent.id);
-      setAgentPermissions(Array.isArray(updatedPerms) ? updatedPerms : []);
+      setPermDesc('');
+      const perms = await api.listPermissions(inspectAgent.id);
+      setAgentPermissions(perms);
     } catch (err: any) {
       toast.error('Grant Failed', err.message);
     } finally {
@@ -190,12 +191,12 @@ export const AgentsTab: React.FC = () => {
   const handleRevokePermission = async (permId: string) => {
     if (!inspectAgent) return;
     try {
-      await api.deactivatePermission(permId);
-      toast.warning('Permission Revoked', 'Rule removed from agent permission set.');
-      const updatedPerms = await api.listPermissions(inspectAgent.id);
-      setAgentPermissions(Array.isArray(updatedPerms) ? updatedPerms : []);
+      await api.revokePermission(permId);
+      toast.info('Permission Revoked', 'Permission rule deleted from agent profile.');
+      const perms = await api.listPermissions(inspectAgent.id);
+      setAgentPermissions(perms);
     } catch (err: any) {
-      toast.error('Revoke Failed', err.message);
+      toast.error('Revocation Failed', err.message);
     }
   };
 
@@ -217,66 +218,71 @@ export const AgentsTab: React.FC = () => {
   const revokedCount = agents.filter((a) => a.status === 'revoked').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-kali-border pb-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-center">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold text-kali-primary">// AGENT_SECURITY</span>
-            <span className="text-slate-500 font-mono">/</span>
-            <span className="font-mono text-xs text-kali-cyan">IDENTITY_REGISTRY</span>
-          </div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 mt-1">
-            <Bot className="h-6 w-6 text-kali-primary" />
-            Autonomous Agent Management & Identity Console
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
+            <Bot className="h-6 w-6 text-kali-cyan" />
+            Agent Management
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Cryptographic identity provisioning, granular permission editing, agent suspension, and multi-agent delegation control.
+          <p className="text-xs text-slate-400 mt-1">
+            Cryptographic identity provisioning, permissions, and delegation control.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={refresh}
-            className="inline-flex items-center gap-2 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:bg-kali-elevated transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-slate-200 hover:border-kali-cyan/40 hover:bg-white/[0.06] hover:text-white transition-all"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-kali-primary ${loading ? 'animate-spin' : ''}`} />
-            <span>SYNC</span>
+            <RefreshCw className={`h-3.5 w-3.5 text-kali-cyan ${loading ? 'animate-spin' : ''}`} />
+            <span>Sync</span>
           </button>
           <button
             onClick={() => {
               setRegisteredKeyData(null);
               setIsRegisterOpen(true);
             }}
-            className="inline-flex items-center gap-2 rounded border border-transparent bg-kali-primary px-3.5 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-kali-glow hover:bg-kali-secondaryBlue transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-kali-primary to-kali-secondaryBlue px-4 py-2 text-xs font-semibold text-white shadow-kali-glow hover:opacity-95 transition-all"
           >
             <Plus className="h-4 w-4" />
-            <span>ENROLL AGENT</span>
+            <span>Enroll Agent</span>
           </button>
         </div>
       </div>
 
       {/* Metrics Header Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
-          <div className="font-mono text-[10px] text-slate-400 uppercase">[ID-01] Total Enrolled</div>
-          <div className="mt-1 font-mono text-2xl font-bold text-white">{agents.length}</div>
-          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Known Identities</div>
-        </div>
-        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
-          <div className="font-mono text-[10px] text-slate-400 uppercase">[ID-02] Active Enforcing</div>
-          <div className="mt-1 font-mono text-2xl font-bold text-kali-secure">{activeCount}</div>
-          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Healthy Heartbeats</div>
-        </div>
-        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
-          <div className="font-mono text-[10px] text-slate-400 uppercase">[ID-03] Suspended State</div>
-          <div className="mt-1 font-mono text-2xl font-bold text-kali-warning">{suspendedCount}</div>
-          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Execution Paused</div>
-        </div>
-        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
-          <div className="font-mono text-[10px] text-slate-400 uppercase">[ID-04] Revoked Tokens</div>
-          <div className="mt-1 font-mono text-2xl font-bold text-kali-critical">{revokedCount}</div>
-          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Zero-Trust Terminated</div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard
+          label="Total Enrolled"
+          value={agents.length}
+          description="Known identities"
+          icon={<Bot className="h-4 w-4" />}
+        />
+        <StatCard
+          label="Active Agents"
+          value={activeCount}
+          subValue="Healthy"
+          subValueColor="text-emerald-400"
+          description="Verified heartbeats"
+          icon={<Bot className="h-4 w-4 text-emerald-400" />}
+        />
+        <StatCard
+          label="Suspended State"
+          value={suspendedCount}
+          subValue="Paused"
+          subValueColor="text-amber-400"
+          description="Execution paused"
+          icon={<PauseCircle className="h-4 w-4 text-amber-400" />}
+        />
+        <StatCard
+          label="Revoked Tokens"
+          value={revokedCount}
+          subValue="Terminated"
+          subValueColor="text-rose-400"
+          description="Access revoked"
+          icon={<ShieldX className="h-4 w-4 text-rose-400" />}
+        />
       </div>
 
       {/* Filter and Search Bar */}
@@ -287,50 +293,50 @@ export const AgentsTab: React.FC = () => {
           placeholder="Filter by agent name, cryptographic ID, or role..."
           className="max-w-md w-full"
         />
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-slate-400">STATUS:</span>
+        <div className="flex items-center gap-2.5 text-xs">
+          <span className="text-slate-400 font-medium">Status:</span>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded border border-kali-border bg-kali-bg px-3 py-1.5 font-mono text-xs text-white focus:border-kali-primary focus:outline-none"
+            className="rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs text-white focus:border-kali-cyan/50 focus:outline-none"
           >
-            <option value="">ALL STATUSES</option>
-            <option value="active">ACTIVE ONLY</option>
-            <option value="suspended">SUSPENDED ONLY</option>
-            <option value="revoked">REVOKED ONLY</option>
-            <option value="inactive">INACTIVE</option>
+            <option value="" className="bg-[#0a0d14]">All Statuses</option>
+            <option value="active" className="bg-[#0a0d14]">Active Only</option>
+            <option value="suspended" className="bg-[#0a0d14]">Suspended Only</option>
+            <option value="revoked" className="bg-[#0a0d14]">Revoked Only</option>
+            <option value="inactive" className="bg-[#0a0d14]">Inactive</option>
           </select>
         </div>
       </div>
 
       {/* Agents Inventory Table */}
       {loading && agents.length === 0 ? (
-        <LoadingSpinner message="VERIFYING AGENT CRYPTOGRAPHIC IDENTITIES..." />
+        <LoadingSpinner message="Loading agent identities..." />
       ) : (
-        <div className="rounded-lg border border-kali-border bg-kali-card overflow-hidden shadow-kali-card">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.025] overflow-hidden backdrop-blur-md">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-kali-border bg-kali-bg/95 font-mono text-[11px] text-slate-400">
+              <thead className="border-b border-white/10 bg-white/[0.02] text-slate-400">
                 <tr>
-                  <th className="py-3 px-4 font-semibold">Agent Name</th>
-                  <th className="py-3 px-4 font-semibold">Unique Cryptographic ID</th>
-                  <th className="py-3 px-4 font-semibold">Organization</th>
-                  <th className="py-3 px-4 font-semibold">Assigned Role</th>
-                  <th className="py-3 px-4 font-semibold">Status</th>
-                  <th className="py-3 px-4 font-semibold">Last Heartbeat</th>
-                  <th className="py-3 px-4 font-semibold text-right">Actions</th>
+                  <th className="py-3 px-4 font-medium">Agent Name</th>
+                  <th className="py-3 px-4 font-medium">Cryptographic ID</th>
+                  <th className="py-3 px-4 font-medium">Organization</th>
+                  <th className="py-3 px-4 font-medium">Assigned Role</th>
+                  <th className="py-3 px-4 font-medium">Status</th>
+                  <th className="py-3 px-4 font-medium">Last Heartbeat</th>
+                  <th className="py-3 px-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-kali-border text-slate-300">
+              <tbody className="divide-y divide-white/5 text-slate-300">
                 {filteredAgents.map((agent) => (
-                  <tr key={agent.id} className="hover:bg-kali-elevated/40 transition-colors">
+                  <tr key={agent.id} className="hover:bg-white/[0.03] transition-colors">
                     <td className="py-3 px-4 font-semibold text-white">
-                      <div className="flex items-center gap-2">
-                        <Bot className="h-4 w-4 text-kali-primary shrink-0" />
+                      <div className="flex items-center gap-2.5">
+                        <Bot className="h-4 w-4 text-kali-cyan shrink-0" />
                         <div>
                           <div>{agent.name}</div>
                           {agent.description && (
-                            <div className="text-[10px] text-slate-500 font-normal truncate max-w-xs">
+                            <div className="text-[11px] text-slate-500 font-normal truncate max-w-xs mt-0.5">
                               {agent.description}
                             </div>
                           )}
@@ -338,8 +344,8 @@ export const AgentsTab: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-3 px-4 font-mono text-slate-400">
-                      <div className="flex items-center gap-1.5">
-                        <span className="rounded bg-kali-bg px-2 py-0.5 border border-kali-border text-[11px] text-kali-cyan">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded bg-white/5 px-2 py-0.5 border border-white/10 text-[11px] text-kali-cyan">
                           {truncateId(agent.id, 12)}
                         </span>
                         <button
@@ -348,35 +354,35 @@ export const AgentsTab: React.FC = () => {
                           title="Copy Full ID"
                         >
                           {copiedId === agent.id ? (
-                            <Check className="h-3 w-3 text-kali-secure" />
+                            <Check className="h-3 w-3 text-emerald-400" />
                           ) : (
                             <Copy className="h-3 w-3" />
                           )}
                         </button>
                       </div>
                     </td>
-                    <td className="py-3 px-4 font-mono text-[11px] text-slate-400">
+                    <td className="py-3 px-4 text-slate-400">
                       {agent.agent_metadata?.org || 'SOC-PRIMARY'}
                     </td>
-                    <td className="py-3 px-4 font-mono text-slate-300">
-                      <span className="rounded bg-kali-bg px-2 py-0.5 text-[10px] border border-kali-border uppercase">
+                    <td className="py-3 px-4 text-slate-300">
+                      <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-[11px] border border-white/10">
                         {agent.role}
                       </span>
                     </td>
                     <td className="py-3 px-4">
                       <StatusBadge status={agent.status} />
                     </td>
-                    <td className="py-3 px-4 font-mono text-slate-400 text-[11px]">
+                    <td className="py-3 px-4 text-slate-400 text-[11px]">
                       {formatTimestamp((agent as any).last_heartbeat || agent.updated_at || agent.created_at)}
                     </td>
-                    <td className="py-3 px-4 text-right space-x-1.5 font-mono whitespace-nowrap">
+                    <td className="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
                       {/* Inspect Dossier Button */}
                       <button
                         onClick={() => handleInspect(agent)}
-                        className="inline-flex items-center gap-1 rounded border border-kali-border bg-kali-elevated px-2.5 py-1 text-[11px] text-slate-200 hover:border-kali-primary hover:text-white transition-colors"
+                        className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs text-slate-200 hover:border-kali-cyan/40 hover:text-white transition-all"
                         title="Open Complete Dossier"
                       >
-                        <Eye className="h-3 w-3 text-kali-cyan" />
+                        <Eye className="h-3.5 w-3.5 text-kali-cyan" />
                         <span>Inspect</span>
                       </button>
 
@@ -384,20 +390,20 @@ export const AgentsTab: React.FC = () => {
                       {agent.status === 'active' && (
                         <button
                           onClick={() => setSuspendTarget(agent)}
-                          className="inline-flex items-center gap-1 rounded border border-kali-warning/50 bg-[#2E200C] px-2 py-1 text-[11px] text-kali-warning hover:bg-[#473212] transition-colors"
+                          className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-400 hover:bg-amber-500 hover:text-black transition-all"
                           title="Suspend Agent Execution"
                         >
-                          <PauseCircle className="h-3 w-3" />
+                          <PauseCircle className="h-3.5 w-3.5" />
                           <span>Suspend</span>
                         </button>
                       )}
                       {agent.status === 'suspended' && (
                         <button
                           onClick={() => setSuspendTarget(agent)}
-                          className="inline-flex items-center gap-1 rounded border border-kali-secure/50 bg-[#0E2E22] px-2 py-1 text-[11px] text-kali-secure hover:bg-[#154634] transition-colors"
+                          className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all"
                           title="Resume Agent Execution"
                         >
-                          <PlayCircle className="h-3 w-3" />
+                          <PlayCircle className="h-3.5 w-3.5" />
                           <span>Resume</span>
                         </button>
                       )}
@@ -409,10 +415,10 @@ export const AgentsTab: React.FC = () => {
                             setRevokeAgentTarget(agent);
                             setRevokeReason('');
                           }}
-                          className="inline-flex items-center gap-1 rounded border border-kali-critical/60 bg-[#331418] px-2 py-1 text-[11px] text-kali-critical hover:bg-[#4a1c22] transition-colors"
+                          className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs text-rose-400 hover:bg-rose-500 hover:text-white transition-all"
                           title="Permanently Revoke Credentials"
                         >
-                          <ShieldX className="h-3 w-3" />
+                          <ShieldX className="h-3.5 w-3.5" />
                           <span>Revoke</span>
                         </button>
                       )}
@@ -421,8 +427,8 @@ export const AgentsTab: React.FC = () => {
                 ))}
                 {filteredAgents.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center font-mono text-xs text-slate-500">
-                      // NO AGENTS MATCH QUERY CRITERIA
+                    <td colSpan={7} className="py-12 text-center text-xs text-slate-500">
+                      No agents matching search criteria.
                     </td>
                   </tr>
                 )}
@@ -436,99 +442,99 @@ export const AgentsTab: React.FC = () => {
       <Modal
         isOpen={!!inspectAgent}
         onClose={() => setInspectAgent(null)}
-        title={`AGENT DOSSIER // ${inspectAgent?.name || ''}`}
+        title={`Agent Dossier: ${inspectAgent?.name || ''}`}
         subtitle={`ID: ${inspectAgent?.id || ''}`}
         maxWidth="2xl"
       >
         {inspectAgent && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {/* Inspector Navigation Tabs */}
-            <div className="flex border-b border-kali-border gap-2 font-mono text-xs overflow-x-auto">
+            <div className="flex border-b border-white/10 gap-2 text-xs overflow-x-auto">
               <button
                 onClick={() => setInspectTab('overview')}
-                className={`px-3 py-2 border-b-2 font-semibold transition-colors whitespace-nowrap ${
+                className={`px-4 py-2 border-b-2 font-medium transition-all whitespace-nowrap ${
                   inspectTab === 'overview'
-                    ? 'border-kali-primary text-white'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'border-kali-cyan text-white font-semibold'
+                    : 'border-transparent text-slate-400 hover:text-white'
                 }`}
               >
-                IDENTITY & CREDENTIALS
+                Identity & Credentials
               </button>
               <button
                 onClick={() => setInspectTab('permissions')}
-                className={`px-3 py-2 border-b-2 font-semibold transition-colors whitespace-nowrap ${
+                className={`px-4 py-2 border-b-2 font-medium transition-all whitespace-nowrap ${
                   inspectTab === 'permissions'
-                    ? 'border-kali-primary text-white'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'border-kali-cyan text-white font-semibold'
+                    : 'border-transparent text-slate-400 hover:text-white'
                 }`}
               >
-                PERMISSIONS ({agentPermissions.length})
+                Permissions ({agentPermissions.length})
               </button>
               <button
                 onClick={() => setInspectTab('delegations')}
-                className={`px-3 py-2 border-b-2 font-semibold transition-colors whitespace-nowrap ${
+                className={`px-4 py-2 border-b-2 font-medium transition-all whitespace-nowrap ${
                   inspectTab === 'delegations'
-                    ? 'border-kali-primary text-white'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'border-kali-cyan text-white font-semibold'
+                    : 'border-transparent text-slate-400 hover:text-white'
                 }`}
               >
-                DELEGATIONS ({agentDelegations.length})
+                Delegations ({agentDelegations.length})
               </button>
               <button
                 onClick={() => setInspectTab('activity')}
-                className={`px-3 py-2 border-b-2 font-semibold transition-colors whitespace-nowrap ${
+                className={`px-4 py-2 border-b-2 font-medium transition-all whitespace-nowrap ${
                   inspectTab === 'activity'
-                    ? 'border-kali-primary text-white'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'border-kali-cyan text-white font-semibold'
+                    : 'border-transparent text-slate-400 hover:text-white'
                 }`}
               >
-                TOOL-CALL AUDIT ({agentEvents.length})
+                Tool Calls ({agentEvents.length})
               </button>
               <button
                 onClick={() => setInspectTab('incidents')}
-                className={`px-3 py-2 border-b-2 font-semibold transition-colors whitespace-nowrap ${
+                className={`px-4 py-2 border-b-2 font-medium transition-all whitespace-nowrap ${
                   inspectTab === 'incidents'
-                    ? 'border-kali-primary text-white'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'border-kali-cyan text-white font-semibold'
+                    : 'border-transparent text-slate-400 hover:text-white'
                 }`}
               >
-                INCIDENTS ({agentIncidents.length})
+                Incidents ({agentIncidents.length})
               </button>
             </div>
 
             {loadingDetails ? (
-              <LoadingSpinner message="AGGREGATING AGENT TELEMETRY DOSSIER..." />
+              <LoadingSpinner message="Loading agent details..." />
             ) : (
               <>
                 {/* TAB 1: OVERVIEW & CREDENTIALS */}
                 {inspectTab === 'overview' && (
-                  <div className="space-y-4 font-mono text-xs">
+                  <div className="space-y-4 text-xs">
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded border border-kali-border bg-kali-bg p-3">
-                        <div className="text-[10px] text-slate-400 uppercase">Agent Identity</div>
-                        <div className="text-white font-bold text-sm mt-0.5">{inspectAgent.name}</div>
-                        <div className="text-slate-500 text-[11px] mt-1">{inspectAgent.description || 'No description provided.'}</div>
+                      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                        <div className="text-[11px] text-slate-400 uppercase font-medium">Agent Identity</div>
+                        <div className="text-white font-bold text-sm mt-1">{inspectAgent.name}</div>
+                        <div className="text-slate-400 text-xs mt-1">{inspectAgent.description || 'No description provided.'}</div>
                       </div>
-                      <div className="rounded border border-kali-border bg-kali-bg p-3">
-                        <div className="text-[10px] text-slate-400 uppercase">Enforcement Status</div>
-                        <div className="mt-1">
+                      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                        <div className="text-[11px] text-slate-400 uppercase font-medium">Enforcement Status</div>
+                        <div className="mt-1.5">
                           <StatusBadge status={inspectAgent.status} />
                         </div>
-                        <div className="text-slate-400 text-[10px] mt-1.5">Role: {inspectAgent.role}</div>
+                        <div className="text-slate-400 text-xs mt-1.5">Role: {inspectAgent.role}</div>
                       </div>
                     </div>
 
-                    <div className="rounded border border-kali-border bg-kali-bg p-3 space-y-2">
-                      <div className="text-[11px] font-bold text-kali-cyan">// CRYPTOGRAPHIC CREDENTIALS</div>
-                      <div className="flex items-center justify-between border-b border-kali-border/60 pb-1.5 text-slate-300">
+                    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2.5">
+                      <div className="text-xs font-semibold text-kali-cyan">Cryptographic Credentials</div>
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2 text-slate-300">
                         <span>Unique Identifier:</span>
-                        <span className="text-white select-all">{inspectAgent.id}</span>
+                        <span className="text-white font-mono select-all">{inspectAgent.id}</span>
                       </div>
-                      <div className="flex items-center justify-between border-b border-kali-border/60 pb-1.5 text-slate-300">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2 text-slate-300">
                         <span>Credential Hash:</span>
-                        <span className="text-kali-secure">SHA-256 HASH VERIFIED (SALTED)</span>
+                        <span className="text-emerald-400">SHA-256 Verified</span>
                       </div>
-                      <div className="flex items-center justify-between border-b border-kali-border/60 pb-1.5 text-slate-300">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2 text-slate-300">
                         <span>Organization Unit:</span>
                         <span className="text-white">{inspectAgent.agent_metadata?.org || 'SOC-PRIMARY'}</span>
                       </div>
@@ -539,11 +545,11 @@ export const AgentsTab: React.FC = () => {
                     </div>
 
                     {/* Operational Controls Strip */}
-                    <div className="flex items-center justify-end gap-2 border-t border-kali-border pt-3">
+                    <div className="flex items-center justify-end gap-2.5 border-t border-white/10 pt-4">
                       {inspectAgent.status === 'active' && (
                         <button
                           onClick={() => setSuspendTarget(inspectAgent)}
-                          className="rounded border border-kali-warning/50 bg-[#2E200C] px-3 py-1.5 font-mono text-xs font-bold text-kali-warning hover:bg-[#473212] transition-colors"
+                          className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-400 hover:bg-amber-500 hover:text-black transition-all"
                         >
                           Suspend Execution
                         </button>
@@ -551,7 +557,7 @@ export const AgentsTab: React.FC = () => {
                       {inspectAgent.status === 'suspended' && (
                         <button
                           onClick={() => setSuspendTarget(inspectAgent)}
-                          className="rounded border border-kali-secure/50 bg-[#0E2E22] px-3 py-1.5 font-mono text-xs font-bold text-kali-secure hover:bg-[#154634] transition-colors"
+                          className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-medium text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all"
                         >
                           Resume Execution
                         </button>
@@ -562,7 +568,7 @@ export const AgentsTab: React.FC = () => {
                             setRevokeAgentTarget(inspectAgent);
                             setRevokeReason('');
                           }}
-                          className="rounded border border-kali-critical bg-kali-critical px-3 py-1.5 font-mono text-xs font-bold text-white hover:bg-rose-700 transition-colors"
+                          className="rounded-xl bg-rose-500 hover:bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition-all"
                         >
                           Revoke Identity
                         </button>
@@ -573,43 +579,42 @@ export const AgentsTab: React.FC = () => {
 
                 {/* TAB 2: PERMISSIONS */}
                 {inspectTab === 'permissions' && (
-                  <div className="space-y-3 font-mono text-xs">
+                  <div className="space-y-3 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 font-bold">// GRANULAR_PERMISSION_RULES</span>
+                      <span className="text-slate-400 font-medium">Granular Permission Rules</span>
                       <button
                         onClick={() => setIsGrantPermOpen(true)}
-                        className="inline-flex items-center gap-1.5 rounded border border-kali-primary bg-kali-primary/20 px-2.5 py-1 text-[11px] font-bold text-kali-cyan hover:bg-kali-primary/30 transition-colors"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-kali-cyan/40 bg-kali-cyan/10 px-3 py-1.5 text-xs font-medium text-kali-cyan hover:bg-kali-cyan/20 transition-all"
                       >
                         <Plus className="h-3.5 w-3.5" />
-                        <span>GRANT PERMISSION</span>
+                        <span>Grant Permission</span>
                       </button>
                     </div>
 
                     {agentPermissions.length === 0 ? (
-                      <div className="rounded border border-dashed border-kali-border p-8 text-center text-slate-500">
-                        // NO EXPLICIT PERMISSION GRANTS FOUND
-                        <p className="mt-1 text-[11px] text-slate-400">Agent operates under strict zero-trust default-deny.</p>
+                      <div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-slate-500">
+                        No explicit permissions granted. Agent operates under default-deny.
                       </div>
                     ) : (
                       agentPermissions.map((perm) => (
-                        <div key={perm.id} className="rounded border border-kali-border bg-kali-bg p-3 flex items-center justify-between">
+                        <div key={perm.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3.5 flex items-center justify-between">
                           <div>
                             <div className="flex items-center gap-2">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                perm.effect === 'ALLOW' ? 'bg-[#0E2E22] text-kali-secure border border-[#155E42]' : 'bg-[#331418] text-kali-critical border border-[#7A1F26]'
+                                perm.effect === 'ALLOW' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                               }`}>
                                 {perm.effect}
                               </span>
-                              <span className="text-white font-bold">{perm.tool_name}:{perm.operation}</span>
+                              <span className="text-white font-medium">{perm.tool_name}:{perm.operation}</span>
                             </div>
                             <div className="mt-1 text-slate-400">Resource: {perm.resource_pattern}</div>
-                            {perm.description && <div className="mt-0.5 text-slate-500 italic text-[11px]">{perm.description}</div>}
+                            {perm.description && <div className="mt-0.5 text-slate-500 text-[11px]">{perm.description}</div>}
                           </div>
                           <div className="text-right flex items-center gap-3">
-                            <span className="text-slate-400 text-[11px]">PRIORITY: {perm.priority}</span>
+                            <span className="text-slate-400 text-xs">Priority: {perm.priority}</span>
                             <button
                               onClick={() => handleRevokePermission(perm.id)}
-                              className="text-kali-critical hover:text-rose-400 p-1"
+                              className="text-rose-400 hover:text-rose-300 p-1"
                               title="Revoke Permission Grant"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -623,22 +628,22 @@ export const AgentsTab: React.FC = () => {
 
                 {/* TAB 3: DELEGATIONS */}
                 {inspectTab === 'delegations' && (
-                  <div className="space-y-3 font-mono text-xs">
+                  <div className="space-y-3 text-xs">
                     {agentDelegations.length === 0 ? (
-                      <div className="rounded border border-dashed border-kali-border p-8 text-center text-slate-500">
-                        // ZERO DELEGATION CONTRACTS RECORDED FOR THIS AGENT
+                      <div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-slate-500">
+                        No delegation contracts recorded for this agent.
                       </div>
                     ) : (
                       agentDelegations.map((del) => (
-                        <div key={del.id} className="rounded border border-kali-border bg-kali-bg p-3 space-y-1.5">
+                        <div key={del.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3.5 space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <span className="text-kali-primary font-bold">TOKEN #{truncateId(del.id, 8)}</span>
+                            <span className="text-kali-cyan font-medium">Token #{truncateId(del.id, 8)}</span>
                             <StatusBadge status={del.status} />
                           </div>
                           <div className="text-slate-300">
-                            {del.parent_agent_id === inspectAgent.id ? 'PARENT AGENT (Granter)' : 'CHILD AGENT (Delegatee)'}
+                            {del.parent_agent_id === inspectAgent.id ? 'Parent Agent (Granter)' : 'Child Agent (Delegatee)'}
                           </div>
-                          <div className="text-[11px] text-slate-400">
+                          <div className="text-xs text-slate-400">
                             Scope: {del.scope?.tool_name}:{del.scope?.operation} • Max Depth: {del.max_depth}
                           </div>
                         </div>
@@ -649,25 +654,25 @@ export const AgentsTab: React.FC = () => {
 
                 {/* TAB 4: ACTIVITY AUDIT */}
                 {inspectTab === 'activity' && (
-                  <div className="space-y-2 font-mono text-xs">
+                  <div className="space-y-2 text-xs">
                     {agentEvents.length === 0 ? (
-                      <div className="rounded border border-dashed border-kali-border p-8 text-center text-slate-500">
-                        // NO RECENT GATEWAY AUDIT EVENTS RECORDED
+                      <div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-slate-500">
+                        No recent gateway audit events recorded.
                       </div>
                     ) : (
                       agentEvents.map((ev) => (
-                        <div key={ev.id} className="rounded border border-kali-border bg-kali-bg p-2.5 flex items-center justify-between">
+                        <div key={ev.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3 flex items-center justify-between">
                           <div>
-                            <div className="text-white font-bold">{ev.tool_name}:{ev.operation}</div>
-                            <div className="text-[11px] text-slate-400">Target: {ev.target_resource}</div>
+                            <div className="text-white font-medium">{ev.tool_name}:{ev.operation}</div>
+                            <div className="text-xs text-slate-400 mt-0.5">Target: {ev.target_resource}</div>
                           </div>
                           <div className="text-right">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              ev.decision === 'ALLOWED' ? 'bg-[#0E2E22] text-kali-secure' : 'bg-[#331418] text-kali-critical'
+                              ev.decision === 'ALLOWED' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
                             }`}>
                               {ev.decision}
                             </span>
-                            <div className="text-[10px] text-slate-500 mt-1">{formatTimestamp(ev.created_at)}</div>
+                            <div className="text-[11px] text-slate-500 mt-1">{formatTimestamp(ev.created_at)}</div>
                           </div>
                         </div>
                       ))
@@ -677,20 +682,20 @@ export const AgentsTab: React.FC = () => {
 
                 {/* TAB 5: INCIDENTS */}
                 {inspectTab === 'incidents' && (
-                  <div className="space-y-2 font-mono text-xs">
+                  <div className="space-y-2 text-xs">
                     {agentIncidents.length === 0 ? (
-                      <div className="rounded border border-dashed border-kali-border p-8 text-center text-slate-500">
-                        // NO ACTIVE SECURITY INCIDENTS LINKED TO THIS AGENT
+                      <div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-slate-500">
+                        No active security incidents linked to this agent.
                       </div>
                     ) : (
                       agentIncidents.map((inc) => (
-                        <div key={inc.id} className="rounded border border-kali-border bg-kali-bg p-2.5 space-y-1">
+                        <div key={inc.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-1">
                           <div className="flex items-center justify-between">
                             <SeverityBadge severity={inc.severity} />
                             <StatusBadge status={inc.status} />
                           </div>
-                          <div className="font-bold text-white text-xs">{inc.title}</div>
-                          <p className="text-[11px] text-slate-400">{inc.description}</p>
+                          <div className="font-semibold text-white text-xs mt-1">{inc.title}</div>
+                          <p className="text-xs text-slate-400">{inc.description}</p>
                         </div>
                       ))
                     )}
@@ -706,88 +711,88 @@ export const AgentsTab: React.FC = () => {
       <Modal
         isOpen={isGrantPermOpen}
         onClose={() => setIsGrantPermOpen(false)}
-        title={`GRANT PERMISSION // ${inspectAgent?.name || ''}`}
-        subtitle="Commits granular RBAC authorization grant to AgentTrust PDP"
+        title={`Grant Permission: ${inspectAgent?.name || ''}`}
+        subtitle="Add granular RBAC authorization grant to policy engine"
       >
-        <form onSubmit={handleGrantPermissionSubmit} className="space-y-3 font-mono text-xs">
+        <form onSubmit={handleGrantPermissionSubmit} className="space-y-4 text-xs">
           <div>
-            <label className="text-slate-300 font-semibold block mb-1">Target Tool</label>
+            <label className="text-slate-300 font-medium block mb-1.5">Target Tool</label>
             <input
               type="text"
               required
               value={permTool}
               onChange={(e) => setPermTool(e.target.value)}
-              placeholder="e.g. filesystem_tool, database_tool, http_tool"
-              className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+              placeholder="e.g. filesystem_tool, database_tool"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-cyan focus:outline-none"
             />
           </div>
           <div>
-            <label className="text-slate-300 font-semibold block mb-1">Target Operation</label>
+            <label className="text-slate-300 font-medium block mb-1.5">Target Operation</label>
             <input
               type="text"
               required
               value={permOp}
               onChange={(e) => setPermOp(e.target.value)}
-              placeholder="e.g. read_file, write_file, query, *"
-              className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+              placeholder="e.g. read_file, query, *"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-cyan focus:outline-none"
             />
           </div>
           <div>
-            <label className="text-slate-300 font-semibold block mb-1">Resource Pattern</label>
+            <label className="text-slate-300 font-medium block mb-1.5">Resource Pattern</label>
             <input
               type="text"
               required
               value={permRes}
               onChange={(e) => setPermRes(e.target.value)}
               placeholder="e.g. reports/*, confidential/*, *"
-              className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-cyan focus:outline-none font-mono"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-slate-300 font-semibold block mb-1">Effect</label>
+              <label className="text-slate-300 font-medium block mb-1.5">Effect</label>
               <select
                 value={permEffect}
                 onChange={(e) => setPermEffect(e.target.value as any)}
-                className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-cyan focus:outline-none"
               >
-                <option value="ALLOW">ALLOW</option>
-                <option value="DENY">DENY</option>
+                <option value="ALLOW" className="bg-[#0a0d14]">ALLOW</option>
+                <option value="DENY" className="bg-[#0a0d14]">DENY</option>
               </select>
             </div>
             <div>
-              <label className="text-slate-300 font-semibold block mb-1">Rule Priority</label>
+              <label className="text-slate-300 font-medium block mb-1.5">Priority</label>
               <input
                 type="number"
                 value={permPriority}
                 onChange={(e) => setPermPriority(Number(e.target.value))}
-                className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-cyan focus:outline-none"
               />
             </div>
           </div>
           <div>
-            <label className="text-slate-300 font-semibold block mb-1">Description / Audit Justification</label>
+            <label className="text-slate-300 font-medium block mb-1.5">Description</label>
             <input
               type="text"
               value={permDesc}
               onChange={(e) => setPermDesc(e.target.value)}
-              placeholder="e.g. Authorized read access to public reporting directory"
-              className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+              placeholder="Authorized access justification..."
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-cyan focus:outline-none"
             />
           </div>
 
-          <div className="border-t border-kali-border pt-3 flex justify-end gap-2">
+          <div className="border-t border-white/10 pt-4 flex justify-end gap-2.5">
             <button
               type="button"
               onClick={() => setIsGrantPermOpen(false)}
-              className="rounded border border-kali-border bg-kali-bg px-3 py-1.5 text-slate-400 hover:text-white"
+              className="rounded-xl px-4 py-2 text-slate-400 hover:text-white"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={grantingPerm}
-              className="rounded bg-kali-primary px-4 py-1.5 font-bold text-white shadow-kali-glow hover:bg-kali-secondaryBlue disabled:opacity-50"
+              className="rounded-xl bg-gradient-to-r from-kali-primary to-kali-secondaryBlue px-5 py-2 font-semibold text-white shadow-kali-glow hover:opacity-95 disabled:opacity-50"
             >
               {grantingPerm ? 'Committing...' : 'Commit Grant'}
             </button>
@@ -799,24 +804,24 @@ export const AgentsTab: React.FC = () => {
       <Modal
         isOpen={!!suspendTarget}
         onClose={() => setSuspendTarget(null)}
-        title={suspendTarget?.status === 'suspended' ? 'RESUME AGENT EXECUTION' : 'SUSPEND AGENT EXECUTION'}
-        subtitle={`AGENT: ${suspendTarget?.name || ''}`}
+        title={suspendTarget?.status === 'suspended' ? 'Resume Agent Execution' : 'Suspend Agent Execution'}
+        subtitle={`Agent: ${suspendTarget?.name || ''}`}
       >
-        <div className="space-y-4 font-mono text-xs">
-          <div className="rounded border border-kali-warning/50 bg-[#2E200C] p-3 text-kali-warning flex items-center gap-2">
+        <div className="space-y-4 text-xs">
+          <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 text-amber-400 flex items-center gap-3">
             <AlertTriangle className="h-5 w-5 shrink-0" />
             <span>
               {suspendTarget?.status === 'suspended'
-                ? `Resuming will restore API key execution rights for agent '${suspendTarget?.name}'.`
-                : `Suspending will temporarily pause all tool-call invocations for agent '${suspendTarget?.name}' without revoking credentials.`}
+                ? `Resuming will restore execution privileges for agent '${suspendTarget?.name}'.`
+                : `Suspending will temporarily pause all tool invocations for agent '${suspendTarget?.name}' without revoking credentials.`}
             </span>
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-kali-border pt-3">
+          <div className="flex justify-end gap-2.5 border-t border-white/10 pt-4">
             <button
               type="button"
               onClick={() => setSuspendTarget(null)}
-              className="rounded border border-kali-border bg-kali-bg px-3 py-1.5 text-slate-400 hover:text-white"
+              className="rounded-xl px-4 py-2 text-slate-400 hover:text-white"
             >
               Cancel
             </button>
@@ -824,10 +829,10 @@ export const AgentsTab: React.FC = () => {
               type="button"
               disabled={isSuspending}
               onClick={handleSuspendConfirm}
-              className={`rounded px-4 py-1.5 font-bold text-white transition-colors disabled:opacity-50 ${
+              className={`rounded-xl px-5 py-2 font-semibold text-white transition-all disabled:opacity-50 ${
                 suspendTarget?.status === 'suspended'
-                  ? 'bg-kali-secure hover:bg-emerald-700'
-                  : 'bg-kali-warning text-black hover:bg-amber-500'
+                  ? 'bg-emerald-500 hover:bg-emerald-600'
+                  : 'bg-amber-500 text-black hover:bg-amber-600'
               }`}
             >
               {isSuspending
@@ -844,90 +849,90 @@ export const AgentsTab: React.FC = () => {
       <Modal
         isOpen={isRegisterOpen}
         onClose={() => setIsRegisterOpen(false)}
-        title="ENROLL NEW AUTONOMOUS AGENT"
-        subtitle="Generates cryptographically signed API authorization credentials"
+        title="Enroll Autonomous Agent"
+        subtitle="Generate signed API authorization credentials"
         icon={<Bot className="h-5 w-5" />}
       >
         {!registeredKeyData ? (
-          <form onSubmit={handleRegisterSubmit} className="space-y-4 font-mono text-xs">
+          <form onSubmit={handleRegisterSubmit} className="space-y-4 text-xs">
             <div>
-              <label className="text-slate-300 font-semibold block mb-1">Agent Identifier Name</label>
+              <label className="text-slate-300 font-medium block mb-1.5">Agent Name</label>
               <input
                 type="text"
                 required
                 value={newAgentName}
                 onChange={(e) => setNewAgentName(e.target.value)}
                 placeholder="e.g. Sentry-Threat-Collector"
-                className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-cyan focus:outline-none"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-slate-300 font-semibold block mb-1">Assigned Role</label>
+                <label className="text-slate-300 font-medium block mb-1.5">Role</label>
                 <select
                   value={newAgentRole}
                   onChange={(e) => setNewAgentRole(e.target.value)}
-                  className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-cyan focus:outline-none"
                 >
-                  <option value="general_agent">general_agent</option>
-                  <option value="data_collector">data_collector</option>
-                  <option value="incident_responder">incident_responder</option>
-                  <option value="security_auditor">security_auditor</option>
-                  <option value="threat_hunter">threat_hunter</option>
+                  <option value="general_agent" className="bg-[#0a0d14]">general_agent</option>
+                  <option value="data_collector" className="bg-[#0a0d14]">data_collector</option>
+                  <option value="incident_responder" className="bg-[#0a0d14]">incident_responder</option>
+                  <option value="security_auditor" className="bg-[#0a0d14]">security_auditor</option>
+                  <option value="threat_hunter" className="bg-[#0a0d14]">threat_hunter</option>
                 </select>
               </div>
               <div>
-                <label className="text-slate-300 font-semibold block mb-1">Organization Unit</label>
+                <label className="text-slate-300 font-medium block mb-1.5">Organization</label>
                 <input
                   type="text"
                   value={newAgentOrg}
                   onChange={(e) => setNewAgentOrg(e.target.value)}
                   placeholder="SOC-PRIMARY"
-                  className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-cyan focus:outline-none"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-slate-300 font-semibold block mb-1">Operational Description</label>
+              <label className="text-slate-300 font-medium block mb-1.5">Description</label>
               <textarea
                 rows={2}
                 value={newAgentDesc}
                 onChange={(e) => setNewAgentDesc(e.target.value)}
-                placeholder="Primary mission and authorized operational boundaries..."
-                className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+                placeholder="Operational purpose and scope..."
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-cyan focus:outline-none"
               />
             </div>
 
-            <div className="border-t border-kali-border pt-4 flex justify-end gap-2">
+            <div className="border-t border-white/10 pt-4 flex justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setIsRegisterOpen(false)}
-                className="rounded border border-kali-border bg-kali-bg px-3 py-1.5 text-slate-400 hover:text-white"
+                className="rounded-xl px-4 py-2 text-slate-400 hover:text-white"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="rounded bg-kali-primary px-4 py-1.5 font-bold text-white shadow-kali-glow hover:bg-kali-secondaryBlue"
+                className="rounded-xl bg-gradient-to-r from-kali-primary to-kali-secondaryBlue px-5 py-2 font-semibold text-white shadow-kali-glow hover:opacity-95"
               >
                 Generate Credentials
               </button>
             </div>
           </form>
         ) : (
-          <div className="space-y-4 font-mono text-xs">
-            <div className="rounded border border-kali-warning/50 bg-[#2E200C] p-3 text-kali-warning flex items-start gap-2">
+          <div className="space-y-4 text-xs">
+            <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 text-amber-400 flex items-start gap-2.5">
               <AlertOctagon className="h-4 w-4 shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold">CRITICAL SECURITY WARNING:</span> This raw cryptographic API key will NOT be displayed again. Store it securely in your agent secret vault.
+                <span className="font-semibold">Security Notice:</span> This API key will not be displayed again. Please save it securely.
               </div>
             </div>
 
-            <div className="rounded border border-kali-border bg-kali-bg p-3 space-y-2">
-              <div className="text-slate-400 text-[10px] uppercase font-bold">API Authorization Token</div>
-              <div className="flex items-center justify-between gap-2 bg-kali-card p-2 rounded border border-kali-border font-bold text-kali-cyan break-all">
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2">
+              <div className="text-slate-400 text-xs font-medium uppercase tracking-wider">API Authorization Token</div>
+              <div className="flex items-center justify-between gap-3 bg-white/[0.03] p-3 rounded-xl border border-white/10 font-mono text-kali-cyan break-all">
                 <span>{registeredKeyData.raw_api_key}</span>
                 <button
                   onClick={() => {
@@ -935,20 +940,20 @@ export const AgentsTab: React.FC = () => {
                     setCopiedKey(true);
                     setTimeout(() => setCopiedKey(false), 2000);
                   }}
-                  className="rounded bg-kali-primary/20 px-2.5 py-1 text-kali-primary hover:bg-kali-primary/30 transition-colors shrink-0"
+                  className="rounded-lg bg-kali-cyan/15 px-3 py-1.5 text-xs text-kali-cyan hover:bg-kali-cyan/25 transition-all shrink-0 font-sans"
                 >
-                  {copiedKey ? 'COPIED!' : 'COPY'}
+                  {copiedKey ? 'Copied' : 'Copy'}
                 </button>
               </div>
             </div>
 
-            <div className="flex justify-end border-t border-kali-border pt-3">
+            <div className="flex justify-end border-t border-white/10 pt-4">
               <button
                 onClick={() => {
                   setIsRegisterOpen(false);
                   setRegisteredKeyData(null);
                 }}
-                className="rounded bg-kali-primary px-4 py-1.5 font-bold text-white"
+                className="rounded-xl bg-kali-primary px-5 py-2 font-semibold text-white hover:bg-kali-secondaryBlue"
               >
                 Done
               </button>
@@ -961,36 +966,36 @@ export const AgentsTab: React.FC = () => {
       <Modal
         isOpen={!!revokeAgentTarget}
         onClose={() => setRevokeAgentTarget(null)}
-        title="PERMANENT CREDENTIAL REVOCATION"
-        subtitle={`AGENT: ${revokeAgentTarget?.name || ''}`}
+        title="Revoke Credentials"
+        subtitle={`Agent: ${revokeAgentTarget?.name || ''}`}
       >
-        <div className="space-y-4 font-mono text-xs">
-          <div className="rounded border border-kali-critical/50 bg-[#331418] p-3 text-kali-critical flex items-center gap-2">
+        <div className="space-y-4 text-xs">
+          <div className="rounded-xl border border-rose-500/25 bg-rose-500/10 p-4 text-rose-400 flex items-center gap-3">
             <ShieldX className="h-5 w-5 shrink-0" />
             <span>
-              Revoking credentials will permanently block all incoming tool invocations for agent '{revokeAgentTarget?.name}'. This action is non-recoverable.
+              Revoking credentials will permanently block all tool invocations for agent '{revokeAgentTarget?.name}'. This action cannot be undone.
             </span>
           </div>
 
           <div>
-            <label className="text-slate-300 font-semibold block mb-1">
-              Revocation Reason (Mandatory Audit Evidence)
+            <label className="text-slate-300 font-medium block mb-1.5">
+              Revocation Reason:
             </label>
             <textarea
               rows={2}
               required
               value={revokeReason}
               onChange={(e) => setRevokeReason(e.target.value)}
-              placeholder="e.g. Suspected credential exfiltration via prompt injection incident #402"
-              className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
+              placeholder="e.g. Credential replacement or suspicion of compromise"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-rose-500 focus:outline-none"
             />
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-kali-border pt-3">
+          <div className="flex justify-end gap-2.5 border-t border-white/10 pt-4">
             <button
               type="button"
               onClick={() => setRevokeAgentTarget(null)}
-              className="rounded border border-kali-border bg-kali-bg px-3 py-1.5 text-slate-400 hover:text-white"
+              className="rounded-xl px-4 py-2 text-slate-400 hover:text-white"
             >
               Cancel
             </button>
@@ -998,7 +1003,7 @@ export const AgentsTab: React.FC = () => {
               type="button"
               disabled={isRevoking || !revokeReason.trim()}
               onClick={handleRevokeConfirm}
-              className="rounded bg-kali-critical px-4 py-1.5 font-bold text-white hover:bg-rose-700 disabled:opacity-50"
+              className="rounded-xl bg-rose-500 px-5 py-2 font-semibold text-white hover:bg-rose-600 disabled:opacity-50"
             >
               {isRevoking ? 'Revoking...' : 'Confirm Revocation'}
             </button>

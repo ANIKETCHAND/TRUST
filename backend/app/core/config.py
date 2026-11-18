@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import List, Optional, Set, Union
 from pydantic import field_validator, model_validator
@@ -18,7 +19,7 @@ KNOWN_INSECURE_SECRETS: Set[str] = {
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "AgentTrust AI Security Platform"
+    PROJECT_NAME: str = "CrossX AI Security Platform"
     VERSION: str = "0.2.0"
     API_PORT: int = 8080
     API_V1_STR: str = "/api/v1"
@@ -32,15 +33,27 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours in dev, should be shorter in prod
 
     # Database
-    DATABASE_URL: str = f"sqlite+aiosqlite:///{Path(__file__).resolve().parent.parent.parent / 'agenttrust.db'}"
+    DATABASE_URL: str = (
+        "sqlite+aiosqlite:////tmp/agenttrust.db"
+        if os.environ.get("VERCEL")
+        else f"sqlite+aiosqlite:///{Path(__file__).resolve().parent.parent.parent / 'agenttrust.db'}"
+    )
     DB_POOL_SIZE: int = 20
     DB_MAX_OVERFLOW: int = 10
     DB_POOL_TIMEOUT: int = 30
     DB_POOL_RECYCLE: int = 1800
 
     # Storage Paths
-    SANDBOX_STORAGE_PATH: str = str(Path(__file__).resolve().parent.parent.parent / "sandbox_storage")
-    QUARANTINE_STORAGE_PATH: str = str(Path(__file__).resolve().parent.parent.parent / "sandbox_storage" / "quarantine")
+    SANDBOX_STORAGE_PATH: str = (
+        "/tmp/sandbox_storage"
+        if os.environ.get("VERCEL")
+        else str(Path(__file__).resolve().parent.parent.parent / "sandbox_storage")
+    )
+    QUARANTINE_STORAGE_PATH: str = (
+        "/tmp/sandbox_storage/quarantine"
+        if os.environ.get("VERCEL")
+        else str(Path(__file__).resolve().parent.parent.parent / "sandbox_storage" / "quarantine")
+    )
 
     # Open Policy Agent (OPA) Integration
     OPA_ENABLED: bool = False
@@ -74,7 +87,27 @@ class Settings(BaseSettings):
     DEFAULT_OUTPUT_RAILS_MODE: str = "block"
 
     # CORS
-    ALLOWED_ORIGINS: Union[List[str], str] = ["http://localhost:5173", "http://localhost:3000"]
+    ALLOWED_ORIGINS: Union[List[str], str] = (
+        ["*"]
+        if os.environ.get("VERCEL")
+        else ["http://localhost:5173", "http://localhost:3000", "http://localhost:5174"]
+    )
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def normalize_database_url(cls, v: Optional[str]) -> str:
+        if not v:
+            if os.environ.get("VERCEL"):
+                return "sqlite+aiosqlite:////tmp/agenttrust.db"
+            return f"sqlite+aiosqlite:///{Path(__file__).resolve().parent.parent.parent / 'agenttrust.db'}"
+        # Fix standard postgres scheme to asyncpg scheme
+        if v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif v.startswith("postgresql://") and not v.startswith("postgresql+asyncpg://"):
+            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if os.environ.get("VERCEL") and "sqlite" in v and "/tmp" not in v:
+            return "sqlite+aiosqlite:////tmp/agenttrust.db"
+        return v
 
     @field_validator("ALLOWED_ORIGINS", mode="after")
     @classmethod

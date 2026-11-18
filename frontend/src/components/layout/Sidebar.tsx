@@ -19,10 +19,10 @@ import {
   Cpu,
   ChevronLeft,
   ChevronRight,
-  Radio,
   Lock,
 } from 'lucide-react';
 import { useSecurityPlatform, type ActiveTabId } from '../../context/SecurityPlatformContext';
+import { useRouter } from '../../context/RouterContext';
 import { BrandLogo } from '../ui/BrandLogo';
 
 interface NavGroup {
@@ -37,15 +37,15 @@ interface NavGroup {
 
 const navGroups: NavGroup[] = [
   {
-    label: 'OVERVIEW',
+    label: 'Overview',
     items: [
       { id: 'overview', label: 'Security Overview', icon: LayoutDashboard },
       { id: 'threat-map', label: 'Threat Radar & Geolocation', icon: Globe },
-      { id: 'active-defense', label: 'Active Defense & Process Killer', icon: Skull, tag: 'L3' },
+      { id: 'active-defense', label: 'Active Defense', icon: Skull, tag: 'L3' },
     ],
   },
   {
-    label: 'AGENT SECURITY',
+    label: 'Agent Security',
     items: [
       { id: 'agents', label: 'Agent Management', icon: Bot },
       { id: 'monitor', label: 'Gateway Monitor', icon: Activity, tag: 'LIVE' },
@@ -57,25 +57,25 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: 'THREAT OPERATIONS',
+    label: 'Threat Operations',
     items: [
       { id: 'incidents', label: 'Incident Center', icon: ShieldAlert, tag: 'SOC' },
       { id: 'reports', label: 'Forensics & Threat Intel', icon: FileText },
-      { id: 'audit', label: 'Audit Logs & Events', icon: FileCheck },
+      { id: 'audit', label: 'Audit Logs', icon: FileCheck },
     ],
   },
   {
-    label: 'PROTECTION',
+    label: 'Protection',
     items: [
       { id: 'browser-shield', label: 'Browser Shield', icon: ShieldCheck, tag: 'L2' },
       { id: 'endpoints', label: 'Endpoint Security', icon: Monitor, tag: 'L1' },
-      { id: 'integrations', label: 'Integrations', icon: Cpu, tag: 'MESH' },
+      { id: 'integrations', label: 'Integrations', icon: Cpu },
     ],
   },
   {
-    label: 'ADMINISTRATION',
+    label: 'System',
     items: [
-      { id: 'settings', label: 'System Health & Settings', icon: Settings },
+      { id: 'settings', label: 'Settings & Health', icon: Settings },
     ],
   },
 ];
@@ -89,6 +89,7 @@ export const Sidebar: React.FC = () => {
     isMobileMenuOpen,
     setIsMobileMenuOpen,
   } = useSecurityPlatform();
+  const { navigate } = useRouter();
 
   const handleSelectTab = (tabId: ActiveTabId) => {
     setActiveTab(tabId);
@@ -99,43 +100,48 @@ export const Sidebar: React.FC = () => {
 
   const sidebarContent = (
     <aside
-      className={`flex flex-col border-r border-kali-border bg-kali-sidebar transition-all duration-200 select-none ${
+      className={`flex flex-col border-r border-white/10 bg-[#03060c]/95 backdrop-blur-2xl transition-all duration-200 select-none ${
         isSidebarCollapsed ? 'w-[68px]' : 'w-64'
       } h-full shrink-0`}
     >
       {/* Brand Header */}
-      <div className="flex h-14 items-center justify-between border-b border-kali-border px-3.5">
-        <BrandLogo
-          size={isSidebarCollapsed ? 'sm' : 'md'}
-          showText={!isSidebarCollapsed}
-          showSubtitle={!isSidebarCollapsed}
-        />
+      <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
+        <button
+          onClick={() => navigate('/')}
+          className="focus:outline-none text-left"
+          title="Return to Landing Page (/)"
+        >
+          <BrandLogo
+            size={isSidebarCollapsed ? 'sm' : 'md'}
+            showText={!isSidebarCollapsed}
+            showSubtitle={!isSidebarCollapsed}
+          />
+        </button>
         <button
           onClick={toggleSidebarCollapse}
-          className="hidden md:flex h-6 w-6 items-center justify-center rounded border border-kali-border bg-kali-bg text-slate-400 hover:border-kali-primary hover:text-white transition-colors"
+          className="hidden md:flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 hover:border-white/20 hover:text-white transition-colors"
           title={isSidebarCollapsed ? 'Expand sidebar [Ctrl+B]' : 'Collapse sidebar [Ctrl+B]'}
           aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {isSidebarCollapsed ? (
-            <ChevronRight className="h-3.5 w-3.5 text-kali-primary" />
+            <ChevronRight className="h-3.5 w-3.5 text-kali-cyan" />
           ) : (
             <ChevronLeft className="h-3.5 w-3.5" />
           )}
         </button>
       </div>
 
-      {/* Navigation Group Stream */}
-      <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3" aria-label="Main Navigation">
+      {/* Navigation Groups */}
+      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label="Main Navigation">
         {navGroups.map((group) => (
           <div key={group.label} className="space-y-1">
             {!isSidebarCollapsed && (
-              <div className="px-2 pb-1 font-mono text-[10px] font-bold tracking-widest text-slate-400 flex items-center gap-1.5">
-                <span className="text-kali-primary/80">//</span>
-                <span>{group.label}</span>
+              <div className="px-3 pb-1 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
+                {group.label}
               </div>
             )}
             {isSidebarCollapsed && (
-              <div className="mx-auto my-1 h-px w-6 bg-kali-border" />
+              <div className="mx-auto my-1.5 h-px w-6 bg-white/10" />
             )}
 
             <div className="space-y-0.5">
@@ -148,15 +154,15 @@ export const Sidebar: React.FC = () => {
                     onClick={() => handleSelectTab(item.id)}
                     title={isSidebarCollapsed ? `${item.label} ${item.tag ? `[${item.tag}]` : ''}` : undefined}
                     aria-current={isActive ? 'page' : undefined}
-                    className={`group relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium transition-all ${
+                    className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition-all ${
                       isActive
-                        ? 'border-l-2 border-kali-primary bg-kali-elevated text-white font-semibold shadow-sm'
-                        : 'border-l-2 border-transparent text-slate-400 hover:bg-kali-card hover:text-slate-200'
+                        ? 'bg-white/[0.08] text-white border-l-2 border-kali-cyan shadow-[0_0_15px_rgba(34,184,207,0.12)]'
+                        : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200 border-l-2 border-transparent'
                     } ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
                   >
                     <Icon
                       className={`h-4 w-4 shrink-0 transition-colors ${
-                        isActive ? 'text-kali-primary' : 'text-slate-400 group-hover:text-kali-cyan'
+                        isActive ? 'text-kali-cyan' : 'text-slate-400 group-hover:text-slate-200'
                       }`}
                     />
 
@@ -166,10 +172,10 @@ export const Sidebar: React.FC = () => {
 
                     {!isSidebarCollapsed && item.tag && (
                       <span
-                        className={`font-mono text-[9px] px-1.5 py-0.2 rounded border uppercase ${
+                        className={`font-mono text-[9px] px-1.5 py-0.5 rounded uppercase ${
                           isActive
-                            ? 'border-kali-primary/60 bg-kali-primary/20 text-kali-cyan'
-                            : 'border-kali-border bg-kali-bg text-slate-500'
+                            ? 'bg-kali-cyan/15 text-kali-cyan border border-kali-cyan/30'
+                            : 'bg-white/5 text-slate-400 border border-white/5'
                         }`}
                       >
                         {item.tag}
@@ -178,7 +184,7 @@ export const Sidebar: React.FC = () => {
 
                     {/* Tooltip for collapsed mode */}
                     {isSidebarCollapsed && (
-                      <div className="absolute left-full ml-2 hidden rounded-md border border-kali-border bg-kali-secondary px-2.5 py-1 font-mono text-xs text-white shadow-xl group-hover:block z-50 whitespace-nowrap pointer-events-none">
+                      <div className="absolute left-full ml-2 hidden rounded-lg border border-white/15 bg-[#0a0d14] px-3 py-1.5 text-xs text-white shadow-2xl group-hover:block z-50 whitespace-nowrap pointer-events-none">
                         {item.label}
                       </div>
                     )}
@@ -190,36 +196,35 @@ export const Sidebar: React.FC = () => {
         ))}
       </nav>
 
-      {/* Fail-Closed Gateway Status Footer */}
-      <div className="border-t border-kali-border p-2.5">
+      {/* Gateway Status Footer */}
+      <div className="border-t border-white/10 p-3">
         <div
-          className={`rounded border border-kali-border bg-kali-bg/90 p-2 text-xs ${
-            isSidebarCollapsed ? 'flex justify-center' : ''
+          className={`rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs ${
+            isSidebarCollapsed ? 'flex justify-center p-2' : ''
           }`}
         >
           {isSidebarCollapsed ? (
-            <div className="relative" title="GATEWAY ENFORCING (FAIL-CLOSED: ACTIVE)">
+            <div className="relative" title="Gateway Active: Fail-Closed Enforced">
               <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-kali-secure opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-kali-secure"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
               </span>
-              <Lock className="h-4 w-4 text-kali-primary" />
+              <Lock className="h-4 w-4 text-kali-cyan" />
             </div>
           ) : (
-            <div>
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-white">
+                <div className="flex items-center gap-2 text-xs font-semibold text-white">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-kali-secure opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-kali-secure"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
                   </span>
-                  <span>GATEWAY ENFORCING</span>
+                  <span>Gateway Enforcing</span>
                 </div>
-                <Radio className="h-3 w-3 text-kali-cyan animate-pulse" />
+                <span className="font-mono text-[10px] text-emerald-400 font-medium">ONLINE</span>
               </div>
-              <div className="mt-1 flex items-center justify-between font-mono text-[10px] text-slate-400">
-                <span>POLICY: FAIL-CLOSED</span>
-                <span className="text-kali-secure font-bold">ONLINE</span>
+              <div className="text-[11px] text-slate-400">
+                Fail-closed zero-trust policy active
               </div>
             </div>
           )}
@@ -236,7 +241,7 @@ export const Sidebar: React.FC = () => {
       {/* Mobile Drawer Overlay */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 z-50 flex md:hidden bg-kali-bg/80 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex md:hidden bg-black/80 backdrop-blur-md"
           onClick={() => setIsMobileMenuOpen(false)}
         >
           <div className="w-72 h-full shadow-2xl" onClick={(e) => e.stopPropagation()}>

@@ -153,7 +153,7 @@ export const IncidentsTab: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `agenttrust-incident-${selectedIncident.id.slice(0, 8)}.${format}`;
+      a.download = `crossx-incident-${selectedIncident.id.slice(0, 8)}.${format}`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success('Report Exported', `Forensic dossier downloaded as ${format.toUpperCase()}.`);
@@ -186,63 +186,58 @@ export const IncidentsTab: React.FC = () => {
   const openCount = incidents.filter((i) => i.status === 'OPEN' || i.status === 'INVESTIGATING').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-kali-border pb-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-center">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold text-kali-primary">// THREAT_OPERATIONS</span>
-            <span className="text-slate-500 font-mono">/</span>
-            <span className="font-mono text-xs text-kali-cyan">INCIDENT_CENTER</span>
-          </div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5 mt-1">
-            <ShieldAlert className="h-6 w-6 text-kali-critical" />
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
+            <ShieldAlert className="h-6 w-6 text-rose-400" />
             SOC Incident Center & Threat Response
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Automated alerts triggered by deterministic gateway violations, indirect prompt injections, and rogue tool parameters.
+          <p className="text-xs text-slate-400 mt-1">
+            Real-time alerts triggered by deterministic gateway violations, prompt injections, and rogue tool parameters.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={fetchIncidents}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded border border-kali-border bg-kali-card px-3 py-1.5 font-mono text-xs font-semibold text-slate-200 hover:border-kali-primary hover:bg-kali-elevated transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-slate-200 hover:border-kali-cyan/40 hover:bg-white/[0.06] hover:text-white transition-all disabled:opacity-50"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-kali-primary ${loading ? 'animate-spin' : ''}`} />
-            <span>SYNC</span>
+            <RefreshCw className={`h-3.5 w-3.5 text-kali-cyan ${loading ? 'animate-spin' : ''}`} />
+            <span>Sync</span>
           </button>
         </div>
       </div>
 
       {/* SOC Triage Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
-          <div className="font-mono text-[10px] text-slate-400 uppercase">[INC-01] Total Logged</div>
-          <div className="mt-1 font-mono text-2xl font-bold text-white">{incidents.length}</div>
-          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Automated SOC Detections</div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4.5 backdrop-blur-xl">
+          <div className="text-xs font-medium text-slate-400">Total Logged</div>
+          <div className="mt-1.5 text-2xl font-bold text-white">{incidents.length}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Automated detections</div>
         </div>
 
-        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
-          <div className="font-mono text-[10px] text-slate-400 uppercase">[INC-02] Active Triage</div>
-          <div className={`mt-1 font-mono text-2xl font-bold ${openCount > 0 ? 'text-kali-warning' : 'text-kali-secure'}`}>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4.5 backdrop-blur-xl">
+          <div className="text-xs font-medium text-slate-400">Active Triage</div>
+          <div className={`mt-1.5 text-2xl font-bold ${openCount > 0 ? 'text-amber-400' : 'text-kali-secure'}`}>
             {openCount}
           </div>
-          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Open & Investigating</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Open & investigating</div>
         </div>
 
-        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
-          <div className="font-mono text-[10px] text-slate-400 uppercase">[INC-03] Critical & High</div>
-          <div className={`mt-1 font-mono text-2xl font-bold ${criticalCount > 0 ? 'text-kali-critical' : highCount > 0 ? 'text-kali-warning' : 'text-slate-400'}`}>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4.5 backdrop-blur-xl">
+          <div className="text-xs font-medium text-slate-400">High Risk Violations</div>
+          <div className={`mt-1.5 text-2xl font-bold ${criticalCount > 0 ? 'text-rose-400' : highCount > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
             {criticalCount} <span className="text-sm font-normal text-slate-400">/ {highCount} High</span>
           </div>
-          <div className="font-mono text-[10px] text-kali-critical mt-0.5">High-Risk Violations</div>
+          <div className="text-[11px] text-rose-400/80 mt-0.5 font-medium">Critical & high severity</div>
         </div>
 
-        <div className="rounded border border-kali-border bg-kali-card p-3 shadow-kali-card">
-          <div className="font-mono text-[10px] text-slate-400 uppercase">[INC-04] Containment SLA</div>
-          <div className="mt-1 font-mono text-2xl font-bold text-kali-secure">100%</div>
-          <div className="font-mono text-[10px] text-slate-400 mt-0.5">Deterministic Pre-Flight Drop</div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4.5 backdrop-blur-xl">
+          <div className="text-xs font-medium text-slate-400">Containment SLA</div>
+          <div className="mt-1.5 text-2xl font-bold text-kali-secure">100%</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Pre-flight enforcement</div>
         </div>
       </div>
 
@@ -251,68 +246,66 @@ export const IncidentsTab: React.FC = () => {
         <SearchInput
           value={search}
           onChange={setSearch}
-          placeholder="Filter incidents by title, description, or target agent..."
+          placeholder="Filter incidents by title, description, or agent..."
           className="max-w-md w-full"
         />
 
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-slate-400">SEVERITY:</span>
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value)}
-            className="rounded border border-kali-border bg-kali-bg px-2.5 py-1.5 font-mono text-xs text-white focus:border-kali-primary focus:outline-none"
+            className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white focus:border-kali-primary focus:outline-none transition-colors"
           >
-            <option value="">ALL SEVERITIES</option>
-            <option value="CRITICAL">CRITICAL ONLY</option>
-            <option value="HIGH">HIGH ONLY</option>
-            <option value="MEDIUM">MEDIUM</option>
-            <option value="LOW">LOW</option>
+            <option value="" className="bg-[#0a0d14] text-white">All Severities</option>
+            <option value="CRITICAL" className="bg-[#0a0d14] text-white">Critical</option>
+            <option value="HIGH" className="bg-[#0a0d14] text-white">High</option>
+            <option value="MEDIUM" className="bg-[#0a0d14] text-white">Medium</option>
+            <option value="LOW" className="bg-[#0a0d14] text-white">Low</option>
           </select>
 
-          <span className="font-mono text-xs text-slate-400 ml-2">STATUS:</span>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded border border-kali-border bg-kali-bg px-2.5 py-1.5 font-mono text-xs text-white focus:border-kali-primary focus:outline-none"
+            className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white focus:border-kali-primary focus:outline-none transition-colors"
           >
-            <option value="">ALL STATUSES</option>
-            <option value="OPEN">OPEN</option>
-            <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
-            <option value="INVESTIGATING">INVESTIGATING</option>
-            <option value="CONTAINED">CONTAINED</option>
-            <option value="RESOLVED">RESOLVED</option>
-            <option value="FALSE_POSITIVE">FALSE POSITIVE</option>
+            <option value="" className="bg-[#0a0d14] text-white">All Statuses</option>
+            <option value="OPEN" className="bg-[#0a0d14] text-white">Open</option>
+            <option value="ACKNOWLEDGED" className="bg-[#0a0d14] text-white">Acknowledged</option>
+            <option value="INVESTIGATING" className="bg-[#0a0d14] text-white">Investigating</option>
+            <option value="CONTAINED" className="bg-[#0a0d14] text-white">Contained</option>
+            <option value="RESOLVED" className="bg-[#0a0d14] text-white">Resolved</option>
+            <option value="FALSE_POSITIVE" className="bg-[#0a0d14] text-white">False Positive</option>
           </select>
         </div>
       </div>
 
       {/* Incidents Table */}
       {loading && incidents.length === 0 ? (
-        <LoadingSpinner message="PARSING PERSISTENT INCIDENT AUDIT TRAIL..." />
+        <LoadingSpinner message="Parsing incident audit trail..." />
       ) : (
-        <div className="rounded-lg border border-kali-border bg-kali-card overflow-hidden shadow-kali-card">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden shadow-2xl backdrop-blur-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-kali-border bg-kali-bg/95 font-mono text-[11px] text-slate-400">
+              <thead className="border-b border-white/10 text-[11px] text-slate-400 font-medium">
                 <tr>
-                  <th className="py-3 px-3.5 font-semibold">Severity</th>
-                  <th className="py-3 px-3.5 font-semibold">Incident ID</th>
-                  <th className="py-3 px-3.5 font-semibold">Alert Summary</th>
-                  <th className="py-3 px-3.5 font-semibold">Affected Agent</th>
-                  <th className="py-3 px-3.5 font-semibold">Status</th>
-                  <th className="py-3 px-3.5 font-semibold">Detection Time</th>
-                  <th className="py-3 px-3.5 font-semibold text-right">Triage</th>
+                  <th className="py-3.5 px-4">Severity</th>
+                  <th className="py-3.5 px-4">Incident ID</th>
+                  <th className="py-3.5 px-4">Alert Summary</th>
+                  <th className="py-3.5 px-4">Affected Agent</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4">Detection Time</th>
+                  <th className="py-3.5 px-4 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-kali-border text-slate-300">
+              <tbody className="divide-y divide-white/5 text-slate-300">
                 {filteredIncidents.map((inc) => (
-                  <tr key={inc.id} className="hover:bg-kali-elevated/40 transition-colors">
-                    <td className="py-3 px-3.5">
+                  <tr key={inc.id} className="hover:bg-white/[0.03] transition-colors">
+                    <td className="py-3.5 px-4">
                       <SeverityBadge severity={inc.severity} />
                     </td>
-                    <td className="py-3 px-3.5 font-mono text-slate-400">
+                    <td className="py-3.5 px-4 font-mono text-slate-400">
                       <div className="flex items-center gap-1.5">
-                        <span className="rounded bg-kali-bg px-1.5 py-0.5 border border-kali-border text-kali-cyan text-[11px]">
+                        <span className="rounded-md bg-white/[0.04] px-2 py-0.5 border border-white/10 text-kali-cyan text-[11px]">
                           {truncateId(inc.id, 8)}
                         </span>
                         <button
@@ -328,28 +321,28 @@ export const IncidentsTab: React.FC = () => {
                         </button>
                       </div>
                     </td>
-                    <td className="py-3 px-3.5 max-w-sm">
+                    <td className="py-3.5 px-4 max-w-sm">
                       <div className="font-semibold text-white truncate">{inc.title}</div>
-                      <div className="text-[11px] text-slate-400 line-clamp-1 font-sans">{inc.description}</div>
+                      <div className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{inc.description}</div>
                     </td>
-                    <td className="py-3 px-3.5 font-mono text-slate-400">
+                    <td className="py-3.5 px-4 font-mono text-slate-300">
                       <div className="flex items-center gap-1.5">
                         <Bot className="h-3.5 w-3.5 text-kali-primary" />
-                        <span>{inc.agent_id ? truncateMiddle(inc.agent_id, 6, 4) : 'SYSTEM_ENFORCER'}</span>
+                        <span>{inc.agent_id ? truncateMiddle(inc.agent_id, 6, 4) : 'System Enforcer'}</span>
                       </div>
                     </td>
-                    <td className="py-3 px-3.5">
+                    <td className="py-3.5 px-4">
                       <StatusBadge status={inc.status} />
                     </td>
-                    <td className="py-3 px-3.5 font-mono text-slate-400 text-[11px]">
+                    <td className="py-3.5 px-4 text-slate-400 text-[11px]">
                       {formatTimestamp(inc.created_at)}
                     </td>
-                    <td className="py-3 px-3.5 text-right font-mono">
+                    <td className="py-3.5 px-4 text-right">
                       <button
                         onClick={() => handleOpenInvestigate(inc)}
-                        className="inline-flex items-center gap-1 rounded border border-kali-border bg-kali-elevated px-2.5 py-1 text-[11px] text-slate-200 hover:border-kali-primary hover:text-white transition-colors"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-200 hover:border-kali-primary/50 hover:bg-white/[0.06] hover:text-white transition-colors"
                       >
-                        <Eye className="h-3 w-3 text-kali-cyan" />
+                        <Eye className="h-3.5 w-3.5 text-kali-cyan" />
                         <span>Investigate</span>
                       </button>
                     </td>
@@ -357,9 +350,9 @@ export const IncidentsTab: React.FC = () => {
                 ))}
                 {filteredIncidents.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center font-mono text-xs text-slate-500">
+                    <td colSpan={7} className="py-12 text-center text-xs text-slate-500">
                       <ShieldCheck className="mx-auto h-8 w-8 text-kali-secure/40 mb-2" />
-                      // ZERO SECURITY INCIDENTS DETECTED MATCHING CURRENT POSTURE CRITERIA
+                      No security incidents detected matching current criteria
                     </td>
                   </tr>
                 )}
@@ -373,14 +366,14 @@ export const IncidentsTab: React.FC = () => {
       <Modal
         isOpen={!!selectedIncident}
         onClose={() => setSelectedIncident(null)}
-        title={`INCIDENT INVESTIGATION // ${selectedIncident?.title || ''}`}
-        subtitle={`ID: ${selectedIncident?.id || ''}`}
+        title={selectedIncident?.title || 'Incident Investigation'}
+        subtitle={`Incident ID: ${selectedIncident?.id || ''}`}
         maxWidth="2xl"
       >
         {selectedIncident && (
-          <div className="space-y-4 font-mono text-xs">
+          <div className="space-y-4 text-xs">
             {/* Status bar */}
-            <div className="flex items-center justify-between border-b border-kali-border pb-3">
+            <div className="flex flex-wrap items-center justify-between border-b border-white/10 pb-3 gap-2">
               <div className="flex items-center gap-2">
                 <SeverityBadge severity={selectedIncident.severity} />
                 <StatusBadge status={selectedIncident.status} />
@@ -390,96 +383,96 @@ export const IncidentsTab: React.FC = () => {
                   type="button"
                   disabled={exportingReport}
                   onClick={() => handleExportIncidentDossier('html')}
-                  className="inline-flex items-center gap-1 rounded border border-kali-border bg-kali-bg px-2.5 py-1 text-[11px] text-slate-200 hover:border-kali-primary hover:text-white transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-200 hover:border-kali-primary/50 hover:text-white transition-colors disabled:opacity-50"
                   title="Export official HTML SOC Forensic Dossier"
                 >
-                  <Download className="h-3 w-3 text-kali-cyan" />
+                  <Download className="h-3.5 w-3.5 text-kali-cyan" />
                   <span>Export HTML</span>
                 </button>
                 <button
                   type="button"
                   disabled={exportingReport}
                   onClick={() => handleExportIncidentDossier('json')}
-                  className="inline-flex items-center gap-1 rounded border border-kali-border bg-kali-bg px-2.5 py-1 text-[11px] text-slate-200 hover:border-kali-primary hover:text-white transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-200 hover:border-kali-primary/50 hover:text-white transition-colors disabled:opacity-50"
                   title="Export JSON Telemetry Dossier"
                 >
-                  <Terminal className="h-3 w-3 text-kali-primary" />
+                  <Terminal className="h-3.5 w-3.5 text-kali-primary" />
                   <span>Export JSON</span>
                 </button>
               </div>
             </div>
 
             {/* Incident Summary */}
-            <div className="rounded border border-kali-border bg-kali-bg p-3.5 space-y-2">
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2.5">
               <div className="flex items-center justify-between text-slate-400 text-[11px]">
-                <span className="flex items-center gap-1.5 font-bold text-white">
-                  <AlertTriangle className="h-4 w-4 text-kali-warning" />
+                <span className="flex items-center gap-1.5 font-semibold text-white">
+                  <AlertTriangle className="h-4 w-4 text-amber-400" />
                   <span>Executive Incident Summary</span>
                 </span>
                 <span>Detected: {formatTimestamp(selectedIncident.created_at)}</span>
               </div>
-              <p className="font-sans text-xs text-slate-200 leading-relaxed">
+              <p className="text-xs text-slate-200 leading-relaxed">
                 {selectedIncident.description}
               </p>
-              <div className="text-[11px] text-slate-400 font-mono pt-1 border-t border-kali-border/60">
-                AFFECTED AGENT ID: <span className="text-kali-cyan">{selectedIncident.agent_id || 'SYSTEM_ENFORCER'}</span>
+              <div className="text-[11px] text-slate-400 pt-2 border-t border-white/10">
+                Affected Agent: <span className="text-kali-cyan font-mono">{selectedIncident.agent_id || 'System Enforcer'}</span>
               </div>
             </div>
 
             {/* Quick Actions Strip */}
             <div>
-              <span className="text-slate-400 font-semibold block mb-1.5">// SOC_RAPID_RESPONSE_ACTIONS:</span>
+              <span className="text-slate-400 font-semibold block mb-2">Rapid Response Actions</span>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handleQuickAction('ACKNOWLEDGED')}
-                  className="rounded border border-kali-border bg-kali-bg px-3 py-1.5 text-xs font-semibold text-slate-200 hover:border-kali-cyan hover:text-white transition-colors"
+                  className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-200 hover:border-kali-cyan/50 hover:text-white transition-colors"
                 >
-                  [1] Acknowledge
+                  Acknowledge
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickAction('INVESTIGATING')}
-                  className="rounded border border-kali-border bg-kali-bg px-3 py-1.5 text-xs font-semibold text-slate-200 hover:border-kali-primary hover:text-white transition-colors"
+                  className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-200 hover:border-kali-primary/50 hover:text-white transition-colors"
                 >
-                  [2] Set Investigating
+                  Investigating
                 </button>
                 <button
                   type="button"
                   onClick={handleRequestApproval}
-                  className="rounded border border-kali-border bg-kali-bg px-3 py-1.5 text-xs font-semibold text-kali-cyan hover:border-kali-cyan transition-colors"
+                  className="rounded-xl border border-kali-cyan/30 bg-kali-cyan/10 px-3 py-1.5 text-xs font-medium text-kali-cyan hover:bg-kali-cyan/20 transition-colors"
                 >
-                  [3] Request Approval
+                  Request Approval
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickAction('CONTAINED')}
-                  className="rounded border border-kali-critical/60 bg-[#331418] px-3 py-1.5 text-xs font-semibold text-kali-critical hover:bg-[#4a1c22] transition-colors"
+                  className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/20 transition-colors"
                 >
-                  [4] Contain Threat
+                  Contain Threat
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickAction('RESOLVED')}
-                  className="rounded border border-kali-secure/60 bg-[#0E2E22] px-3 py-1.5 text-xs font-semibold text-kali-secure hover:bg-[#154634] transition-colors"
+                  className="rounded-xl border border-kali-secure/40 bg-kali-secure/10 px-3 py-1.5 text-xs font-medium text-kali-secure hover:bg-kali-secure/20 transition-colors"
                 >
-                  [5] Resolve Incident
+                  Resolve Incident
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickAction('FALSE_POSITIVE')}
-                  className="rounded border border-kali-border bg-kali-bg px-3 py-1.5 text-xs font-semibold text-slate-400 hover:border-slate-500 hover:text-slate-200 transition-colors"
+                  className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-400 hover:border-white/20 hover:text-slate-200 transition-colors"
                 >
-                  [6] Mark False Positive
+                  Mark False Positive
                 </button>
               </div>
             </div>
 
             {/* Raw Telemetry Evidence */}
             <div>
-              <span className="text-slate-400 font-semibold block mb-1.5">// FORENSIC_METADATA_EVIDENCE:</span>
+              <span className="text-slate-400 font-semibold block mb-1.5">Forensic Metadata & Evidence</span>
               <TerminalBox
-                title={`FORENSIC EVIDENCE // ${truncateId(selectedIncident.id, 8)}`}
+                title={`Forensic Evidence: ${truncateId(selectedIncident.id, 8)}`}
                 copyContent={JSON.stringify(selectedIncident.incident_metadata || {}, null, 2)}
                 maxHeight="max-h-48"
               >
@@ -488,28 +481,28 @@ export const IncidentsTab: React.FC = () => {
             </div>
 
             {/* Detailed Update Form */}
-            <form onSubmit={handleUpdateStatus} className="border-t border-kali-border pt-3 space-y-3">
+            <form onSubmit={handleUpdateStatus} className="border-t border-white/10 pt-3.5 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1">Target Status</label>
+                  <label className="text-slate-300 font-medium block mb-1.5">Update Status</label>
                   <select
                     value={newStatus}
                     onChange={(e) => setNewStatus(e.target.value as any)}
-                    className="w-full rounded border border-kali-border bg-kali-bg px-3 py-1.5 text-white focus:border-kali-primary focus:outline-none"
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
                   >
-                    <option value="OPEN">OPEN</option>
-                    <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
-                    <option value="INVESTIGATING">INVESTIGATING</option>
-                    <option value="CONTAINED">CONTAINED</option>
-                    <option value="RESOLVED">RESOLVED</option>
-                    <option value="FALSE_POSITIVE">FALSE POSITIVE</option>
+                    <option value="OPEN" className="bg-[#0a0d14] text-white">OPEN</option>
+                    <option value="ACKNOWLEDGED" className="bg-[#0a0d14] text-white">ACKNOWLEDGED</option>
+                    <option value="INVESTIGATING" className="bg-[#0a0d14] text-white">INVESTIGATING</option>
+                    <option value="CONTAINED" className="bg-[#0a0d14] text-white">CONTAINED</option>
+                    <option value="RESOLVED" className="bg-[#0a0d14] text-white">RESOLVED</option>
+                    <option value="FALSE_POSITIVE" className="bg-[#0a0d14] text-white">FALSE POSITIVE</option>
                   </select>
                 </div>
                 <div className="flex items-end justify-end">
                   <button
                     type="submit"
                     disabled={updating}
-                    className="rounded bg-kali-primary px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-white shadow-kali-glow hover:bg-kali-secondaryBlue transition-colors disabled:opacity-50"
+                    className="rounded-xl bg-kali-primary px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-kali-primary/20 hover:bg-kali-secondaryBlue transition-colors disabled:opacity-50"
                   >
                     {updating ? 'Saving...' : 'Update Resolution'}
                   </button>
@@ -517,46 +510,47 @@ export const IncidentsTab: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-slate-300 font-semibold block mb-1">Investigation Notes & Remediation Audit</label>
+                <label className="text-slate-300 font-medium block mb-1.5">Investigation Notes & Remediation Audit</label>
                 <textarea
                   rows={2}
                   value={resolutionNotes}
                   onChange={(e) => setResolutionNotes(e.target.value)}
                   placeholder="Document root cause, containment actions, and compliance remediation..."
-                  className="w-full rounded border border-kali-border bg-kali-bg px-3 py-2 text-white focus:border-kali-primary focus:outline-none font-sans"
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-primary focus:outline-none"
                 />
               </div>
             </form>
           </div>
         )}
       </Modal>
+
       {/* CONTAINMENT AUTHORIZATION CONFIRMATION MODAL */}
       <Modal
         isOpen={containConfirmOpen}
         onClose={() => setContainConfirmOpen(false)}
-        title="CONFIRM THREAT CONTAINMENT"
-        subtitle={`INCIDENT: #${truncateId(selectedIncident?.id || '', 8)}`}
+        title="Confirm Threat Containment"
+        subtitle={`Incident: #${truncateId(selectedIncident?.id || '', 8)}`}
       >
-        <div className="space-y-4 font-mono text-xs">
-          <div className="rounded border border-kali-critical/60 bg-[#331418] p-3 text-kali-critical flex items-start gap-2.5">
-            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+        <div className="space-y-4 text-xs">
+          <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-rose-300 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-rose-400" />
             <div>
-              <span className="font-bold block">CRITICAL ACTIVE DEFENSE REMEDIATION:</span>
+              <span className="font-semibold block text-white mb-0.5">Critical Active Defense Remediation</span>
               Containment will isolate the affected agent ({selectedIncident?.agent_id || 'System'}), halting active tool executions and quarantining associated session tokens.
             </div>
           </div>
 
-          <div className="rounded border border-kali-border bg-kali-bg p-3 space-y-1.5 text-slate-300">
-            <div>Incident: <span className="text-white font-bold">{selectedIncident?.title}</span></div>
-            <div>Severity: <span className="text-kali-critical font-bold">{selectedIncident?.severity}</span></div>
-            <div>Operator: <span className="text-kali-cyan font-bold">SOC_OPERATOR_VERIFIED</span></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2 text-slate-300">
+            <div>Incident: <span className="text-white font-semibold">{selectedIncident?.title}</span></div>
+            <div>Severity: <span className="text-rose-400 font-semibold">{selectedIncident?.severity}</span></div>
+            <div>Operator Status: <span className="text-kali-cyan font-medium">SecOps Authorized</span></div>
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-kali-border pt-3">
+          <div className="flex justify-end gap-2.5 border-t border-white/10 pt-4">
             <button
               type="button"
               onClick={() => setContainConfirmOpen(false)}
-              className="rounded border border-kali-border bg-kali-bg px-3 py-1.5 text-slate-400 hover:text-white"
+              className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-slate-400 hover:text-white transition-colors"
             >
               Cancel
             </button>
@@ -564,7 +558,7 @@ export const IncidentsTab: React.FC = () => {
               type="button"
               disabled={updating}
               onClick={handleConfirmContainment}
-              className="rounded bg-kali-critical px-4 py-1.5 font-bold text-white hover:bg-rose-700 transition-colors disabled:opacity-50"
+              className="rounded-xl bg-rose-600 px-4 py-2 font-semibold text-white hover:bg-rose-500 transition-colors shadow-lg shadow-rose-600/20 disabled:opacity-50"
             >
               {updating ? 'Executing...' : 'Authorize & Contain'}
             </button>

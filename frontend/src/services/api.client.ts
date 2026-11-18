@@ -14,7 +14,7 @@ export class ApiError extends Error {
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${ENV.API_BASE_URL}${endpoint}`;
-  const token = typeof window !== 'undefined' ? (localStorage.getItem('agenttrust_token') || localStorage.getItem('access_token')) : null;
+  const token = typeof window !== 'undefined' ? (localStorage.getItem('crossx_token') || localStorage.getItem('agenttrust_token') || localStorage.getItem('access_token')) : null;
   const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
   const headers = {
@@ -93,6 +93,7 @@ export const api = {
     }
     const data = await res.json();
     if (data.access_token && typeof window !== 'undefined') {
+      localStorage.setItem('crossx_token', data.access_token);
       localStorage.setItem('agenttrust_token', data.access_token);
       localStorage.setItem('access_token', data.access_token);
     }
@@ -101,6 +102,7 @@ export const api = {
   getCurrentUser: () => apiClient.get<any>('/auth/me'),
   logout: () => {
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('crossx_token');
       localStorage.removeItem('agenttrust_token');
       localStorage.removeItem('access_token');
     }
@@ -115,7 +117,9 @@ export const api = {
   listTools: () => apiClient.get<any[]>('/tools'),
   listPermissions: (agentId?: string) => apiClient.get<any[]>(`/permissions${agentId ? `?agent_id=${agentId}` : ''}`),
   createPermission: (data: any) => apiClient.post<any>('/permissions', data),
+  grantPermission: (data: any) => apiClient.post<any>('/permissions', data),
   deactivatePermission: (id: string) => apiClient.delete<any>(`/permissions/${id}`),
+  revokePermission: (id: string) => apiClient.delete<any>(`/permissions/${id}`),
   executeTool: (data: any, apiKey?: string) => {
     const headers: Record<string, string> = {};
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
@@ -186,7 +190,7 @@ export const api = {
   // Forensics & Reports
   getExecutiveSummary: (format: 'json' | 'html' = 'json') => apiClient.get<any>(`/reports/executive-summary?format=${format}`),
   exportIncidentReport: async (incidentId: string, format: 'html' | 'json' | 'csv' = 'html') => {
-    const token = typeof window !== 'undefined' ? (localStorage.getItem('agenttrust_token') || localStorage.getItem('access_token')) : null;
+    const token = typeof window !== 'undefined' ? (localStorage.getItem('crossx_token') || localStorage.getItem('agenttrust_token') || localStorage.getItem('access_token')) : null;
     const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
     const res = await fetch(`${ENV.API_BASE_URL}/reports/incident/${encodeURIComponent(incidentId)}/export?format=${format}`, {
       method: 'POST',

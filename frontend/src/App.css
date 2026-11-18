@@ -1,17 +1,36 @@
-/* AgentTrust Command Center Global Component Styling */
+/* CrossX Command Center Global Component Styling */
+.crossx-glow,
 .agenttrust-glow {
-  box-shadow: 0 0 15px -3px rgba(54, 123, 245, 0.2);
+  box-shadow: 0 0 25px -4px rgba(54, 123, 245, 0.25);
 }
 
+.crossx-glow-cyan,
 .agenttrust-glow-cyan {
-  box-shadow: 0 0 15px -3px rgba(34, 184, 207, 0.2);
+  box-shadow: 0 0 25px -4px rgba(34, 184, 207, 0.25);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card-hover:hover {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
 }
 
 .terminal-cursor {
   display: inline-block;
   width: 7px;
   height: 14px;
-  background-color: #367BF5;
+  background-color: #22B8CF;
   margin-left: 4px;
   vertical-align: middle;
   animation: blink 1s step-start infinite;
@@ -19,4 +38,21 @@
 
 @keyframes blink {
   50% { opacity: 0; }
+}
+
+/* ThreeUI SparkBadge Frame Container - Immersive Fullscreen Mode */
+.shader-frame {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background: #000;
+  overflow: hidden;
+  z-index: 0;
 }

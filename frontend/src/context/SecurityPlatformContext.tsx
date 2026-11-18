@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { api } from '../services/api.client';
+import { useRouter } from './RouterContext';
 
 export type PlatformTab =
   | 'overview'
@@ -50,7 +51,7 @@ export interface SecurityPlatformContextValue {
 const SecurityPlatformContext = createContext<SecurityPlatformContextValue | undefined>(undefined);
 
 export const SecurityPlatformProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [activeTab, setActiveTab] = useState<PlatformTab>('overview');
+  const { activeTab, setActiveTab } = useRouter();
   const [isAutoPolling, setIsAutoPolling] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(5000);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
