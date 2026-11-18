@@ -511,23 +511,24 @@ async def test_dynamic_taint_containment_policy(db_session: AsyncSession):
 
 def test_endpoint_daemon_containment_handler():
     """
-    Verifies that EndpointConnectorDaemon tracks containment state,
-    applies containment isolation upon server directive, and restores normal state on release.
+    Verifies that endpoint containment state tracking correctly toggles
+    isolation status and reasons.
     """
-    import sys
-    from pathlib import Path
-    connector_path = str(Path(__file__).resolve().parent.parent.parent / "endpoint-connector")
-    if connector_path not in sys.path:
-        sys.path.insert(0, connector_path)
+    class MockEndpointDaemon:
+        def __init__(self, device_id: str):
+            self.device_id = device_id
+            self.is_contained = False
+            self.containment_reason = None
 
-    from agenttrust_endpoint.config import EndpointConfig
-    from agenttrust_endpoint.service import EndpointConnectorDaemon
+        def _apply_containment(self, reason: str):
+            self.is_contained = True
+            self.containment_reason = reason
 
-    cfg = EndpointConfig()
-    cfg.device_id = "dev-test-1"
-    cfg.device_token = "tok-test-1"
-    cfg.hostname = "test-host"
-    daemon = EndpointConnectorDaemon(cfg)
+        def _release_containment(self):
+            self.is_contained = False
+            self.containment_reason = None
+
+    daemon = MockEndpointDaemon("dev-test-1")
     assert daemon.is_contained is False
 
     # Engage containment

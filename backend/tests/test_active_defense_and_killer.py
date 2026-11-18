@@ -232,19 +232,17 @@ async def test_gateway_enforces_deception_tarpit(client: AsyncClient):
 
 
 def test_endpoint_connector_process_and_ip_safety():
+    """
+    Verifies that Active Defense refuses to terminate self/protected PIDs and validates IP formats safely.
+    """
     import os
-    import sys
-    from pathlib import Path
-    connector_dir = str(Path(__file__).resolve().parent.parent.parent / "endpoint-connector")
-    if connector_dir not in sys.path:
-        sys.path.insert(0, connector_dir)
-    import connector
-    endpoint_conn = connector.endpoint_connector
+    import pytest
 
     # Refuses to kill self
-    res_self = endpoint_conn.kill_process(os.getpid())
+    res_self = active_defense_service.kill_process(os.getpid())
     assert res_self["success"] is False
+    assert "cannot be terminated" in res_self.get("error", "").lower()
 
     # Rejects malformed IP
-    res_ip = endpoint_conn.block_remote_ip("invalid_ip && whoami")
-    assert res_ip["success"] is False
+    with pytest.raises(ValueError, match="Invalid IP"):
+        active_defense_service.sinkhole_ip("invalid_ip && whoami")
