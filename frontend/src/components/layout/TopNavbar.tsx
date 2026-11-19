@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  RefreshCw,
   Activity,
   Menu,
   Search,
@@ -9,8 +8,6 @@ import {
   LogOut,
   Bell,
   ChevronDown,
-  ShieldAlert,
-  Globe,
 } from 'lucide-react';
 import { useSecurityPlatform, type ActiveTabId } from '../../context/SecurityPlatformContext';
 import { useAuth } from '../../context/AuthContext';
@@ -47,10 +44,6 @@ const tabMetaMap: Record<ActiveTabId, TabMeta> = {
 export const TopNavbar: React.FC = () => {
   const {
     activeTab,
-    setActiveTab,
-    autoRefresh,
-    setAutoRefresh,
-    triggerGlobalRefresh,
     health,
     setIsMobileMenuOpen,
     setIsSearchOpen,
@@ -64,6 +57,32 @@ export const TopNavbar: React.FC = () => {
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+
+  // Theme switch state
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ferrow-theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return 'light';
+  });
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    document.documentElement.setAttribute('data-theme', next);
+    if (next === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    try {
+      localStorage.setItem('ferrow-theme', next);
+    } catch {
+      // ignore
+    }
+  };
 
   const organizations = [
     { id: 'SOC-PRIMARY', label: 'SOC-PRIMARY (Default Cluster)' },
@@ -94,197 +113,70 @@ export const TopNavbar: React.FC = () => {
   };
 
   const isHealthOk = health?.status === 'healthy' || health?.status === 'ok';
-  const unreadAlertsCount = notifications.filter((n) => n.status === 'OPEN' || n.status === 'INVESTIGATING').length;
+  const unreadAlertsCount = notifications.filter(
+    (n) => n.status === 'OPEN' || n.status === 'INVESTIGATING'
+  ).length;
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-[#E5EAF1] bg-white px-6 shrink-0 z-30 select-none">
-      {/* Left: Mobile toggle & Clean Breadcrumbs */}
-      <div className="flex items-center gap-3">
+    <header className="flex h-16 items-center justify-between border-b border-[var(--line)] bg-[var(--card)] px-6 shrink-0 z-30 select-none text-[var(--ink)]">
+      {/* Left: Mobile Toggle & Active Section Breadcrumb */}
+      <div className="flex items-center gap-4">
         <button
           onClick={() => setIsMobileMenuOpen(true)}
-          className="flex md:hidden p-2 rounded-lg border border-[#E5EAF1] bg-[#F8FAFC] text-[#64748B] hover:text-[#1E293B]"
-          aria-label="Open navigation menu"
+          className="flex md:hidden h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+          aria-label="Open mobile navigation"
         >
           <Menu className="h-4 w-4" />
         </button>
 
-        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs">
-          <span className="text-[#64748B] font-semibold hidden sm:inline">
-            AgentTrust
-          </span>
-          <span className="text-[#CBD5E1]">/</span>
-          <span className="text-[#64748B] font-medium">
+        <div className="flex items-center gap-2.5">
+          <span className="font-mono text-xs uppercase tracking-wider text-[var(--ink-3)] hidden sm:inline">
             {currentMeta.category}
           </span>
-          <span className="text-[#CBD5E1]">/</span>
-          <h1 className="text-xs font-semibold text-[#1E293B] tracking-tight truncate max-w-[200px] sm:max-w-xs md:max-w-none">
+          <span className="text-[var(--line-2)] hidden sm:inline">/</span>
+          <h1 className="text-sm font-medium tracking-tight text-[var(--ink)]">
             {currentMeta.title}
           </h1>
-        </nav>
+        </div>
       </div>
 
-      {/* Center: Search / Command Palette */}
-      <div className="hidden lg:flex items-center max-w-sm w-full mx-6">
+      {/* Right: Quick actions, Search, Theme, Cluster & User Dropdowns */}
+      <div className="flex items-center gap-3">
+        {/* Search Bar Trigger */}
         <button
-          type="button"
           onClick={() => setIsSearchOpen(true)}
-          className="w-full flex items-center justify-between rounded-lg border border-[#E5EAF1] bg-[#F8FAFC] py-1.5 px-3.5 text-xs text-[#64748B] hover:border-[#CBD5E1] hover:bg-white hover:text-[#1E293B] transition-all shadow-2xs"
+          className="hidden sm:flex items-center gap-2 rounded-full border border-[var(--line-2)] bg-[var(--bg)] px-3 py-1.5 text-xs text-[var(--ink-2)] hover:border-[var(--line)] hover:text-[var(--ink)] transition-colors"
+          title="Search telemetry and commands [Ctrl+K]"
         >
-          <div className="flex items-center gap-2">
-            <Search className="h-3.5 w-3.5 text-[#3B82F6]" />
-            <span>Search or jump to...</span>
-          </div>
-          <kbd className="rounded border border-[#E5EAF1] bg-white px-1.5 py-0.5 font-mono text-[10px] text-[#94A3B8]">
-            Ctrl+K
+          <Search className="h-3.5 w-3.5 text-[var(--ink-3)]" />
+          <span className="text-xs">Search console...</span>
+          <kbd className="rounded border border-[var(--line-2)] bg-[var(--card)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--ink-3)]">
+            ⌘K
           </kbd>
         </button>
-      </div>
 
-      {/* Right Controls */}
-      <div className="flex items-center gap-2.5 text-xs">
-        {/* Gateway Health Indicator */}
-        <div
-          className="hidden sm:flex items-center gap-2 rounded-full border border-[#E5EAF1] bg-[#F8FAFC] px-3 py-1.5 text-xs"
-          title="Gateway Telemetry Status"
-        >
-          <span
-            className={`h-2 w-2 rounded-full ${
-              isHealthOk ? 'bg-[#16A34A] animate-pulse' : 'bg-[#F59E0B]'
-            }`}
-          />
-          <span className="text-[#64748B]">Gateway:</span>
-          <span className={`font-semibold ${isHealthOk ? 'text-[#16A34A]' : 'text-[#F59E0B]'}`}>
-            {health?.status ? health.status.toUpperCase() : 'HEALTHY'}
-          </span>
-        </div>
-
-        {/* Live Polling Toggle */}
-        <button
-          onClick={() => setAutoRefresh(!autoRefresh)}
-          className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs border transition-all ${
-            autoRefresh
-              ? 'border-[#BCE8CD] bg-[#E8F7EF] text-[#16A34A]'
-              : 'border-[#E5EAF1] bg-[#F8FAFC] text-[#64748B] hover:text-[#1E293B] hover:bg-white'
-          }`}
-          title="Toggle telemetry live stream"
-        >
-          <Activity className={`h-3.5 w-3.5 ${autoRefresh ? 'animate-pulse' : ''}`} />
-          <span className="hidden md:inline font-medium">{autoRefresh ? 'Live' : 'Paused'}</span>
-        </button>
-
-        {/* Global Manual Refresh Button */}
-        <button
-          onClick={triggerGlobalRefresh}
-          className="flex items-center gap-1.5 rounded-lg border border-[#E5EAF1] bg-[#F8FAFC] px-2.5 py-1.5 text-xs text-[#64748B] hover:border-[#CBD5E1] hover:bg-white hover:text-[#1E293B] transition-all"
-          title="Trigger sync across all telemetry panels"
-        >
-          <RefreshCw className="h-3.5 w-3.5 text-[#3B82F6]" />
-          <span className="hidden md:inline font-medium">Sync</span>
-        </button>
-
-        {/* Return to Landing Page Button */}
-        <button
-          onClick={() => navigate('/')}
-          className="flex items-center gap-1.5 rounded-lg border border-[#E5EAF1] bg-[#F8FAFC] px-2.5 py-1.5 text-xs text-[#64748B] hover:border-[#3B82F6]/50 hover:text-[#3B82F6] hover:bg-white transition-all"
-          title="Return to Landing Page"
-        >
-          <Globe className="h-3.5 w-3.5 text-[#3B82F6]" />
-          <span className="hidden lg:inline font-medium">Landing</span>
-        </button>
-
-        {/* Notifications Center */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifDropdown(!showNotifDropdown)}
-            className="relative flex items-center justify-center h-8 w-8 rounded-lg border border-[#E5EAF1] bg-[#F8FAFC] text-[#64748B] hover:border-[#CBD5E1] hover:text-[#1E293B] hover:bg-white transition-all"
-            title="Security Notifications"
-            aria-label="Security Notifications"
-          >
-            <Bell className="h-4 w-4" />
-            {unreadAlertsCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#DC2626] text-[10px] font-bold text-white shadow-xs">
-                {unreadAlertsCount}
-              </span>
-            )}
-          </button>
-
-          {showNotifDropdown && (
-            <div
-              className="absolute right-0 mt-2 w-80 rounded-xl border border-[#E5EAF1] bg-white p-3 shadow-lg z-50 animate-fade-in"
-              onMouseLeave={() => setShowNotifDropdown(false)}
-            >
-              <div className="flex items-center justify-between border-b border-[#E5EAF1] pb-2 px-1">
-                <div className="text-xs font-semibold text-[#1E293B] flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4 text-[#DC2626]" />
-                  <span>Security Alerts</span>
-                </div>
-                <span className="text-[11px] text-[#3B82F6] font-medium">{unreadAlertsCount} Active</span>
-              </div>
-
-              <div className="divide-y divide-[#F1F5F9] max-h-64 overflow-y-auto py-1">
-                {notifications.slice(0, 4).map((notif) => (
-                  <div
-                    key={notif.id}
-                    onClick={() => {
-                      setShowNotifDropdown(false);
-                      setActiveTab('incidents');
-                    }}
-                    className="p-2.5 hover:bg-[#F8FAFC] cursor-pointer rounded-lg transition-all"
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <SeverityBadge severity={notif.severity} />
-                      <span className="text-[10px] text-[#94A3B8]">{formatTimeOnly(notif.created_at)}</span>
-                    </div>
-                    <div className="font-medium text-[#1E293B] text-xs mt-1.5 truncate">{notif.title}</div>
-                    <div className="text-[11px] text-[#64748B] mt-0.5 truncate">
-                      Agent: {truncateId(notif.agent_id || 'system', 8)}
-                    </div>
-                  </div>
-                ))}
-
-                {notifications.length === 0 && (
-                  <div className="py-6 text-center text-xs text-[#64748B]">
-                    No active notifications.
-                  </div>
-                )}
-              </div>
-
-              <div className="border-t border-[#E5EAF1] pt-2 px-1 flex justify-center">
-                <button
-                  onClick={() => {
-                    setShowNotifDropdown(false);
-                    setActiveTab('incidents');
-                  }}
-                  className="text-[#3B82F6] hover:underline text-xs font-medium"
-                >
-                  View All Incidents
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Organization Selector */}
-        <div className="relative hidden xl:block">
+        {/* Global Cluster Selector */}
+        <div className="relative hidden lg:block">
           <button
             onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-            className="flex items-center gap-2 rounded-lg border border-[#E5EAF1] bg-[#F8FAFC] px-3 py-1.5 text-xs text-[#64748B] hover:border-[#CBD5E1] hover:text-[#1E293B] hover:bg-white transition-all"
-            title="Switch Tenant Context"
+            className="flex items-center gap-2 rounded-lg border border-[var(--line-2)] bg-[var(--bg)] px-2.5 py-1.5 text-xs font-medium text-[var(--ink)] hover:border-[var(--line)] transition-colors"
+            title="Active Security Cluster"
           >
-            <Building className="h-3.5 w-3.5 text-[#3B82F6]" />
-            <span className="font-medium text-[#1E293B]">{selectedOrg}</span>
-            <ChevronDown className="h-3.5 w-3.5 text-[#94A3B8]" />
+            <Building className="h-3.5 w-3.5 text-[var(--accent)]" />
+            <span className="max-w-[120px] truncate">{selectedOrg}</span>
+            <ChevronDown className="h-3 w-3 text-[var(--ink-3)]" />
           </button>
 
           {showOrgDropdown && (
-            <div
-              className="absolute right-0 mt-2 w-64 rounded-xl border border-[#E5EAF1] bg-white p-2 shadow-lg z-50 animate-fade-in text-xs"
-              onMouseLeave={() => setShowOrgDropdown(false)}
-            >
-              <div className="px-3 py-1.5 text-[10px] text-[#94A3B8] uppercase font-semibold border-b border-[#E5EAF1]">
-                Tenant Cluster
-              </div>
-              <div className="space-y-0.5 mt-1">
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowOrgDropdown(false)}
+              />
+              <div className="absolute right-0 mt-1 w-64 rounded-xl border border-[var(--line)] bg-[var(--card)] p-1.5 shadow-lg z-50 text-xs">
+                <div className="px-2 py-1 text-[10px] font-mono font-medium text-[var(--ink-3)] uppercase">
+                  Active Defense Cluster
+                </div>
                 {organizations.map((org) => (
                   <button
                     key={org.id}
@@ -292,74 +184,225 @@ export const TopNavbar: React.FC = () => {
                       setSelectedOrg(org.id);
                       setShowOrgDropdown(false);
                     }}
-                    className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition-all ${
+                    className={`w-full flex items-center justify-between rounded-lg px-2.5 py-2 text-left transition-colors ${
                       selectedOrg === org.id
-                        ? 'bg-[#EEF4FF] text-[#3B82F6] font-medium'
-                        : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#1E293B]'
+                        ? 'bg-[var(--tint)] text-[var(--accent-ink)] font-medium'
+                        : 'text-[var(--ink-2)] hover:bg-[var(--bg-2)] hover:text-[var(--ink)]'
                     }`}
                   >
-                    <span>{org.id}</span>
-                    {selectedOrg === org.id && <span className="text-[10px] text-[#16A34A] font-semibold">Active</span>}
+                    <span className="truncate">{org.label}</span>
+                    {selectedOrg === org.id && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                    )}
                   </button>
                 ))}
               </div>
-            </div>
+            </>
           )}
         </div>
 
-        {/* User Profile / Menu */}
+        {/* Theme Toggle Button matching Ferrow design */}
+        <button
+          className="icon-btn"
+          id="theme"
+          type="button"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          title="Toggle light/dark theme"
+        >
+          <svg
+            className="moon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21.5 14.08C20.3 14.72 18.93 15.08 17.48 15.08C12.75 15.08 8.92 11.25 8.92 6.52C8.92 5.07 9.28 3.7 9.92 2.5C5.67 3.5 2.5 7.32 2.5 11.87C2.5 17.19 6.81 21.5 12.13 21.5C16.68 21.5 20.5 18.33 21.5 14.08Z" />
+          </svg>
+          <svg
+            className="sun"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M17 12C17 14.76 14.76 17 12 17C9.24 17 7 14.76 7 12C7 9.24 9.24 7 12 7C14.76 7 17 9.24 17 12Z" />
+            <path d="M12 2V3.5M12 20.5V22M19.07 19.07L18.01 18.01M5.99 5.99L4.93 4.93M22 12H20.5M3.5 12H2M19.07 4.93L18.01 5.99M5.99 18.01L4.93 19.07" />
+          </svg>
+        </button>
+
+        {/* Real-time Health Status Pill */}
+        <div
+          className="hidden md:flex items-center gap-1.5 rounded-full border border-[var(--line-2)] bg-[var(--bg)] px-2.5 py-1 text-xs"
+          title={`Gateway Status: ${health?.status || 'Active'}`}
+        >
+          <span className="relative flex h-2 w-2">
+            {isHealthOk && (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-75"></span>
+            )}
+            <span
+              className={`relative inline-flex rounded-full h-2 w-2 ${
+                isHealthOk ? 'bg-[var(--accent)]' : 'bg-[#EF4444]'
+              }`}
+            ></span>
+          </span>
+          <span className="font-mono text-[11px] font-medium text-[var(--ink-2)]">
+            {isHealthOk ? 'ENFORCING' : 'OFFLINE'}
+          </span>
+        </div>
+
+        {/* Notifications Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+            className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line-2)] bg-[var(--bg)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
+            title="Realtime Alerts Feed"
+          >
+            <Bell className="h-4 w-4" />
+            {unreadAlertsCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#EF4444] text-[9px] font-bold text-white font-mono">
+                {unreadAlertsCount}
+              </span>
+            )}
+          </button>
+
+          {showNotifDropdown && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowNotifDropdown(false)}
+              />
+              <div className="absolute right-0 mt-2 w-80 rounded-xl border border-[var(--line)] bg-[var(--card)] p-3 shadow-xl z-50 text-xs space-y-2">
+                <div className="flex items-center justify-between border-b border-[var(--line)] pb-2">
+                  <span className="font-medium text-[var(--ink)]">Recent Security Alerts</span>
+                  <span className="font-mono text-[10px] text-[var(--ink-3)]">
+                    {notifications.length} events
+                  </span>
+                </div>
+
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                  {notifications.length === 0 ? (
+                    <div className="py-4 text-center text-[var(--ink-3)] text-xs">
+                      No critical alerts reported.
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => {
+                          setShowNotifDropdown(false);
+                          const el = document.getElementById('incidents');
+                          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }}
+                        className="cursor-pointer rounded-lg border border-[var(--line)] bg-[var(--bg)] p-2 hover:border-[var(--line-2)] transition-colors space-y-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] text-[var(--ink-3)]">
+                            {truncateId(n.id)}
+                          </span>
+                          <SeverityBadge severity={n.severity} />
+                        </div>
+                        <div className="font-medium text-[var(--ink)] truncate">{n.title}</div>
+                        <div className="text-[10px] text-[var(--ink-3)] font-mono">
+                          {formatTimeOnly(n.created_at)}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="border-t border-[var(--line)] pt-2 text-center">
+                  <button
+                    onClick={() => {
+                      setShowNotifDropdown(false);
+                      const el = document.getElementById('incidents');
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                    className="text-[11px] text-[var(--accent-ink)] hover:underline font-medium"
+                  >
+                    View All Incidents
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* User Profile & Sign Out Dropdown */}
         <div className="relative">
           <button
             onClick={() => setShowUserDropdown(!showUserDropdown)}
-            className="flex items-center gap-2 rounded-lg border border-[#E5EAF1] bg-[#F8FAFC] px-2.5 py-1.5 text-xs hover:border-[#CBD5E1] hover:bg-white transition-all"
-            title="User Profile"
+            className="flex items-center gap-2 rounded-lg border border-[var(--line-2)] bg-[var(--bg)] px-2.5 py-1.5 text-xs font-medium text-[var(--ink)] hover:border-[var(--line)] transition-colors"
           >
-            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#EEF4FF] text-[#3B82F6]">
-              <UserIcon className="h-3 w-3" />
+            <div className="h-5 w-5 rounded-full bg-[var(--tint)] flex items-center justify-center text-[var(--accent-ink)] font-semibold text-[10px]">
+              {user?.username ? user.username[0].toUpperCase() : 'A'}
             </div>
-            <span className="text-[#1E293B] font-medium">{user?.username || 'admin'}</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#EEF4FF] text-[#3B82F6] font-semibold border border-[#D4E5FF] uppercase">
-              {user?.role?.toUpperCase() || 'ADMIN'}
+            <span className="hidden sm:inline font-medium text-xs">
+              {user?.username || 'Operator'}
             </span>
+            <ChevronDown className="h-3 w-3 text-[var(--ink-3)]" />
           </button>
 
-          {/* User Dropdown */}
           {showUserDropdown && (
-            <div
-              className="absolute right-0 mt-2 w-52 rounded-xl border border-[#E5EAF1] bg-white p-2 shadow-lg z-50 animate-fade-in"
-              onMouseLeave={() => setShowUserDropdown(false)}
-            >
-              <div className="border-b border-[#E5EAF1] pb-2 px-3 pt-1">
-                <div className="text-xs font-semibold text-[#1E293B]">{user?.username || 'admin'}</div>
-                <div className="text-[11px] text-[#64748B] mt-0.5">Role: {user?.role?.toUpperCase() || 'ADMINISTRATOR'}</div>
-              </div>
-              <div className="pt-1.5 space-y-0.5">
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowUserDropdown(false)}
+              />
+              <div className="absolute right-0 mt-1 w-56 rounded-xl border border-[var(--line)] bg-[var(--card)] p-2 shadow-xl z-50 text-xs space-y-1">
+                <div className="px-2 py-1.5 border-b border-[var(--line)] mb-1">
+                  <div className="font-medium text-[var(--ink)]">{user?.username || 'Operator'}</div>
+                  <div className="text-[10px] font-mono text-[var(--ink-3)]">
+                    Role: {user?.role || 'SOC Lead'}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    const el = document.getElementById('settings');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--ink-2)] hover:bg-[var(--bg-2)] hover:text-[var(--ink)] transition-colors"
+                >
+                  <Activity className="h-3.5 w-3.5" />
+                  <span>Platform Diagnostics</span>
+                </button>
+
                 <button
                   onClick={() => {
                     setShowUserDropdown(false);
                     navigate('/');
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#1E293B] transition-all"
+                  className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[var(--ink-2)] hover:bg-[var(--bg-2)] hover:text-[var(--ink)] transition-colors"
                 >
-                  <Globe className="h-3.5 w-3.5 text-[#3B82F6]" />
+                  <UserIcon className="h-3.5 w-3.5" />
                   <span>Landing Page</span>
                 </button>
+
                 <button
                   onClick={() => {
                     setShowUserDropdown(false);
                     logout();
                     navigate('/login');
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-[#DC2626] hover:bg-[#FEF2F2] transition-all"
+                  className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[#EF4444] hover:bg-[#FEF2F2] transition-colors border-t border-[var(--line)] mt-1"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   <span>Sign Out</span>
                 </button>
               </div>
-            </div>
+            </>
           )}
         </div>
       </div>
     </header>
   );
 };
+
+export default TopNavbar;

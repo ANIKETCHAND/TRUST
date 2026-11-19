@@ -1,33 +1,66 @@
+@import './ferrow.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: light;
-  --brand-bg: #F5F7FA;
-  --brand-sidebar: #FFFFFF;
-  --brand-surface: #FFFFFF;
-  --brand-text: #1E293B;
-  --brand-secondary: #64748B;
-  --brand-muted: #94A3B8;
-  --brand-border: #E5EAF1;
-  --brand-primary: #3B82F6;
-  --brand-blue-light: #EEF4FF;
+  --brand-bg: var(--bg);
+  --brand-sidebar: var(--card);
+  --brand-surface: var(--card);
+  --brand-text: var(--ink);
+  --brand-secondary: var(--ink-2);
+  --brand-muted: var(--ink-3);
+  --brand-border: var(--line);
+  --brand-primary: var(--accent);
+  --brand-blue-light: var(--tint);
   --brand-success: #16A36A;
   --brand-warning: #F59E0B;
   --brand-danger: #DC2626;
 
-  /* Legacy aliases mapped to clean light tones */
-  --kali-bg: #F5F7FA;
-  --kali-secondary: #F8FAFC;
-  --kali-sidebar: #FFFFFF;
-  --kali-card: #FFFFFF;
-  --kali-elevated: #FFFFFF;
-  --kali-border: #E5EAF1;
-  --kali-border-light: #F1F5F9;
-  --kali-primary: #3B82F6;
-  --kali-secondary-blue: #2563EB;
-  --kali-cyan: #0284C7;
+  /* Aliases mapped to Ferrow theme variables */
+  --kali-bg: var(--bg);
+  --kali-secondary: var(--bg-2);
+  --kali-sidebar: var(--card);
+  --kali-card: var(--card);
+  --kali-elevated: var(--card);
+  --kali-border: var(--line);
+  --kali-border-light: var(--line-2);
+  --kali-primary: var(--accent);
+  --kali-secondary-blue: var(--accent-ink);
+  --kali-cyan: var(--accent);
+  --kali-secure: #16A34A;
+  --kali-warning: #F59E0B;
+  --kali-critical: #DC2626;
+}
+
+[data-theme="dark"],
+html.dark {
+  color-scheme: dark;
+  --brand-bg: var(--bg);
+  --brand-sidebar: var(--card);
+  --brand-surface: var(--card);
+  --brand-text: var(--ink);
+  --brand-secondary: var(--ink-2);
+  --brand-muted: var(--ink-3);
+  --brand-border: var(--line);
+  --brand-primary: var(--accent);
+  --brand-blue-light: var(--tint);
+  --brand-success: #16A36A;
+  --brand-warning: #F59E0B;
+  --brand-danger: #DC2626;
+
+  --kali-bg: var(--bg);
+  --kali-secondary: var(--bg-2);
+  --kali-sidebar: var(--card);
+  --kali-card: var(--card);
+  --kali-elevated: var(--card);
+  --kali-border: var(--line);
+  --kali-border-light: var(--line-2);
+  --kali-primary: var(--accent);
+  --kali-secondary-blue: var(--accent-ink);
+  --kali-cyan: var(--accent);
   --kali-secure: #16A34A;
   --kali-warning: #F59E0B;
   --kali-critical: #DC2626;
@@ -35,15 +68,15 @@
 
 body {
   margin: 0;
-  background-color: #F5F7FA;
-  color: #1E293B;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Minimal sleek scrollbars for enterprise light mode */
+/* Ferrow minimal sleek scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -54,34 +87,140 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: var(--line-2);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: var(--ink-3);
 }
 
 /* Accessible focus ring */
 :focus-visible {
-  outline: 2px solid #3B82F6;
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
 /* Technical typography helpers */
 .font-mono-tech {
-  font-family: 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
+  font-family: var(--mono);
 }
 
-/* Subtle clean card container */
+/* Subtle clean card container matching Ferrow */
 .card-clean {
-  background-color: #FFFFFF;
-  border: 1px solid #E5EAF1;
-  border-radius: 0.75rem;
+  background-color: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
 }
 
-/* ThreeUI SparkBadge Frame Container - Immersive Fullscreen Mode (Used by Landing) */
+/* Ferrow Unified Component Tokens for Console Tabs and Modules */
+.bg-white {
+  background-color: var(--card) !important;
+}
+
+.text-\[\#1E293B\],
+.text-slate-900,
+.text-slate-800 {
+  color: var(--ink) !important;
+}
+
+.text-\[\#64748B\],
+.text-slate-600,
+.text-slate-500 {
+  color: var(--ink-2) !important;
+}
+
+.text-slate-400 {
+  color: var(--ink-3) !important;
+}
+
+.border-\[\#E5EAF1\],
+.border-slate-200,
+.border-slate-300 {
+  border-color: var(--line) !important;
+}
+
+.border-slate-100 {
+  border-color: var(--line) !important;
+}
+
+.bg-\[\#F8FAFC\],
+.bg-slate-50 {
+  background-color: var(--bg-2) !important;
+}
+
+.bg-\[\#F1F5F9\],
+.bg-slate-100 {
+  background-color: var(--bg-2) !important;
+}
+
+.bg-\[\#EEF4FF\] {
+  background-color: var(--tint) !important;
+}
+
+.text-\[\#3B82F6\],
+.text-\[\#2563EB\] {
+  color: var(--accent-ink) !important;
+}
+
+.border-\[\#3B82F6\] {
+  border-color: var(--accent) !important;
+}
+
+/* Dark mode specific adaptations for console elements */
+[data-theme="dark"],
+html.dark {
+  .bg-slate-800,
+  .bg-slate-900 {
+    background-color: var(--bg-2) !important;
+  }
+
+  /* Form inputs in dark mode */
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    background-color: var(--bg) !important;
+    color: var(--ink) !important;
+    border-color: var(--line-2) !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--ink-3) !important;
+  }
+
+  /* Table row hovering in dark mode */
+  tr:hover > td,
+  tr:hover > th {
+    background-color: var(--bg-2) !important;
+  }
+
+  /* Status badge tinting in dark mode */
+  .bg-\[\#FEF2F2\] {
+    background-color: rgba(220, 38, 38, 0.15) !important;
+  }
+  .border-\[\#FCD2D2\],
+  .border-\[\#FCA5A5\] {
+    border-color: rgba(220, 38, 38, 0.3) !important;
+  }
+
+  .bg-\[\#E8F7EF\] {
+    background-color: rgba(29, 175, 156, 0.15) !important;
+  }
+  .border-\[\#BCE8CD\] {
+    border-color: rgba(29, 175, 156, 0.3) !important;
+  }
+
+  .bg-\[\#FFFBEB\] {
+    background-color: rgba(196, 86, 28, 0.15) !important;
+  }
+  .border-\[\#FDE68A\] {
+    border-color: rgba(196, 86, 28, 0.3) !important;
+  }
+}
+
+/* ThreeUI SparkBadge Frame Container */
 .shader-frame {
   position: fixed;
   inset: 0;

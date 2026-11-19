@@ -8,7 +8,7 @@ interface RouterContextValue {
   pathname: string;
   navigate: (to: string, options?: { replace?: boolean }) => void;
   activeTab: PlatformTab;
-  setActiveTab: (tab: PlatformTab) => void;
+  setActiveTab: (tab: PlatformTab, options?: { replace?: boolean }) => void;
   isLandingPage: boolean;
   isLoginPage: boolean;
   isDashboardRoute: boolean;
@@ -34,6 +34,10 @@ export const RouterProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setPathname(current);
       if (ROUTE_TAB_MAP[current]) {
         setActiveTabInternal(ROUTE_TAB_MAP[current]);
+        const el = document.getElementById(ROUTE_TAB_MAP[current]);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }
     };
 
@@ -43,7 +47,7 @@ export const RouterProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const id = hash.substring(1);
         const el = document.getElementById(id);
         if (el) {
-          el.scrollIntoView({ behavior: 'smooth' });
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }
     };
@@ -64,22 +68,21 @@ export const RouterProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const hashPart = to.includes('#') ? to.substring(to.indexOf('#') + 1) : '';
       const currentNorm = normalizePath(window.location.pathname);
 
-      if (currentNorm === '/') {
+      if (currentNorm === '/' || currentNorm === '/dashboard') {
         const el = document.getElementById(hashPart);
         if (el) {
-          el.scrollIntoView({ behavior: 'smooth' });
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
           window.history.pushState(null, '', `#${hashPart}`);
         }
         return;
       }
 
-      // If on another route (e.g. /dashboard or /login), navigate to / with hash
       window.history.pushState(null, '', `/#${hashPart}`);
       setPathname('/');
       setTimeout(() => {
         const el = document.getElementById(hashPart);
         if (el) {
-          el.scrollIntoView({ behavior: 'smooth' });
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }, 50);
       return;
@@ -106,20 +109,29 @@ export const RouterProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     if (ROUTE_TAB_MAP[norm]) {
       setActiveTabInternal(ROUTE_TAB_MAP[norm]);
-    }
-
-    // Smooth scroll to top on major route changes
-    if (!to.includes('#')) {
+      // If navigating to a dashboard route, scroll to that section
+      setTimeout(() => {
+        const tab = ROUTE_TAB_MAP[norm];
+        const el = document.getElementById(tab);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 50);
+    } else if (norm === '/' || norm === '/login') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, []);
 
   const setActiveTab = useCallback(
-    (tab: PlatformTab) => {
+    (tab: PlatformTab, options?: { replace?: boolean }) => {
       setActiveTabInternal(tab);
       const targetRoute = TAB_ROUTE_MAP[tab] || '/dashboard';
       if (typeof window !== 'undefined' && normalizePath(window.location.pathname) !== targetRoute) {
-        window.history.pushState(null, '', targetRoute);
+        if (options?.replace) {
+          window.history.replaceState(null, '', targetRoute);
+        } else {
+          window.history.pushState(null, '', targetRoute);
+        }
         setPathname(targetRoute);
       }
     },
@@ -156,3 +168,5 @@ export const useRouter = (): RouterContextValue => {
   }
   return context;
 };
+
+export default RouterContext;

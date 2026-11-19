@@ -34,7 +34,7 @@ interface SearchItem {
 }
 
 export const GlobalSearchModal: React.FC = () => {
-  const { isSearchOpen, setIsSearchOpen, setActiveTab } = useSecurityPlatform();
+  const { isSearchOpen, setIsSearchOpen, scrollToChapter } = useSecurityPlatform();
   const [query, setQuery] = useState('');
   const [agents, setAgents] = useState<any[]>([]);
   const [incidents, setIncidents] = useState<any[]>([]);
@@ -132,8 +132,8 @@ export const GlobalSearchModal: React.FC = () => {
     : staticNavItems;
 
   const handleSelect = (tab: PlatformTab) => {
-    setActiveTab(tab);
     setIsSearchOpen(false);
+    scrollToChapter(tab);
   };
 
   return (

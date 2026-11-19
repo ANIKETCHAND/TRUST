@@ -23,7 +23,6 @@ import {
   Lock,
 } from 'lucide-react';
 import { useSecurityPlatform, type ActiveTabId } from '../../context/SecurityPlatformContext';
-import { useRouter } from '../../context/RouterContext';
 import { BrandLogo } from '../ui/BrandLogo';
 
 interface NavGroup {
@@ -86,36 +85,44 @@ const navGroups: NavGroup[] = [
 export const Sidebar: React.FC = () => {
   const {
     activeTab,
-    setActiveTab,
+    scrollToChapter,
     isSidebarCollapsed,
     toggleSidebarCollapse,
     isMobileMenuOpen,
     setIsMobileMenuOpen,
   } = useSecurityPlatform();
-  const { navigate } = useRouter();
   const [extensionsOpen, setExtensionsOpen] = useState(false);
 
   const handleSelectTab = (tabId: ActiveTabId) => {
-    setActiveTab(tabId);
     if (isMobileMenuOpen) {
       setIsMobileMenuOpen(false);
     }
+    scrollToChapter(tabId);
   };
 
-  const isExtensionTabActive = ['threat-map', 'active-defense', 'reports', 'browser-shield', 'endpoints', 'integrations'].includes(activeTab);
+  const isExtensionTabActive = [
+    'threat-map',
+    'active-defense',
+    'reports',
+    'browser-shield',
+    'endpoints',
+    'integrations',
+  ].includes(activeTab);
 
   const sidebarContent = (
     <aside
-      className={`flex flex-col border-r border-[#E5EAF1] bg-white transition-all duration-200 select-none ${
-        isSidebarCollapsed ? 'w-[68px]' : 'w-[245px]'
-      } h-full shrink-0 shadow-2xs`}
+      className={`flex flex-col border-r border-[var(--line)] bg-[var(--card)] transition-all duration-200 select-none ${
+        isSidebarCollapsed ? 'w-[68px]' : 'w-[250px]'
+      } h-full shrink-0`}
     >
       {/* Brand Header */}
-      <div className="flex h-16 items-center justify-between border-b border-[#E5EAF1] px-4">
+      <div className="flex h-16 items-center justify-between border-b border-[var(--line)] px-4">
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => {
+            scrollToChapter('overview');
+          }}
           className="focus:outline-none text-left"
-          title="AgentTrust Platform"
+          title="CrossX Platform"
         >
           <BrandLogo
             size={isSidebarCollapsed ? 'sm' : 'md'}
@@ -125,12 +132,12 @@ export const Sidebar: React.FC = () => {
         </button>
         <button
           onClick={toggleSidebarCollapse}
-          className="hidden md:flex h-7 w-7 items-center justify-center rounded-lg border border-[#E5EAF1] bg-[#F8FAFC] text-[#64748B] hover:border-[#CBD5E1] hover:text-[#1E293B] hover:bg-white transition-colors"
+          className="hidden md:flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--line-2)] bg-[var(--bg)] text-[var(--ink-2)] hover:text-[var(--ink)] hover:border-[var(--line)] transition-colors"
           title={isSidebarCollapsed ? 'Expand sidebar [Ctrl+B]' : 'Collapse sidebar [Ctrl+B]'}
           aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {isSidebarCollapsed ? (
-            <ChevronRight className="h-3.5 w-3.5 text-[#3B82F6]" />
+            <ChevronRight className="h-3.5 w-3.5 text-[var(--accent)]" />
           ) : (
             <ChevronLeft className="h-3.5 w-3.5" />
           )}
@@ -141,26 +148,28 @@ export const Sidebar: React.FC = () => {
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label="Main Navigation">
         {navGroups.map((group) => {
           const isExtensionsGroup = group.label === 'Extensions';
-          const isExpanded = isExtensionsGroup ? (extensionsOpen || isExtensionTabActive) : true;
+          const isExpanded = isExtensionsGroup ? extensionsOpen || isExtensionTabActive : true;
 
           return (
             <div key={group.label} className="space-y-1">
               {!isSidebarCollapsed && (
-                <div className="flex items-center justify-between px-3 pb-1 text-[11px] font-semibold tracking-wider text-[#94A3B8] uppercase">
+                <div className="flex items-center justify-between px-3 pb-1 text-[11px] font-mono font-medium tracking-wider text-[var(--ink-3)] uppercase">
                   <span>{group.label}</span>
                   {group.collapsible && (
                     <button
                       onClick={() => setExtensionsOpen(!extensionsOpen)}
-                      className="p-0.5 rounded text-[#94A3B8] hover:text-[#64748B]"
+                      className="p-0.5 rounded text-[var(--ink-3)] hover:text-[var(--ink)]"
                       title="Toggle extensions menu"
                     >
-                      <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      <ChevronDown
+                        className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      />
                     </button>
                   )}
                 </div>
               )}
               {isSidebarCollapsed && (
-                <div className="mx-auto my-1.5 h-px w-6 bg-[#E5EAF1]" />
+                <div className="mx-auto my-1.5 h-px w-6 bg-[var(--line)]" />
               )}
 
               {isExpanded && (
@@ -172,17 +181,23 @@ export const Sidebar: React.FC = () => {
                       <button
                         key={item.id}
                         onClick={() => handleSelectTab(item.id)}
-                        title={isSidebarCollapsed ? `${item.label} ${item.tag ? `[${item.tag}]` : ''}` : undefined}
+                        title={
+                          isSidebarCollapsed
+                            ? `${item.label} ${item.tag ? `[${item.tag}]` : ''}`
+                            : undefined
+                        }
                         aria-current={isActive ? 'page' : undefined}
-                        className={`group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+                        className={`group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs transition-all ${
                           isActive
-                            ? 'bg-[#EEF4FF] text-[#3B82F6] font-semibold border-l-2 border-[#3B82F6]'
-                            : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#1E293B] border-l-2 border-transparent'
+                            ? 'bg-[var(--tint)] text-[var(--accent-ink)] font-semibold border-l-2 border-[var(--accent)]'
+                            : 'text-[var(--ink-2)] hover:bg-[var(--bg-2)] hover:text-[var(--ink)] border-l-2 border-transparent font-normal'
                         } ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
                       >
                         <Icon
                           className={`h-4 w-4 shrink-0 transition-colors ${
-                            isActive ? 'text-[#3B82F6]' : 'text-[#64748B] group-hover:text-[#1E293B]'
+                            isActive
+                              ? 'text-[var(--accent)]'
+                              : 'text-[var(--ink-3)] group-hover:text-[var(--ink)]'
                           }`}
                         />
 
@@ -192,10 +207,10 @@ export const Sidebar: React.FC = () => {
 
                         {!isSidebarCollapsed && item.tag && (
                           <span
-                            className={`font-mono text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase ${
+                            className={`font-mono text-[9px] px-1.5 py-0.5 rounded font-medium uppercase ${
                               isActive
-                                ? 'bg-[#3B82F6] text-white'
-                                : 'bg-[#E5EAF1] text-[#64748B]'
+                                ? 'bg-[var(--accent)] text-[var(--btn-ink)]'
+                                : 'bg-[var(--bg-2)] text-[var(--ink-2)] border border-[var(--line-2)]'
                             }`}
                           >
                             {item.tag}
@@ -204,7 +219,7 @@ export const Sidebar: React.FC = () => {
 
                         {/* Tooltip for collapsed mode */}
                         {isSidebarCollapsed && (
-                          <div className="absolute left-full ml-2 hidden rounded-md border border-[#E5EAF1] bg-white px-2.5 py-1 text-xs font-medium text-[#1E293B] shadow-md group-hover:block z-50 whitespace-nowrap pointer-events-none">
+                          <div className="absolute left-full ml-2 hidden rounded-md border border-[var(--line)] bg-[var(--card)] px-2.5 py-1 text-xs font-medium text-[var(--ink)] shadow-md group-hover:block z-50 whitespace-nowrap pointer-events-none">
                             {item.label}
                           </div>
                         )}
@@ -219,36 +234,36 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       {/* Gateway Status Footer */}
-      <div className="border-t border-[#E5EAF1] p-3 bg-[#F8FAFC]">
+      <div className="border-t border-[var(--line)] p-3 bg-[var(--bg)]">
         <div
-          className={`rounded-lg border border-[#E5EAF1] bg-white p-2.5 text-xs shadow-2xs ${
+          className={`rounded-xl border border-[var(--line)] bg-[var(--card)] p-2.5 text-xs shadow-xs ${
             isSidebarCollapsed ? 'flex justify-center p-2' : ''
           }`}
         >
           {isSidebarCollapsed ? (
             <div className="relative" title="Gateway Active: Fail-Closed Enforced">
               <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#16A34A] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#16A34A]"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--accent)]"></span>
               </span>
-              <Lock className="h-4 w-4 text-[#3B82F6]" />
+              <Lock className="h-4 w-4 text-[var(--accent)]" />
             </div>
           ) : (
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-[#1E293B]">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--ink)]">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#16A34A] opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#16A34A]"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--accent)]"></span>
                   </span>
-                  <span>Gateway Enforcing</span>
+                  <span>Zero-Trust Gateway</span>
                 </div>
-                <span className="font-mono text-[10px] text-[#16A34A] font-semibold bg-[#E8F7EF] px-1.5 py-0.5 rounded border border-[#BCE8CD]">
+                <span className="font-mono text-[10px] text-[var(--accent-ink)] font-semibold bg-[var(--tint)] px-1.5 py-0.5 rounded border border-[var(--accent)]/30">
                   ONLINE
                 </span>
               </div>
-              <div className="text-[11px] text-[#64748B]">
-                Fail-closed zero-trust active
+              <div className="text-[11px] text-[var(--ink-2)]">
+                Fail-closed enforcement active
               </div>
             </div>
           )}
@@ -265,7 +280,7 @@ export const Sidebar: React.FC = () => {
       {/* Mobile Drawer Overlay */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 z-50 flex md:hidden bg-slate-900/30 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex md:hidden bg-black/40 backdrop-blur-xs"
           onClick={() => setIsMobileMenuOpen(false)}
         >
           <div className="w-64 h-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -276,3 +291,5 @@ export const Sidebar: React.FC = () => {
     </>
   );
 };
+
+export default Sidebar;

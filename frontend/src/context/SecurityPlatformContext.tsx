@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { api } from '../services/api.client';
 import { useRouter } from './RouterContext';
 
@@ -25,7 +25,9 @@ export type ActiveTabId = PlatformTab;
 
 export interface SecurityPlatformContextValue {
   activeTab: PlatformTab;
-  setActiveTab: (tab: PlatformTab) => void;
+  setActiveTab: (tab: PlatformTab, options?: { replace?: boolean }) => void;
+  scrollToChapter: (tab: PlatformTab, instant?: boolean) => void;
+  isProgrammaticScrollRef: React.MutableRefObject<boolean>;
   isAutoPolling: boolean;
   autoRefresh: boolean;
   toggleAutoPolling: () => void;
@@ -60,6 +62,33 @@ export const SecurityPlatformProvider: React.FC<{ children: ReactNode }> = ({ ch
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState('SOC-PRIMARY');
+
+  const isProgrammaticScrollRef = useRef<boolean>(false);
+  const scrollEndTimerRef = useRef<any>(null);
+
+  const scrollToChapter = useCallback(
+    (tab: PlatformTab, instant: boolean = false) => {
+      isProgrammaticScrollRef.current = true;
+      if (scrollEndTimerRef.current) {
+        clearTimeout(scrollEndTimerRef.current);
+      }
+
+      setActiveTab(tab);
+
+      const el = document.getElementById(tab);
+      if (el) {
+        el.scrollIntoView({ behavior: instant ? 'auto' : 'smooth', block: 'start' });
+      }
+
+      scrollEndTimerRef.current = setTimeout(
+        () => {
+          isProgrammaticScrollRef.current = false;
+        },
+        instant ? 50 : 1200
+      );
+    },
+    [setActiveTab]
+  );
 
   const toggleSidebarCollapse = useCallback(() => {
     setIsSidebarCollapsed((prev) => !prev);
@@ -127,6 +156,8 @@ export const SecurityPlatformProvider: React.FC<{ children: ReactNode }> = ({ ch
       value={{
         activeTab,
         setActiveTab,
+        scrollToChapter,
+        isProgrammaticScrollRef,
         isAutoPolling,
         autoRefresh: isAutoPolling,
         toggleAutoPolling,
