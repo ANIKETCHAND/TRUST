@@ -75,6 +75,14 @@ def test_alembic_full_migration_lifecycle():
         assert "parent_delegation_id" in delegation_cols, "parent_delegation_id column missing from delegations table"
         assert "tenant_id" in delegation_cols, "tenant_id column missing from delegations table"
 
+        # 4b. Verify CrossX Agent Governance columns in agents table
+        cursor.execute("PRAGMA table_info(agents);")
+        agent_cols = {row[1] for row in cursor.fetchall()}
+        assert "agent_type" in agent_cols, "agent_type column missing from agents table"
+        assert "risk_classification" in agent_cols, "risk_classification column missing from agents table"
+        assert "security_score" in agent_cols, "security_score column missing from agents table"
+        assert "environment" in agent_cols, "environment column missing from agents table"
+
         # 5. Verify columns in audit_events table (HMAC chaining)
         cursor.execute("PRAGMA table_info(audit_events);")
         audit_cols = {row[1] for row in cursor.fetchall()}

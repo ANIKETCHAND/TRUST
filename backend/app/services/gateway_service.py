@@ -22,6 +22,8 @@ from app.guardrails.input_rails import input_rails
 from app.guardrails.dialog_rails import dialog_rails
 from app.guardrails.output_rails import output_rails
 from app.services.active_defense_service import active_defense_service
+from app.services.threat_detection_service import threat_detection_service
+from app.services.behavior_analytics_service import behavior_analytics_service
 
 logger = logging.getLogger("agenttrust.gateway")
 
@@ -107,7 +109,7 @@ class GatewayService:
             )
 
         # 0. Check Agent Status
-        if agent.status != AgentStatus.ACTIVE:
+        if agent.status in [AgentStatus.QUARANTINED, AgentStatus.SUSPENDED, AgentStatus.REVOKED, AgentStatus.OFFLINE, AgentStatus.INACTIVE]:
             reason = f"Security Violation: Agent '{agent.name}' status is {agent.status.value.upper()}. Access denied."
             audit_evt = await audit_service.log_event(
                 db=db,
@@ -128,8 +130,60 @@ class GatewayService:
                 decision="BLOCKED",
                 execution_status="BLOCKED",
                 reason=reason,
-                error="Inactive or revoked agent"
+                error=f"Agent is {agent.status.value}"
             )
+
+        # 0b. Enforce RESTRICTED state containment
+        if agent.status == AgentStatus.RESTRICTED:
+            mutating_ops = {
+                "write_file", "delete_file", "append_file", "remove_file", "create_file",
+                "drop_table", "alter_table", "insert", "update", "delete",
+                "query_insert", "query_update", "query_delete",
+                "post", "put", "patch", "delete_request", "http_post", "http_put", "http_patch", "http_delete",
+                "execute_command", "spawn_process", "kill_process", "modify"
+            }
+            import re
+            mutation_keywords = re.compile(
+                r"\b(INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|DROP\s+TABLE|ALTER\s+TABLE|TRUNCATE\s+TABLE|CREATE\s+TABLE)\b",
+                re.IGNORECASE
+            )
+            raw_param_str = str(parameters) + " " + str(resource)
+            is_mutating_param = bool(mutation_keywords.search(raw_param_str))
+
+            if (
+                operation.lower() in mutating_ops
+                or "write" in operation.lower()
+                or "delete" in operation.lower()
+                or "drop" in operation.lower()
+                or "insert" in operation.lower()
+                or "update" in operation.lower()
+                or is_mutating_param
+            ):
+                reason = f"Security Violation: Agent '{agent.name}' is in RESTRICTED containment mode. Mutating operation '{operation}' or mutating payload is prohibited."
+                audit_evt = await audit_service.log_event(
+                    db=db,
+                    request_id=request_id,
+                    agent_id=agent.id,
+                    agent_name=agent.name,
+                    tool_name=tool_name,
+                    operation=operation,
+                    target_resource=resource,
+                    decision=PolicyDecision.BLOCKED,
+                    decision_reason=reason,
+                    execution_status=ExecutionStatus.BLOCKED,
+                    context_metadata=context
+                )
+                return GatewayExecuteResponse(
+                    request_id=request_id,
+                    event_id=audit_evt.id,
+                    decision="BLOCKED",
+                    execution_status="BLOCKED",
+                    reason=reason,
+                    error="Restricted containment violation"
+                )
+
+        if agent.status == AgentStatus.MONITORING:
+            context["heightened_monitoring"] = True
 
         # 1. Identify Requested Tool Handler
         tool_handler = tool_registry.get_tool_handler(tool_name)
@@ -411,6 +465,40 @@ class GatewayService:
                 error="Dialog rail transition blocked"
             )
 
+        # 2.5. Autonomous Threat Detection Engine Evaluation
+        threat = threat_detection_service.evaluate_threat(
+            agent=agent,
+            tool_name=tool_name,
+            operation=operation,
+            resource=resource,
+            parameters=raw_parameters,
+            context=context
+        )
+        if threat:
+            await threat_detection_service.execute_automated_response(db, threat, client_ip)
+            reason = f"Autonomous Threat Defense: {threat['description']}"
+            audit_evt = await audit_service.log_event(
+                db=db,
+                request_id=request_id,
+                agent_id=agent.id,
+                agent_name=agent.name,
+                tool_name=tool_name,
+                operation=operation,
+                target_resource=resource,
+                decision=PolicyDecision.BLOCKED,
+                decision_reason=reason,
+                execution_status=ExecutionStatus.BLOCKED,
+                context_metadata={**context, "threat_detection": threat}
+            )
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=audit_evt.id,
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason=reason,
+                error=threat["attack_type"]
+            )
+
         # 3. Delegation Verification & Boundary Enforcement (if delegated execution)
         delegation_id_ref = None
         raw_del_token = context.get("delegation_token")
@@ -678,6 +766,40 @@ class GatewayService:
                 error="Action denied by security policy"
             )
 
+        # 6.5. Pre-Execution Concurrency Re-validation (Fail-Closed)
+        try:
+            fresh_stmt = select(Agent.status).where(Agent.id == agent.id)
+            fresh_res = await db.execute(fresh_stmt)
+            fresh_status = fresh_res.scalar_one_or_none()
+            if fresh_status:
+                agent.status = fresh_status
+        except Exception:
+            pass
+
+        if agent.status in [AgentStatus.QUARANTINED, AgentStatus.SUSPENDED, AgentStatus.REVOKED, AgentStatus.OFFLINE, AgentStatus.INACTIVE]:
+            reason = f"Security Violation: Agent '{agent.name}' status transitioned concurrently to {agent.status.value.upper()}. Execution halted."
+            audit_evt = await audit_service.log_event(
+                db=db,
+                request_id=request_id,
+                agent_id=agent.id,
+                agent_name=agent.name,
+                tool_name=tool_name,
+                operation=operation,
+                target_resource=resource,
+                decision=PolicyDecision.BLOCKED,
+                decision_reason=reason,
+                execution_status=ExecutionStatus.BLOCKED,
+                context_metadata=context
+            )
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=audit_evt.id,
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason=reason,
+                error=f"Agent is {agent.status.value}"
+            )
+
         # 7. Execute Authorized Request
         start_time = time.perf_counter()
         execution_status = ExecutionStatus.SUCCESS
@@ -762,6 +884,14 @@ class GatewayService:
             logger.warning(f"Provenance dynamic tracking exception (non-fatal): {prov_err}")
 
         # 8. Audit Execution Outcome
+        behavior_analytics_service.record_activity(
+            agent_id=agent.id,
+            tool_name=tool_name,
+            operation=operation,
+            duration_ms=duration_ms,
+            success=execution_status == ExecutionStatus.SUCCESS,
+            payload_bytes=len(str(parameters))
+        )
         audit_evt = await audit_service.log_event(
             db=db,
             request_id=request_id,
@@ -790,6 +920,223 @@ class GatewayService:
             error=error_msg,
             reason=reason,
             execution_duration_ms=duration_ms
+        )
+
+    async def inspect_tool_request(
+        self,
+        db: AsyncSession,
+        agent: Agent,
+        req: GatewayExecuteRequest,
+        client_ip: Optional[str] = "127.0.0.1"
+    ) -> GatewayExecuteResponse:
+        """
+        Pre-flight Gateway Security Inspection (Section 18 /api/v1/gateway/inspect).
+        Evaluates input guardrails, prompt injection, DLP, threat detection, and
+        deterministic zero-trust policies WITHOUT invoking the underlying tool.
+        """
+        request_id = str(uuid.uuid4())
+        tool_name = req.tool
+        operation = req.operation
+        resource = req.resource
+        raw_parameters = dict(req.parameters or {})
+        parameters = dict(raw_parameters)
+        context = dict(req.context or {})
+        context["client_ip"] = client_ip
+        context["correlation_id"] = request_id
+        context["inspection_only"] = True
+
+        # Check Active Defense Perimeter Sinkhole
+        if client_ip:
+            is_sinkholed, sinkhole_info = active_defense_service.is_ip_sinkholed(client_ip)
+            if is_sinkholed:
+                reason = f"Active Defense Perimeter Sinkhole: Ingress blocked from null-routed IP '{client_ip}'."
+                return GatewayExecuteResponse(
+                    request_id=request_id,
+                    event_id=str(uuid.uuid4()),
+                    decision="BLOCKED",
+                    execution_status="BLOCKED",
+                    reason=reason,
+                    error="Attacker IP sinkholed"
+                )
+
+        # Check Agent Status
+        if agent.status in [AgentStatus.QUARANTINED, AgentStatus.SUSPENDED, AgentStatus.REVOKED, AgentStatus.OFFLINE, AgentStatus.INACTIVE]:
+            reason = f"Security Violation: Agent '{agent.name}' status is {agent.status.value.upper()}. Access denied."
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=str(uuid.uuid4()),
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason=reason,
+                error=f"Agent is {agent.status.value}"
+            )
+
+        # Restricted Containment Check
+        if agent.status == AgentStatus.RESTRICTED:
+            mutating_ops = {
+                "write_file", "delete_file", "append_file", "remove_file", "create_file",
+                "drop_table", "alter_table", "insert", "update", "delete",
+                "query_insert", "query_update", "query_delete",
+                "post", "put", "patch", "delete_request", "http_post", "http_put", "http_patch", "http_delete",
+                "execute_command", "spawn_process", "kill_process", "modify"
+            }
+            import re
+            mutation_keywords = re.compile(
+                r"\b(INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|DROP\s+TABLE|ALTER\s+TABLE|TRUNCATE\s+TABLE|CREATE\s+TABLE)\b",
+                re.IGNORECASE
+            )
+            raw_param_str = str(parameters) + " " + str(resource)
+            if (
+                operation.lower() in mutating_ops
+                or "write" in operation.lower()
+                or "delete" in operation.lower()
+                or "drop" in operation.lower()
+                or "insert" in operation.lower()
+                or "update" in operation.lower()
+                or bool(mutation_keywords.search(raw_param_str))
+            ):
+                return GatewayExecuteResponse(
+                    request_id=request_id,
+                    event_id=str(uuid.uuid4()),
+                    decision="BLOCKED",
+                    execution_status="BLOCKED",
+                    reason=f"Security Violation: Agent '{agent.name}' is in RESTRICTED containment mode.",
+                    error="Restricted containment violation"
+                )
+
+        # Tool Registry Check
+        tool_handler = tool_registry.get_tool_handler(tool_name)
+        if not tool_handler:
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=str(uuid.uuid4()),
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason=f"Security Violation: Requested tool '{tool_name}' is not registered.",
+                error="Tool not found"
+            )
+
+        if operation not in tool_handler.supported_operations:
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=str(uuid.uuid4()),
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason=f"Security Violation: Operation '{operation}' is not supported by tool '{tool_name}'.",
+                error="Unsupported operation"
+            )
+
+        # Traversal & Null Byte checks
+        import urllib.parse
+        unquoted = urllib.parse.unquote(resource)
+        if "\x00" in resource or "\x00" in unquoted:
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=str(uuid.uuid4()),
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason="Security Violation: Null byte detected in resource.",
+                error="Null byte detected"
+            )
+        import re
+        if re.search(r"(?:^|[/\\])\.\.(?:[/\\]|$)", resource) or re.search(r"(?:^|[/\\])\.\.(?:[/\\]|$)", unquoted):
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=str(uuid.uuid4()),
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason="Security Violation: Directory traversal detected.",
+                error="Directory traversal detected"
+            )
+
+        # Prompt Injection Analysis
+        param_str = str(parameters)
+        is_injection, threat_lvl, injection_findings = prompt_injection_service.analyze_content(param_str)
+        if is_injection and (threat_lvl == "HIGH" or any("exfiltrate" in f.get("pattern", "").lower() for f in injection_findings)):
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=str(uuid.uuid4()),
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason=f"Prompt Injection Violation: High-risk instruction override detected ({injection_findings[0]['pattern']}).",
+                error="Prompt injection blocked"
+            )
+
+        # DLP Check
+        has_leak, dlp_findings = dlp_service.inspect_payload(raw_parameters)
+        if has_leak and tool_name in ["http_api_tool"]:
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=str(uuid.uuid4()),
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason=f"Data Leakage Prevention Violation: Blocked {operation} on {tool_name} containing {dlp_findings[0]['description']}.",
+                error="DLP outbound leak prevention"
+            )
+
+        # Threat Detection Evaluation
+        threat = threat_detection_service.evaluate_threat(
+            agent=agent,
+            tool_name=tool_name,
+            operation=operation,
+            resource=resource,
+            parameters=raw_parameters,
+            context=context
+        )
+        if threat:
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=str(uuid.uuid4()),
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason=f"Autonomous Threat Defense: {threat['description']}",
+                error=threat["attack_type"]
+            )
+
+        # Policy Engine Evaluation
+        try:
+            decision, reason, policy_id = await policy_engine.evaluate(
+                db=db,
+                agent=agent,
+                tool_name=tool_name,
+                operation=operation,
+                resource=resource,
+                context=context,
+                parameters=parameters
+            )
+        except Exception as eval_err:
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=str(uuid.uuid4()),
+                decision="BLOCKED",
+                execution_status="BLOCKED",
+                reason=f"Gateway Fail-Closed: Policy evaluation failed: {str(eval_err)}",
+                error="Authorization failure"
+            )
+
+        if decision != PolicyDecision.ALLOWED:
+            return GatewayExecuteResponse(
+                request_id=request_id,
+                event_id=str(uuid.uuid4()),
+                decision=decision.value,
+                execution_status="BLOCKED",
+                reason=reason,
+                error="Action denied by security policy"
+            )
+
+        return GatewayExecuteResponse(
+            request_id=request_id,
+            event_id=str(uuid.uuid4()),
+            decision="ALLOWED",
+            execution_status="INSPECTED",
+            result={
+                "inspected": True,
+                "tool": tool_name,
+                "operation": operation,
+                "policy_id": policy_id,
+                "status": "APPROVED_PREFLIGHT"
+            },
+            reason="Pre-flight security inspection passed: all zero-trust and deterministic policies satisfied."
         )
 
 

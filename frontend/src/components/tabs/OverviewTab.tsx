@@ -92,36 +92,47 @@ export const OverviewTab: React.FC = () => {
   const totalRequests = metrics.allowed_operations + metrics.blocked_operations;
   const blockRate = totalRequests > 0 ? ((metrics.blocked_operations / totalRequests) * 100).toFixed(1) : '0.0';
 
-  // Time range multiplier for chart visualization
-  const multiplier = timeRange === '1H' ? 0.25 : timeRange === '24H' ? 1 : timeRange === '7D' ? 4 : 12;
+  // Real timeline data from backend, fallback to neutral zero baseline if not yet recorded
+  const activityData = data?.timeline && data.timeline.length > 0
+    ? data.timeline.map((point) => ({
+        time: point.time,
+        allowed: point.allowed,
+        blocked: point.blocked,
+      }))
+    : [
+        { time: '00:00', allowed: 0, blocked: 0 },
+        { time: '04:00', allowed: 0, blocked: 0 },
+        { time: '08:00', allowed: 0, blocked: 0 },
+        { time: '12:00', allowed: 0, blocked: 0 },
+        { time: '16:00', allowed: 0, blocked: 0 },
+        { time: '20:00', allowed: 0, blocked: 0 },
+      ];
 
-  // Chart data based on live stats
-  const activityData = [
-    { time: '00:00', allowed: Math.round(12 * multiplier), blocked: Math.round(1 * multiplier) },
-    { time: '04:00', allowed: Math.round(18 * multiplier), blocked: Math.round(2 * multiplier) },
-    { time: '08:00', allowed: Math.round(42 * multiplier), blocked: Math.round(4 * multiplier) },
-    { time: '12:00', allowed: Math.round(68 * multiplier), blocked: Math.max(1, Math.round(metrics.blocked_operations * 0.4)), peak: true },
-    { time: '16:00', allowed: Math.round(54 * multiplier), blocked: Math.max(1, Math.round(metrics.blocked_operations * 0.3)) },
-    { time: '20:00', allowed: Math.round(35 * multiplier), blocked: Math.max(0, Math.round(metrics.blocked_operations * 0.2)) },
-    { time: 'Now', allowed: Math.round(metrics.allowed_operations > 0 ? metrics.allowed_operations : 40), blocked: metrics.blocked_operations },
-  ];
+  const toolColors = ['#3B82F6', '#10B981', '#6366F1', '#F59E0B', '#8B5CF6', '#EC4899'];
+  const toolDistributionData = (data?.tool_distribution && data.tool_distribution.length > 0)
+    ? data.tool_distribution.map((item, idx) => ({
+        name: item.tool.replace('_tool', '').toUpperCase(),
+        value: item.count,
+        fill: toolColors[idx % toolColors.length],
+      }))
+    : [];
 
-  const toolDistributionData = [
-    { name: 'Filesystem', value: Math.round(metrics.allowed_operations * 0.45) || 28, fill: '#3B82F6' },
-    { name: 'Database', value: Math.round(metrics.allowed_operations * 0.3) || 19, fill: '#10B981' },
-    { name: 'HTTP API', value: Math.round(metrics.allowed_operations * 0.15) || 9, fill: '#6366F1' },
-    { name: 'MCP Services', value: Math.round(metrics.allowed_operations * 0.1) || 6, fill: '#F59E0B' },
-  ];
+  const critCount = incidentsList.filter((i) => i.severity === 'CRITICAL').length;
+  const hiCount = incidentsList.filter((i) => i.severity === 'HIGH').length;
+  const medCount = incidentsList.filter((i) => i.severity === 'MEDIUM').length;
+  const lowCount = incidentsList.filter((i) => i.severity === 'LOW').length;
 
   const severityDistributionData = [
-    { name: 'Critical', value: incidentsList.filter((i) => i.severity === 'CRITICAL').length || 1, fill: '#DC2626' },
-    { name: 'High', value: incidentsList.filter((i) => i.severity === 'HIGH').length || 2, fill: '#F59E0B' },
-    { name: 'Medium', value: incidentsList.filter((i) => i.severity === 'MEDIUM').length || 3, fill: '#3B82F6' },
-    { name: 'Low', value: incidentsList.filter((i) => i.severity === 'LOW').length || 4, fill: '#16A34A' },
+    { name: 'Critical', value: critCount, fill: '#DC2626' },
+    { name: 'High', value: hiCount, fill: '#F59E0B' },
+    { name: 'Medium', value: medCount, fill: '#3B82F6' },
+    { name: 'Low', value: lowCount, fill: '#16A34A' },
   ];
 
-  // Flagged agents requiring attention
-  const flaggedAgents = agentsList.filter((a) => a.status === 'revoked' || a.status === 'suspended');
+  // Flagged agents requiring attention (quarantined, restricted, revoked, suspended)
+  const flaggedAgents = agentsList.filter(
+    (a) => a.status === 'quarantined' || a.status === 'restricted' || a.status === 'revoked' || a.status === 'suspended'
+  );
 
   return (
     <div className="space-y-8">
@@ -329,37 +340,45 @@ export const OverviewTab: React.FC = () => {
               </div>
             </div>
 
-            <div className="h-56 pt-3">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={distributionTab === 'tools' ? toolDistributionData : severityDistributionData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                  onClick={() => setActiveTab(distributionTab === 'tools' ? 'tools' : 'incidents')}
-                  className="cursor-pointer"
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                  <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="rounded-lg border border-[#E5EAF1] bg-white p-2 shadow-md text-xs">
-                            <span className="font-semibold text-[#1E293B]">{payload[0]?.payload.name}: </span>
-                            <span className="text-[#3B82F6]">{payload[0]?.value}</span>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Bar
-                    dataKey="value"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {((distributionTab === 'tools' && toolDistributionData.length === 0) || (distributionTab === 'severity' && incidentsList.length === 0)) ? (
+              <div className="h-56 flex flex-col items-center justify-center text-center p-4">
+                <Activity className="h-8 w-8 text-[#94A3B8] mb-2 stroke-[1.5]" />
+                <span className="text-xs text-[#64748B]">No {distributionTab === 'tools' ? 'tool executions' : 'security incidents'} recorded yet</span>
+                <span className="text-[10px] text-[#94A3B8] mt-0.5">Live activity will populate this chart in real-time</span>
+              </div>
+            ) : (
+              <div className="h-56 pt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={distributionTab === 'tools' ? toolDistributionData : severityDistributionData}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    onClick={() => setActiveTab(distributionTab === 'tools' ? 'tools' : 'incidents')}
+                    className="cursor-pointer"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                    <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} tickLine={false} />
+                    <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="rounded-lg border border-[#E5EAF1] bg-white p-2 shadow-md text-xs">
+                              <span className="font-semibold text-[#1E293B]">{payload[0]?.payload.name}: </span>
+                              <span className="text-[#3B82F6]">{payload[0]?.value}</span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar
+                      dataKey="value"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
 
           <div className="pt-3 border-t border-[#F1F5F9] flex items-center justify-between text-xs">

@@ -23,7 +23,7 @@ export const IntegrationsTab: React.FC = () => {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [integrationsList, setIntegrationsList] = useState<IntegrationDetail[]>([]);
-  const [activeSubTab, setActiveSubTab] = useState<'inventory' | 'scanner' | 'quarantine' | 'intel'>('inventory');
+  const [activeSubTab, setActiveSubTab] = useState<'inventory' | 'sdk' | 'scanner' | 'intel'>('inventory');
 
   // Sandbox File Scan state
   const [scanPath, setScanPath] = useState('agent_outputs/generated_script.py');
@@ -211,6 +211,7 @@ export const IntegrationsTab: React.FC = () => {
       <div className="flex border-b border-[#E5EAF1] bg-white rounded-t-xl px-4 text-xs font-medium shadow-2xs">
         {[
           { id: 'inventory', label: `Module Inventory (${integrationsList.length})` },
+          { id: 'sdk', label: 'Agent SDK & Adapters' },
           { id: 'scanner', label: 'File & YARA Scanner' },
           { id: 'intel', label: 'Threat Intel Query' },
         ].map((tab) => (
@@ -265,6 +266,89 @@ export const IntegrationsTab: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {activeSubTab === 'sdk' && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-sm font-bold text-[#1E293B]">CrossX Agent Security SDK</h3>
+              <p className="text-xs text-[#64748B] mt-1">
+                Protect any autonomous AI agent with minimal code changes. All tool invocations, prompts, and sensitive actions are intercepted by the CrossX zero-trust gateway.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-[#E5EAF1] bg-[#F8FAFC] p-4 space-y-2">
+              <span className="text-xs font-semibold text-[#1E293B]">1. Installation</span>
+              <div className="flex items-center justify-between bg-[#0F172A] text-[#F8FAFC] p-3 rounded-lg font-mono text-xs">
+                <code>pip install crossx</code>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-[#E5EAF1] bg-[#F8FAFC] p-4 space-y-2">
+              <span className="text-xs font-semibold text-[#1E293B]">2. Connect & Protect Any Python Agent</span>
+              <div className="bg-[#0F172A] text-[#F8FAFC] p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                <pre>{`from crossx import CrossXClient
+
+# Initialize CrossX Client with Gateway URL and Agent Key
+crossx = CrossXClient(
+    endpoint="http://localhost:8000",
+    api_key="YOUR_AGENT_API_KEY"
+)
+
+# Protect your agent (Custom Python, LangChain, CrewAI, OpenAI)
+agent = crossx.protect(
+    agent=my_agent,
+    name="Financial Analyst",
+    tools=["filesystem_tool", "postgres_tool", "http_api_tool"]
+)
+
+# Execute safely - all tool calls are evaluated and sanitized
+result = agent.run("Analyze Q3 confidential payroll and summarize trends")`}</pre>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-xl border border-[#E5EAF1] bg-white space-y-2">
+                <span className="font-semibold text-xs text-[#1E293B]">LangChain Adapter</span>
+                <p className="text-[11px] text-[#64748B]">
+                  Uses <code>CrossXLangChainCallbackHandler</code> and <code>CrossXLangChainTool</code> to intercept tool runs automatically.
+                </p>
+                <div className="bg-[#F1F5F9] p-2.5 rounded font-mono text-[11px] text-[#334155]">
+                  <code>from crossx.adapters import CrossXLangChainTool</code>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border border-[#E5EAF1] bg-white space-y-2">
+                <span className="font-semibold text-xs text-[#1E293B]">CrewAI Adapter</span>
+                <p className="text-[11px] text-[#64748B]">
+                  Wraps CrewAI <code>BaseTool</code> instances with <code>CrossXCrewAIToolWrapper</code> for multi-agent isolation.
+                </p>
+                <div className="bg-[#F1F5F9] p-2.5 rounded font-mono text-[11px] text-[#334155]">
+                  <code>from crossx.adapters import CrossXCrewAIToolWrapper</code>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border border-[#E5EAF1] bg-white space-y-2">
+                <span className="font-semibold text-xs text-[#1E293B]">OpenAI Tool Calling</span>
+                <p className="text-[11px] text-[#64748B]">
+                  Uses <code>CrossXOpenAIProxy</code> to validate function calling arguments before external execution.
+                </p>
+                <div className="bg-[#F1F5F9] p-2.5 rounded font-mono text-[11px] text-[#334155]">
+                  <code>from crossx.adapters import CrossXOpenAIProxy</code>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border border-[#E5EAF1] bg-white space-y-2">
+                <span className="font-semibold text-xs text-[#1E293B]">MCP Sidecar Interceptor</span>
+                <p className="text-[11px] text-[#64748B]">
+                  Filters Model Context Protocol <code>call_tool</code> JSON-RPC messages before dispatching to server.
+                </p>
+                <div className="bg-[#F1F5F9] p-2.5 rounded font-mono text-[11px] text-[#334155]">
+                  <code>from crossx.adapters import CrossXMCPInterceptor</code>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

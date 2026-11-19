@@ -82,12 +82,43 @@ class PolicyEngine:
             (PolicyDecision, reason_string, policy_or_permission_id_triggered)
         """
         # 1. Verify Agent Status
-        if agent.status != AgentStatus.ACTIVE:
+        if agent.status in [AgentStatus.QUARANTINED, AgentStatus.SUSPENDED, AgentStatus.REVOKED, AgentStatus.OFFLINE, AgentStatus.INACTIVE]:
             return (
                 PolicyDecision.BLOCKED,
                 f"Agent '{agent.name}' is {agent.status.value.upper()}. Access denied.",
                 None
             )
+
+        # 1b. Restricted Containment Check
+        if agent.status == AgentStatus.RESTRICTED:
+            mutating_ops = {
+                "write_file", "delete_file", "append_file", "remove_file", "create_file",
+                "drop_table", "alter_table", "insert", "update", "delete",
+                "query_insert", "query_update", "query_delete",
+                "post", "put", "patch", "delete_request", "http_post", "http_put", "http_patch", "http_delete",
+                "execute_command", "spawn_process", "kill_process", "modify"
+            }
+            mutation_keywords = re.compile(
+                r"\b(INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|DROP\s+TABLE|ALTER\s+TABLE|TRUNCATE\s+TABLE|CREATE\s+TABLE)\b",
+                re.IGNORECASE
+            )
+            raw_param_str = str(parameters or {}) + " " + str(resource or "")
+            is_mutating_param = bool(mutation_keywords.search(raw_param_str))
+
+            if (
+                operation.lower() in mutating_ops
+                or "write" in operation.lower()
+                or "delete" in operation.lower()
+                or "drop" in operation.lower()
+                or "insert" in operation.lower()
+                or "update" in operation.lower()
+                or is_mutating_param
+            ):
+                return (
+                    PolicyDecision.BLOCKED,
+                    f"Agent '{agent.name}' is RESTRICTED: Mutating operation '{operation}' or mutating payload is blocked by containment policy.",
+                    "RESTRICTED_CONTAINMENT_POLICY"
+                )
 
         now = datetime.now(timezone.utc)
 

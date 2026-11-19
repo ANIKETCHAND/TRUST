@@ -54,3 +54,49 @@ async def execute_tool(
         )
 
     return response
+
+
+@router.post(
+    "/inspect",
+    response_model=GatewayExecuteResponse,
+    responses={
+        403: {"model": GatewayExecuteResponse, "description": "Preflight inspection blocked by security policy"},
+        401: {"description": "Missing, invalid, expired, or revoked credentials"}
+    },
+    tags=["Security Gateway"]
+)
+async def inspect_tool(
+    req: GatewayExecuteRequest,
+    request: Request,
+    agent: Agent = Depends(get_current_agent),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Pre-flight Security Inspection Endpoint (Section 18).
+    Evaluates zero-trust policies, DLP, input rails, and threat rules WITHOUT executing the tool.
+    """
+    direct_ip = request.client.host if request.client else "127.0.0.1"
+    from app.core.config import settings
+    if direct_ip in settings.TRUSTED_PROXY_IPS:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            client_ip = forwarded.split(",")[0].strip()
+        else:
+            client_ip = request.headers.get("x-real-ip") or direct_ip
+    else:
+        client_ip = direct_ip
+
+    response = await gateway_service.inspect_tool_request(
+        db=db,
+        agent=agent,
+        req=req,
+        client_ip=client_ip
+    )
+
+    if response.decision != "ALLOWED":
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content=response.model_dump()
+        )
+
+    return response

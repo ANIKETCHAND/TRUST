@@ -94,7 +94,7 @@ async def get_current_agent(
             detail="Invalid, expired, or revoked agent credentials."
         )
 
-    if agent.status != AgentStatus.ACTIVE:
+    if agent.status in [AgentStatus.QUARANTINED, AgentStatus.SUSPENDED, AgentStatus.REVOKED, AgentStatus.OFFLINE, AgentStatus.INACTIVE]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Agent '{agent.name}' is currently {agent.status.value.upper()}. Access denied."

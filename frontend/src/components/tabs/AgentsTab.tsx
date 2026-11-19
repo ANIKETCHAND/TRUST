@@ -130,6 +130,48 @@ export const AgentsTab: React.FC = () => {
     setIsRevoking(false);
   };
 
+  const handleQuarantine = async (agentId: string) => {
+    try {
+      await api.quarantineAgent(agentId, 'Manual SOC operator quarantine');
+      toast.warning('Agent Quarantined', 'Tool execution halted immediately.');
+      refresh();
+      if (inspectAgent) setInspectAgent({ ...inspectAgent, status: 'quarantined' as any });
+    } catch (err: any) {
+      toast.error('Quarantine Failed', err.message || 'Failed to quarantine agent');
+    }
+  };
+
+  const handleRestrict = async (agentId: string) => {
+    try {
+      await api.restrictAgent(agentId, 'Manual SOC operator restriction');
+      toast.info('Agent Restricted', 'Agent placed in read-only containment mode.');
+      refresh();
+      if (inspectAgent) setInspectAgent({ ...inspectAgent, status: 'restricted' as any });
+    } catch (err: any) {
+      toast.error('Restriction Failed', err.message || 'Failed to restrict agent');
+    }
+  };
+
+  const handleActivate = async (agentId: string) => {
+    try {
+      await api.activateAgent(agentId);
+      toast.success('Agent Reactivated', 'Agent status restored to active.');
+      refresh();
+      if (inspectAgent) setInspectAgent({ ...inspectAgent, status: 'active' as any });
+    } catch (err: any) {
+      toast.error('Activation Failed', err.message || 'Failed to activate agent');
+    }
+  };
+
+  const handleValidateConnection = async (agentId: string) => {
+    try {
+      const res = await api.validateAgentConnection(agentId);
+      toast.info('Connection Validated', `Status: ${res.connected ? 'ONLINE' : 'OFFLINE'} - Active Credentials: ${res.active_credentials_count}`);
+    } catch (err: any) {
+      toast.error('Validation Failed', err.message || 'Connection check failed');
+    }
+  };
+
   const handleGrantPermission = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inspectAgent) return;
@@ -255,6 +297,9 @@ export const AgentsTab: React.FC = () => {
             >
               <option value="">All Statuses</option>
               <option value="active">Active</option>
+              <option value="monitoring">Monitoring</option>
+              <option value="restricted">Restricted</option>
+              <option value="quarantined">Quarantined</option>
               <option value="suspended">Suspended</option>
               <option value="revoked">Revoked</option>
             </select>
@@ -497,15 +542,46 @@ export const AgentsTab: React.FC = () => {
                   </div>
 
                   {inspectAgent.status !== 'revoked' && (
-                    <div className="pt-4 border-t border-[#E5EAF1]">
+                    <div className="pt-4 border-t border-[#E5EAF1] space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => handleValidateConnection(inspectAgent.id)}
+                          className="py-2 px-3 rounded-lg border border-[#E5EAF1] bg-white text-xs text-[#1E293B] font-medium hover:bg-[#F8FAFC] transition-colors"
+                        >
+                          Ping & Validate Connection
+                        </button>
+                        {inspectAgent.status === 'active' ? (
+                          <button
+                            onClick={() => handleRestrict(inspectAgent.id)}
+                            className="py-2 px-3 rounded-lg border border-[#FDE68A] bg-[#FEFCE8] text-xs text-[#D97706] font-medium hover:bg-[#FEF9C3] transition-colors"
+                          >
+                            Restrict (Read-Only)
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleActivate(inspectAgent.id)}
+                            className="py-2 px-3 rounded-lg border border-[#BBF7D0] bg-[#F0FDF4] text-xs text-[#16A34A] font-medium hover:bg-[#DCFCE7] transition-colors"
+                          >
+                            Reactivate Agent
+                          </button>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => handleQuarantine(inspectAgent.id)}
+                        className="w-full py-2 px-3 rounded-lg border border-[#FECACA] bg-[#FEF2F2] text-xs text-[#DC2626] font-medium hover:bg-[#FEE2E2] transition-colors"
+                      >
+                        Quarantine Agent (Halt Execution)
+                      </button>
+
                       <button
                         onClick={() => {
                           setRevokeAgentTarget(inspectAgent);
                           setRevokeReason('');
                         }}
-                        className="w-full py-2.5 rounded-lg border border-[#FCD2D2] bg-[#FEF2F2] text-[#DC2626] font-medium hover:bg-[#FDE2E2] transition-colors"
+                        className="w-full py-2 rounded-lg border border-[#FCD2D2] bg-white text-xs text-[#DC2626] font-medium hover:bg-[#FEF2F2] transition-colors"
                       >
-                        Revoke Identity & Invalidate Token
+                        Permanent Revocation
                       </button>
                     </div>
                   )}

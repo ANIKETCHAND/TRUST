@@ -297,6 +297,21 @@ html.dark {
   }
 }
 
+.tactile-tray {
+  background: linear-gradient(145deg, #E6EAF0 0%, #D8DFEB 100%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 14px 32px rgba(90, 105, 130, 0.18),
+              0 2px 6px rgba(0, 0, 0, 0.04),
+              inset 1px 1px 2px rgba(255, 255, 255, 0.95),
+              inset -2px -2px 4px rgba(145, 160, 180, 0.35);
+}
+
+.tactile-well-seat {
+  background: radial-gradient(circle at 50% 50%, #D0D7E4 0%, #DFE4ED 85%, #E8EDF5 100%);
+  box-shadow: inset 2px 3px 6px rgba(90, 105, 130, 0.28),
+              inset -1px -1px 3px rgba(255, 255, 255, 0.85);
+}
+
 .tactile-key-cap {
   background: linear-gradient(150deg, #FFFFFF 0%, #F5F7FA 100%);
   border: 1px solid rgba(255, 255, 255, 0.95);

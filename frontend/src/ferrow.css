@@ -109,11 +109,11 @@ html.dark {
 
 /* Tactile Display Headline */
 .tactile-hero-heading {
-  font-family: -apple-system, BlinkMacSystemFont, "Franklin Gothic Heavy", "Impact", "Inter", "Geist", system-ui, sans-serif;
+  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
   font-weight: 900;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.025em;
   line-height: 0.95;
-  color: #404652;
+  color: #383E49;
   text-shadow: 0 1.5px 0 rgba(255, 255, 255, 0.95), 0 2.5px 1px rgba(255, 255, 255, 0.4);
 }
 

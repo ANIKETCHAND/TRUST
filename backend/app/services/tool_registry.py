@@ -22,6 +22,8 @@ class ToolRegistryService:
         self._tools[tool_instance.name] = tool_instance
 
     def get_tool_handler(self, tool_name: str) -> Optional[BaseTool]:
+        if tool_name == "db_tool":
+            return self._tools.get("postgres_tool")
         return self._tools.get(tool_name)
 
     async def sync_tools_to_db(self, db: AsyncSession) -> None:

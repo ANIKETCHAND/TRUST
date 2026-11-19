@@ -19,6 +19,12 @@ from app.api.v1 import (
     active_defense,
     reports,
     ml_security,
+    threats,
+    threat_intel,
+    compliance,
+    analytics,
+    incidents,
+    security_events,
 )
 
 api_router = APIRouter()
@@ -42,3 +48,10 @@ api_router.include_router(attribution.router)
 api_router.include_router(active_defense.router)
 api_router.include_router(reports.router)
 api_router.include_router(ml_security.router)
+api_router.include_router(ml_security.ml_router)
+api_router.include_router(threats.router)
+api_router.include_router(threat_intel.router)
+api_router.include_router(compliance.router)
+api_router.include_router(analytics.router)
+api_router.include_router(incidents.router)
+api_router.include_router(security_events.router)

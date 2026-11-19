@@ -1,16 +1,20 @@
 import enum
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import TimeStampedModel
 
 
 class AgentStatus(str, enum.Enum):
     ACTIVE = "active"
-    INACTIVE = "inactive"
-    REVOKED = "revoked"
+    MONITORING = "monitoring"
+    RESTRICTED = "restricted"
+    QUARANTINED = "quarantined"
     SUSPENDED = "suspended"
+    REVOKED = "revoked"
+    OFFLINE = "offline"
+    INACTIVE = "inactive"
 
 
 class Agent(TimeStampedModel):
@@ -23,6 +27,13 @@ class Agent(TimeStampedModel):
     status: Mapped[AgentStatus] = mapped_column(
         Enum(AgentStatus), default=AgentStatus.ACTIVE, index=True, nullable=False
     )
+    agent_type: Mapped[str] = mapped_column(String(64), default="custom_python", index=True, nullable=False)
+    owner: Mapped[Optional[str]] = mapped_column(String(128), default="security_admin", nullable=True)
+    environment: Mapped[str] = mapped_column(String(64), default="production", index=True, nullable=False)
+    risk_classification: Mapped[str] = mapped_column(String(32), default="LOW", index=True, nullable=False)
+    security_score: Mapped[float] = mapped_column(Float, default=100.0, nullable=False)
+    agent_version: Mapped[str] = mapped_column(String(32), default="1.0.0", nullable=False)
+    last_activity_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     agent_metadata: Mapped[Optional[dict]] = mapped_column(JSON, default=dict, nullable=True)
 
     # Relationships

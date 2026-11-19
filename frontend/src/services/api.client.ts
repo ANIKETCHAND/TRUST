@@ -149,9 +149,33 @@ export const api = {
     const q = new URLSearchParams();
     if (params?.severity) q.set('severity', params.severity);
     if (params?.status) q.set('status', params.status);
-    return apiClient.get<any[]>(`/audit/incidents?${q.toString()}`);
+    if (params?.agent_id) q.set('agent_id', params.agent_id);
+    if (params?.limit) q.set('limit', String(params.limit));
+    return apiClient.get<any[]>(`/incidents?${q.toString()}`);
   },
-  updateIncident: (id: string, data: any) => apiClient.patch<any>(`/audit/incidents/${id}`, data),
+  getIncident: (id: string) => apiClient.get<any>(`/incidents/${id}`),
+  createIncident: (data: any) => apiClient.post<any>('/incidents', data),
+  updateIncident: (id: string, data: any) => apiClient.patch<any>(`/incidents/${id}`, data),
+  quarantineAgentFromIncident: (incidentId: string) => apiClient.post<any>(`/incidents/${incidentId}/quarantine-agent`),
+  getSecurityEvents: (params?: any) => {
+    const q = new URLSearchParams();
+    if (params?.agent_id) q.set('agent_id', params.agent_id);
+    if (params?.decision) q.set('decision', params.decision);
+    if (params?.tool_name) q.set('tool_name', params.tool_name);
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.offset) q.set('offset', String(params.offset));
+    return apiClient.get<any>(`/security/events?${q.toString()}`);
+  },
+  inspectGateway: (data: any, apiKey?: string) => {
+    const headers: Record<string, string> = {};
+    if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+    return apiClient.post<any>('/gateway/inspect', data, headers);
+  },
+  connectAgent: (apiKey?: string) => {
+    const headers: Record<string, string> = {};
+    if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+    return apiClient.post<any>('/agents/connect', {}, headers);
+  },
   runAgentWorkflow: (data: any) => apiClient.post<any>('/agent-exec/run', data),
 
   // Endpoint Connector (Layer 3)
@@ -209,4 +233,35 @@ export const api = {
     return format === 'json' ? res.json() : res.text();
   },
   getMitreMatrix: () => apiClient.get<any>('/reports/mitre-matrix'),
+
+  // CrossX Platform Transformation Additions
+  quarantineAgent: (id: string, reason?: string) => apiClient.post<any>(`/agents/${id}/quarantine`, { reason: reason || 'SOC Manual Containment' }),
+  suspendAgent: (id: string, reason?: string) => apiClient.post<any>(`/agents/${id}/suspend`, { reason: reason || 'Administrative suspension' }),
+  restrictAgent: (id: string, reason?: string) => apiClient.post<any>(`/agents/${id}/restrict`, { reason: reason || 'Containment restriction' }),
+  activateAgent: (id: string) => apiClient.post<any>(`/agents/${id}/activate`),
+  rotateAgentCredentials: (id: string) => apiClient.post<any>(`/agents/${id}/rotate-credentials`),
+  validateAgentConnection: (id: string) => apiClient.get<any>(`/agents/${id}/validate-connection`),
+
+  listThreats: (category?: string) => apiClient.get<any[]>(`/threats${category ? `?category=${encodeURIComponent(category)}` : ''}`),
+  getThreat: (id: string) => apiClient.get<any>(`/threats/${id}`),
+  evaluateThreat: (data: any) => apiClient.post<any>('/threats/evaluate', data),
+  remediateThreat: (id: string, data: any) => apiClient.post<any>(`/threats/${id}/remediate`, data),
+
+  investigateThreatIntel: (data: any) => apiClient.post<any>('/threat-intelligence/investigate', data),
+  getThreatIntelHistory: () => apiClient.get<any[]>('/threat-intelligence/history'),
+
+  getMlModelsInventory: () => apiClient.get<any>('/ml-security/models'),
+  retrainMlModel: () => apiClient.post<any>('/ml-security/retrain'),
+  predictMlPrompt: (prompt: string) => apiClient.post<any>('/ml-security/predict', { prompt }),
+  classifySecurityEvent: (text: string) => apiClient.post<any>('/ml-security/classify-event', { text }),
+  getBehaviorAnomalyScore: (data: any) => apiClient.post<any>('/ml-security/anomaly-score', data),
+  getExplainableRiskScore: (data: any) => apiClient.post<any>('/ml-security/risk-score', data),
+
+  searchCompliance: (q: string, framework?: string) => apiClient.get<any[]>(`/compliance/search?q=${encodeURIComponent(q)}${framework ? `&framework=${encodeURIComponent(framework)}` : ''}`),
+  listComplianceFrameworks: () => apiClient.get<any[]>('/compliance/frameworks'),
+  assessIncidentCompliance: (data: any) => apiClient.post<any>('/compliance/assess-incident', data),
+
+  getAnalyticsOverview: () => apiClient.get<any>('/analytics/overview'),
+  getAgentAnalyticsProfile: (id: string) => apiClient.get<any>(`/analytics/agents/${id}`),
+  getSystemDiagnostics: () => apiClient.get<any>('/system/diagnostics'),
 };
