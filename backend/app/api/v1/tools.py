@@ -36,3 +36,29 @@ async def get_tool(
     if not tool:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
     return tool
+
+
+@router.patch("/{tool_id}", response_model=ToolResponse, tags=["Tools"])
+async def update_tool(
+    tool_id: str,
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Updates tool configuration or status."""
+    tool = await db.get(Tool, tool_id)
+    if not tool:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
+
+    if "status" in payload:
+        new_status = payload["status"]
+        if new_status in ["active", "disabled", "maintenance"]:
+            tool.status = new_status
+    if "description" in payload:
+        tool.description = payload["description"]
+    if "is_protected" in payload:
+        tool.is_protected = bool(payload["is_protected"])
+
+    await db.commit()
+    await db.refresh(tool)
+    return tool

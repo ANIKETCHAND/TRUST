@@ -64,39 +64,39 @@ export const GlobalSearchModal: React.FC = () => {
 
   if (!isSearchOpen) return null;
 
-  const navItems: SearchItem[] = [
-    { id: 'nav-overview', title: 'Security Overview', subtitle: 'Platform health and core security metrics', category: 'NAVIGATION', icon: LayoutDashboard, tab: 'overview' },
-    { id: 'nav-threat-map', title: 'Threat Radar & Geolocation', subtitle: 'Global attack vectors and network map', category: 'NAVIGATION', icon: Globe, tab: 'threat-map' },
-    { id: 'nav-active-defense', title: 'Active Defense', subtitle: 'Process termination and IP sinkholes', category: 'NAVIGATION', icon: Skull, tab: 'active-defense' },
-    { id: 'nav-agents', title: 'Agent Management', subtitle: 'Cryptographic identities and status', category: 'NAVIGATION', icon: Bot, tab: 'agents' },
-    { id: 'nav-monitor', title: 'Gateway Monitor', subtitle: 'Live telemetry and intercepted requests', category: 'NAVIGATION', icon: Activity, tab: 'monitor' },
-    { id: 'nav-tools', title: 'Tool Registry', subtitle: 'Sandboxed tools and dispatch sandbox', category: 'NAVIGATION', icon: Wrench, tab: 'tools' },
-    { id: 'nav-policies', title: 'Policy Engine', subtitle: 'Rule definitions and simulation testbench', category: 'NAVIGATION', icon: ShieldCheck, tab: 'policies' },
-    { id: 'nav-delegations', title: 'Delegation Control', subtitle: 'Subscoping hierarchy and tokens', category: 'NAVIGATION', icon: GitFork, tab: 'delegations' },
-    { id: 'nav-provenance', title: 'Provenance Explorer', subtitle: 'Data lineage and source verification', category: 'NAVIGATION', icon: Network, tab: 'provenance' },
-    { id: 'nav-agent-runner', title: 'Agent Playground', subtitle: 'Prompt sandbox and injection testing', category: 'NAVIGATION', icon: Layers, tab: 'agent-runner' },
-    { id: 'nav-incidents', title: 'Incident Center', subtitle: 'Active threat triage and resolution', category: 'NAVIGATION', icon: ShieldAlert, tab: 'incidents' },
-    { id: 'nav-reports', title: 'Forensics & Reports', subtitle: 'Executive dossiers and audit compliance', category: 'NAVIGATION', icon: FileText, tab: 'reports' },
-    { id: 'nav-audit', title: 'Audit Trail', subtitle: 'Immutable security log and events', category: 'NAVIGATION', icon: FileCheck, tab: 'audit' },
-    { id: 'nav-browser-shield', title: 'Browser Shield', subtitle: 'Pre-flight prompt DLP inspection', category: 'NAVIGATION', icon: Globe, tab: 'browser-shield' },
-    { id: 'nav-endpoints', title: 'Endpoint Security', subtitle: 'Host containment and agent telemetry', category: 'NAVIGATION', icon: Monitor, tab: 'endpoints' },
-    { id: 'nav-integrations', title: 'Integrations', subtitle: 'Security mesh and external connectors', category: 'NAVIGATION', icon: Cpu, tab: 'integrations' },
-    { id: 'nav-settings', title: 'Settings', subtitle: 'Platform configurations and health', category: 'NAVIGATION', icon: Settings, tab: 'settings' },
+  const staticNavItems: SearchItem[] = [
+    { id: 'nav-overview', title: 'Security Overview', subtitle: 'Executive dashboard & metrics', category: 'NAVIGATION', icon: LayoutDashboard, tab: 'overview' },
+    { id: 'nav-agents', title: 'Agent Registry', subtitle: 'Manage AI agent identities & credentials', category: 'NAVIGATION', icon: Bot, tab: 'agents' },
+    { id: 'nav-tools', title: 'Protected Tool Registry', subtitle: 'Sandbox boundaries & execution testing', category: 'NAVIGATION', icon: Wrench, tab: 'tools' },
+    { id: 'nav-monitor', title: 'Live Monitoring', subtitle: 'Real-time gateway interception stream', category: 'NAVIGATION', icon: Activity, tab: 'monitor' },
+    { id: 'nav-delegation', title: 'Delegation Graph', subtitle: 'Interactive agent delegation tree', category: 'NAVIGATION', icon: GitFork, tab: 'delegations' },
+    { id: 'nav-provenance', title: 'Data Provenance Explorer', subtitle: 'Origin tracking & data lineage', category: 'NAVIGATION', icon: Network, tab: 'provenance' },
+    { id: 'nav-policies', title: 'Security Policies', subtitle: 'Deterministic policy rules & simulation', category: 'NAVIGATION', icon: ShieldCheck, tab: 'policies' },
+    { id: 'nav-incidents', title: 'Security Incidents', subtitle: 'Triage, containment, and investigations', category: 'NAVIGATION', icon: ShieldAlert, tab: 'incidents' },
+    { id: 'nav-audit', title: 'Compliance Audit Trail', subtitle: 'Cryptographically bounded event records', category: 'NAVIGATION', icon: FileCheck, tab: 'audit' },
+    { id: 'nav-runner', title: 'Agent Playground', subtitle: 'Autonomous execution testbench', category: 'NAVIGATION', icon: Layers, tab: 'agent-runner' },
+    { id: 'nav-threat-radar', title: 'Threat Radar & Geolocation', subtitle: 'Attribution map & network sinkholes', category: 'NAVIGATION', icon: Globe, tab: 'threat-map' },
+    { id: 'nav-active-defense', title: 'Active Defense', subtitle: 'Malicious process mitigation', category: 'NAVIGATION', icon: Skull, tab: 'active-defense' },
+    { id: 'nav-forensics', title: 'Forensic Dossiers & Reports', subtitle: 'MITRE ATT&CK mapping', category: 'NAVIGATION', icon: FileText, tab: 'reports' },
+    { id: 'nav-browser-shield', title: 'Browser Shield', subtitle: 'Layer 2 agent DOM & script protection', category: 'NAVIGATION', icon: ShieldCheck, tab: 'browser-shield' },
+    { id: 'nav-endpoints', title: 'Endpoint Security', subtitle: 'Host sentry & container containment', category: 'NAVIGATION', icon: Monitor, tab: 'endpoints' },
+    { id: 'nav-integrations', title: 'Connected Integrations', subtitle: 'ClamAV, VirusTotal, SIEM connectors', category: 'NAVIGATION', icon: Cpu, tab: 'integrations' },
+    { id: 'nav-settings', title: 'Settings & Health', subtitle: 'Telemetry polling, fail-closed policy', category: 'NAVIGATION', icon: Settings, tab: 'settings' },
   ];
 
   const agentItems: SearchItem[] = agents.map((a) => ({
     id: `agent-${a.id}`,
     title: a.name,
-    subtitle: `Agent ID: ${truncateId(a.id, 12)} • Status: ${a.status} • Role: ${a.role}`,
+    subtitle: `Role: ${a.role} • Status: ${a.status}`,
     category: 'AGENT',
     icon: Bot,
     tab: 'agents',
   }));
 
   const incidentItems: SearchItem[] = incidents.map((i) => ({
-    id: `incident-${i.id}`,
-    title: i.title,
-    subtitle: `Severity: ${i.severity} • Status: ${i.status} • Agent: ${i.agent_id ? truncateId(i.agent_id, 8) : 'System'}`,
+    id: `inc-${i.id}`,
+    title: i.title || `Incident #${truncateId(i.id, 8)}`,
+    subtitle: `Severity: ${i.severity} • Status: ${i.status}`,
     category: 'INCIDENT',
     icon: ShieldAlert,
     tab: 'incidents',
@@ -105,32 +105,31 @@ export const GlobalSearchModal: React.FC = () => {
   const toolItems: SearchItem[] = tools.map((t) => ({
     id: `tool-${t.id || t.name}`,
     title: t.name,
-    subtitle: `Category: ${t.category || 'System'} • Operations: ${(t.allowed_operations || []).join(', ') || 'All'}`,
+    subtitle: `Category: ${t.category} • Operations: ${(t.supported_operations || t.operations || []).join(', ') || 'N/A'}`,
     category: 'TOOL',
     icon: Wrench,
     tab: 'tools',
   }));
 
   const endpointItems: SearchItem[] = endpoints.map((e) => ({
-    id: `endpoint-${e.id}`,
-    title: e.hostname || 'Unknown Host',
-    subtitle: `Platform: ${e.os_platform || 'Windows'} • Status: ${e.status || 'ONLINE'} • IP: ${e.ip_address || '127.0.0.1'}`,
+    id: `endpoint-${e.id || e.hostname || e.name}`,
+    title: e.hostname || e.name || 'Host Endpoint',
+    subtitle: `Status: ${e.isolation_status || e.status || 'Active'}`,
     category: 'ENDPOINT',
     icon: Monitor,
     tab: 'endpoints',
   }));
 
-  const allItems = [...navItems, ...agentItems, ...incidentItems, ...toolItems, ...endpointItems];
+  const allItems: SearchItem[] = [...staticNavItems, ...agentItems, ...incidentItems, ...toolItems, ...endpointItems];
 
-  const filteredItems = allItems.filter((item) => {
-    if (!query.trim()) return item.category === 'NAVIGATION';
-    const q = query.toLowerCase();
-    return (
-      item.title.toLowerCase().includes(q) ||
-      item.subtitle.toLowerCase().includes(q) ||
-      item.category.toLowerCase().includes(q)
-    );
-  });
+  const filteredItems = query.trim()
+    ? allItems.filter(
+        (it) =>
+          it.title.toLowerCase().includes(query.toLowerCase()) ||
+          it.subtitle.toLowerCase().includes(query.toLowerCase()) ||
+          it.category.toLowerCase().includes(query.toLowerCase())
+      )
+    : staticNavItems;
 
   const handleSelect = (tab: PlatformTab) => {
     setActiveTab(tab);
@@ -139,76 +138,89 @@ export const GlobalSearchModal: React.FC = () => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/80 backdrop-blur-xl p-4 animate-fade-in"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-slate-900/30 backdrop-blur-xs select-none"
       onClick={() => setIsSearchOpen(false)}
     >
       <div
-        className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#0a0d14]/95 shadow-[0_16px_60px_rgba(0,0,0,0.85)] overflow-hidden"
+        className="w-full max-w-xl rounded-2xl border border-[#E5EAF1] bg-white shadow-2xl overflow-hidden animate-fade-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Bar */}
-        <div className="relative border-b border-white/10 bg-white/[0.02] px-5 py-4 flex items-center gap-3">
-          <Search className="h-4 w-4 text-kali-cyan shrink-0" />
+        <div className="flex items-center gap-3 border-b border-[#E5EAF1] px-4 py-3 bg-[#F8FAFC]">
+          <Search className="h-4 w-4 text-[#3B82F6]" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search agents, incidents, tools, endpoints, or jump to tab..."
-            className="w-full bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
+            placeholder="Search agents, tools, policies, incidents, or jump to..."
+            className="flex-1 bg-transparent text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none"
           />
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="text-slate-500 hover:text-white transition-colors"
+              className="p-1 text-[#94A3B8] hover:text-[#1E293B]"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           )}
-          <kbd className="hidden sm:inline-block rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] text-slate-400">
+          <kbd className="rounded border border-[#E5EAF1] bg-white px-2 py-0.5 font-mono text-[10px] text-[#64748B]">
             ESC
           </kbd>
         </div>
 
         {/* Results List */}
-        <div className="max-h-96 overflow-y-auto p-2 space-y-1">
-          {filteredItems.slice(0, 10).map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleSelect(item.tab)}
-                className="w-full flex items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-white/[0.04] transition-all group border border-transparent hover:border-white/10"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 group-hover:text-kali-cyan group-hover:border-kali-cyan/30 transition-colors">
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold text-white group-hover:text-kali-cyan transition-colors truncate">
-                      {item.title}
-                    </div>
-                    <div className="text-[11px] text-slate-400 truncate mt-0.5">
-                      {item.subtitle}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0 ml-3">
-                  <span className="font-mono text-[9px] uppercase px-2 py-0.5 rounded-full border border-white/10 bg-white/[0.02] text-slate-400">
-                    {item.category}
-                  </span>
-                  <ArrowRight className="h-3.5 w-3.5 text-slate-600 group-hover:text-kali-cyan group-hover:translate-x-0.5 transition-all" />
-                </div>
-              </button>
-            );
-          })}
-
-          {filteredItems.length === 0 && (
-            <div className="py-12 text-center text-xs text-slate-500">
-              No matching results found for "{query}".
+        <div className="max-h-96 overflow-y-auto p-2 divide-y divide-[#F1F5F9]">
+          {filteredItems.length === 0 ? (
+            <div className="py-12 text-center text-xs text-[#64748B]">
+              No results found for &ldquo;{query}&rdquo;
             </div>
+          ) : (
+            filteredItems.slice(0, 15).map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleSelect(item.tab)}
+                  className="flex w-full items-center justify-between rounded-xl p-3 text-left hover:bg-[#F8FAFC] transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#E5EAF1] bg-[#EEF4FF] text-[#3B82F6]">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-[#1E293B] group-hover:text-[#3B82F6] transition-colors">
+                        {item.title}
+                      </div>
+                      <div className="text-[11px] text-[#64748B] mt-0.5 truncate max-w-sm">
+                        {item.subtitle}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[9px] uppercase px-1.5 py-0.5 rounded border border-[#E5EAF1] bg-[#F8FAFC] text-[#64748B]">
+                      {item.category}
+                    </span>
+                    <ArrowRight className="h-3.5 w-3.5 text-[#94A3B8] group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all" />
+                  </div>
+                </button>
+              );
+            })
           )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t border-[#E5EAF1] bg-[#F8FAFC] px-4 py-2.5 text-[11px] text-[#64748B]">
+          <span>Type to filter live security entities</span>
+          <div className="flex items-center gap-3">
+            <span>
+              <kbd className="rounded border border-[#E5EAF1] bg-white px-1.5 py-0.5 font-mono text-[9px] mr-1">↑</kbd>
+              <kbd className="rounded border border-[#E5EAF1] bg-white px-1.5 py-0.5 font-mono text-[9px]">↓</kbd> Navigate
+            </span>
+            <span>
+              <kbd className="rounded border border-[#E5EAF1] bg-white px-1.5 py-0.5 font-mono text-[9px]">↵</kbd> Select
+            </span>
+          </div>
         </div>
       </div>
     </div>

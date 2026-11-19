@@ -55,31 +55,31 @@ export const Modal: React.FC<ModalProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-xl transition-all duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs transition-all duration-150"
       onClick={onClose}
     >
       <div
-        className={`w-full ${maxWidthClasses[effectiveSize]} rounded-2xl border border-white/10 bg-[#0a0d14]/95 shadow-[0_16px_50px_rgba(0,0,0,0.8)] flex flex-col max-h-[90vh] overflow-hidden`}
+        className={`w-full ${maxWidthClasses[effectiveSize]} rounded-2xl border border-[#E5EAF1] bg-white shadow-xl flex flex-col max-h-[90vh] overflow-hidden text-[#1E293B]`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 bg-white/[0.02]">
+        <div className="flex items-center justify-between border-b border-[#E5EAF1] px-6 py-4 bg-[#F8FAFC]">
           <div className="flex items-center gap-3">
             {icon && (
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-kali-cyan">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5EAF1] bg-[#EEF4FF] text-[#3B82F6]">
                 {icon}
               </div>
             )}
             <div>
-              <h2 className="text-base font-semibold tracking-tight text-white">{title}</h2>
+              <h2 className="text-base font-semibold tracking-tight text-[#1E293B]">{title}</h2>
               {subtitle && (
-                <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
+                <p className="text-xs text-[#64748B] mt-0.5">{subtitle}</p>
               )}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg border border-transparent p-1.5 text-slate-400 hover:border-white/10 hover:bg-white/[0.05] hover:text-white transition-colors"
+            className="rounded-lg border border-transparent p-1.5 text-[#64748B] hover:border-[#E5EAF1] hover:bg-[#F1F5F9] hover:text-[#1E293B] transition-colors"
             aria-label="Close modal"
           >
             <X className="h-4 w-4" />

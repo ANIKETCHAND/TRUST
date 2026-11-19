@@ -115,6 +115,7 @@ export const api = {
   updateAgent: (id: string, data: any) => apiClient.patch<any>(`/agents/${id}`, data),
   revokeAgent: (id: string, reason: string) => apiClient.post<any>(`/agents/${id}/revoke`, { reason }),
   listTools: () => apiClient.get<any[]>('/tools'),
+  updateTool: (id: string, data: any) => apiClient.patch<any>(`/tools/${id}`, data),
   listPermissions: (agentId?: string) => apiClient.get<any[]>(`/permissions${agentId ? `?agent_id=${agentId}` : ''}`),
   createPermission: (data: any) => apiClient.post<any>('/permissions', data),
   grantPermission: (data: any) => apiClient.post<any>('/permissions', data),
@@ -133,6 +134,7 @@ export const api = {
   listPolicies: () => apiClient.get<any[]>('/policies'),
   createPolicy: (data: any) => apiClient.post<any>('/policies', data),
   updatePolicy: (id: string, data: any) => apiClient.put<any>(`/policies/${id}`, data),
+  deletePolicy: (id: string) => apiClient.delete<any>(`/policies/${id}`),
   testPolicy: (data: any) => apiClient.post<any>('/policies/test', data),
   listAuditEvents: (params?: any) => {
     const q = new URLSearchParams();

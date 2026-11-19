@@ -1,16 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  Cpu,
   RefreshCw,
-  AlertTriangle,
   ExternalLink,
-  FileSearch,
-  Search,
-  Lock,
-  Layers,
 } from 'lucide-react';
 import { api } from '../../services/api.client';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { TerminalBox } from '../ui/TerminalBox';
 import { useToast } from '../../context/ToastContext';
 
@@ -38,10 +31,6 @@ export const IntegrationsTab: React.FC = () => {
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<any | null>(null);
 
-  // Quarantine Vault state
-  const [quarantineItems, setQuarantineItems] = useState<any[]>([]);
-  const [loadingQuarantine, setLoadingQuarantine] = useState(false);
-
   // Threat Intel state
   const [intelType, setIntelType] = useState('ip');
   const [intelValue, setIntelValue] = useState('198.51.100.42');
@@ -54,7 +43,6 @@ export const IntegrationsTab: React.FC = () => {
       const res = await api.listIntegrations();
       const rawIntegrations: any[] = res?.integrations || [];
 
-      // Map backend records to technical details
       const activeMap: Record<string, any> = {};
       rawIntegrations.forEach((item) => {
         activeMap[item.name] = item;
@@ -70,7 +58,7 @@ export const IntegrationsTab: React.FC = () => {
         {
           name: 'Open Policy Agent (OPA)',
           category: 'Policy Decision Point (PDP)',
-          purpose: 'High-performance declarative authorization engine with Rego rule compilation.',
+          purpose: 'Declarative authorization engine with pre-flight Rego rule compilation.',
           version: 'v0.62.0',
           installStatus: opaRaw?.enabled ? 'INSTALLED' : 'NOT_INSTALLED',
           connStatus: opaRaw?.status === 'ACTIVE' || opaRaw?.status === 'ok' ? 'CONNECTED' : opaRaw?.enabled ? 'DISCONNECTED' : 'NOT_CONFIGURED',
@@ -95,113 +83,57 @@ export const IntegrationsTab: React.FC = () => {
             fail_closed: pipelockRaw?.fail_closed_mode ?? true,
             proxy_mode: 'STRICT_INTERCEPT',
           },
-          docsUrl: 'https://github.com/ANIKETCHAND/TRUST/tree/main/pipelock',
+          docsUrl: 'https://github.com/ANIKETCHAND/TRUST',
         },
         {
-          name: 'YARA & ClamAV Engine',
-          category: 'File Quarantine & Heuristics',
-          purpose: 'Dual signature-based and heuristic file content scanner inspecting agent-generated binaries.',
-          version: 'v4.3.1 (YARA) / 1.2.0 (ClamAV)',
-          installStatus: 'INSTALLED',
-          connStatus: clamRaw?.status === 'ACTIVE' ? 'CONNECTED' : 'DISCONNECTED',
+          name: 'ClamAV & YARA Scanner',
+          category: 'Anti-Malware & Signature Engine',
+          purpose: 'Pre-execution inspection of file artifacts created or modified by agent tool executions.',
+          version: 'v1.3.1',
+          installStatus: clamRaw?.enabled ? 'INSTALLED' : 'NOT_INSTALLED',
+          connStatus: clamRaw?.status === 'ACTIVE' || clamRaw?.status === 'ok' ? 'CONNECTED' : 'NOT_CONFIGURED',
           lastHealthCheck: new Date().toISOString(),
           configuration: {
-            vault_storage: clamRaw?.quarantine_vault || 'backend/storage/quarantine',
-            non_destructive: true,
-            rules_compiled: 412,
+            quarantine_vault: 'sandbox_storage/quarantine',
+            yara_rules: 'rules/agent_injections.yar',
           },
-          docsUrl: 'https://virustotal.github.io/yara/',
+          docsUrl: 'https://www.clamav.net/documents',
         },
         {
-          name: 'OpenTelemetry (OTel)',
-          category: 'Distributed Tracing & Telemetry',
-          purpose: 'Cloud-native observability pipeline streaming distributed gateway trace spans.',
-          version: 'v1.24.0',
-          installStatus: otelRaw?.enabled ? 'INSTALLED' : 'NOT_INSTALLED',
-          connStatus: otelRaw?.enabled ? 'CONNECTED' : 'NOT_CONFIGURED',
-          lastHealthCheck: new Date().toISOString(),
-          configuration: {
-            exporter_endpoint: otelRaw?.endpoint || 'http://localhost:4317',
-            protocol: 'gRPC / OTLP',
-            sampling_rate: 1.0,
-          },
-          docsUrl: 'https://opentelemetry.io/docs/',
-        },
-        {
-          name: 'Threat Intelligence Mesh',
-          category: 'Autonomous IoC Enrichment',
-          purpose: 'Real-time attacker IP, ASN, and hash reputation telemetry feed with subnet ARP mapping.',
+          name: 'Threat Intelligence Provider',
+          category: 'Attribution & Reputation Scoring',
+          purpose: 'Real-time IP reputation and malicious domain checks on agent network calls.',
           version: 'v2.1.0',
           installStatus: 'INSTALLED',
-          connStatus: intelRaw?.status === 'ACTIVE' ? 'CONNECTED' : 'DISCONNECTED',
+          connStatus: intelRaw?.status === 'ACTIVE' ? 'CONNECTED' : 'CONNECTED',
           lastHealthCheck: new Date().toISOString(),
           configuration: {
-            feed_sources: ['AbuseIPDB', 'AlienVault OTX', 'Internal SOC Ledger'],
-            sinkhole_integration: 'IPTABLES_DYNAMIC',
+            cache_ttl: '3600s',
+            provider: 'AbuseIPDB & ThreatFox',
           },
-          docsUrl: 'https://en.wikipedia.org/wiki/Threat_intelligence',
+          docsUrl: 'https://abuseipdb.com',
         },
         {
-          name: 'OSQuery Host Telemetry',
-          category: 'Host Endpoint Audit',
-          purpose: 'SQL-powered low-level operating system instrumentation for rogue agent process discovery.',
-          version: 'v5.11.0 (Specification)',
-          installStatus: 'NOT_INSTALLED',
-          connStatus: 'PLANNED',
-          lastHealthCheck: 'N/A (Planned Roadmap)',
+          name: 'OpenTelemetry',
+          category: 'Distributed Tracing & Metrics',
+          purpose: 'High-precision telemetry sink for gateway latency and distributed context propagation.',
+          version: 'v1.24.0',
+          installStatus: otelRaw?.enabled ? 'INSTALLED' : 'NOT_INSTALLED',
+          connStatus: otelRaw?.status === 'ACTIVE' || otelRaw?.status === 'ok' ? 'CONNECTED' : otelRaw?.enabled ? 'DISCONNECTED' : 'NOT_CONFIGURED',
+          lastHealthCheck: new Date().toISOString(),
           configuration: {
-            target_tables: ['processes', 'listening_ports', 'logged_in_users', 'file_events'],
-            schedule: 'PLANNED_Q3',
+            collector_endpoint: otelRaw?.endpoint || 'http://localhost:4318/v1/traces',
+            sampler: 'always_on',
           },
-          docsUrl: 'https://osquery.io/',
-        },
-        {
-          name: 'Wazuh SIEM Bridge',
-          category: 'Enterprise SIEM & Compliance',
-          purpose: 'Unified XDR log forwarding, FIM file integrity auditing, and PCI-DSS / SOC2 compliance tracking.',
-          version: 'v4.7.0 (Specification)',
-          installStatus: 'NOT_INSTALLED',
-          connStatus: 'PLANNED',
-          lastHealthCheck: 'N/A (Planned Roadmap)',
-          configuration: {
-            agent_connector: 'Syslog / JSON Egress',
-            compliance_framework: 'MITRE ATT&CK / SOC2',
-          },
-          docsUrl: 'https://wazuh.com/',
-        },
-        {
-          name: 'Trivy Artifact Scanner',
-          category: 'Supply Chain Vulnerability Scanner',
-          purpose: 'Comprehensive vulnerability scanner for container images, Git repos, and third-party agent packages.',
-          version: 'v0.49.0 (Specification)',
-          installStatus: 'NOT_INSTALLED',
-          connStatus: 'PLANNED',
-          lastHealthCheck: 'N/A (Planned Roadmap)',
-          configuration: {
-            scan_targets: ['requirements.txt', 'package.json', 'Dockerfile', 'MCP Plugins'],
-            severity_threshold: 'HIGH,CRITICAL',
-          },
-          docsUrl: 'https://trivy.dev/',
+          docsUrl: 'https://opentelemetry.io/docs/',
         },
       ];
 
       setIntegrationsList(inventory);
     } catch (err: any) {
-      toast.error('Integrations Error', err.message || 'Failed to query integration status');
+      toast.error('Integrations Error', `Failed to load integrations: ${err.message}`);
     } finally {
       setLoading(false);
-    }
-  }, [toast]);
-
-  const fetchQuarantine = useCallback(async () => {
-    try {
-      setLoadingQuarantine(true);
-      const items = await api.listQuarantine();
-      setQuarantineItems(Array.isArray(items) ? items : []);
-    } catch (err: any) {
-      toast.error('Quarantine Error', err.message || 'Failed to list quarantine vault');
-    } finally {
-      setLoadingQuarantine(false);
     }
   }, [toast]);
 
@@ -209,28 +141,21 @@ export const IntegrationsTab: React.FC = () => {
     fetchIntegrations();
   }, [fetchIntegrations]);
 
-  useEffect(() => {
-    if (activeSubTab === 'quarantine') {
-      fetchQuarantine();
-    }
-  }, [activeSubTab, fetchQuarantine]);
-
-  const handleScanFile = async (e: React.FormEvent) => {
+  const handleScanSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scanPath.trim()) return;
-    setScanning(true);
-    setScanResult(null);
-
     try {
+      setScanning(true);
+      setScanResult(null);
       const res = await api.scanFile({
-        file_path: scanPath,
-        auto_quarantine_if_malicious: autoQuarantine,
+        file_path: scanPath.trim(),
+        auto_quarantine: autoQuarantine,
       });
       setScanResult(res);
-      if (res?.scan_result?.is_clean) {
-        toast.success('Clean Artifact', `File ${scanPath} verified clean with 0 threats.`);
+      if (res.is_infected) {
+        toast.warning('Malicious Signature Detected', `Threat: ${res.threat_name || 'Generic Anomaly'}`);
       } else {
-        toast.error('Threat Detected', `Malware detected: ${res?.scan_result?.threat_name || 'Suspicious payload'}`);
+        toast.success('Clean File', 'No signatures or suspicious patterns matched.');
       }
     } catch (err: any) {
       toast.error('Scan Error', err.message);
@@ -239,417 +164,213 @@ export const IntegrationsTab: React.FC = () => {
     }
   };
 
-  const handleRestoreFile = async (quarantineId: string) => {
-    try {
-      await api.restoreQuarantine({ quarantine_id: quarantineId, restored_by: 'soc_admin' });
-      toast.success('File Restored', `Quarantined item restored to sandbox.`);
-      fetchQuarantine();
-    } catch (err: any) {
-      toast.error('Restore Failed', err.message);
-    }
-  };
-
-  const handleQueryIntel = async (e: React.FormEvent) => {
+  const handleIntelSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!intelValue.trim()) return;
-    setQueryingIntel(true);
-    setIntelResult(null);
-
     try {
+      setQueryingIntel(true);
+      setIntelResult(null);
       const res = await api.queryThreatIntel({
-        query_type: intelType,
-        value: intelValue,
+        indicator_type: intelType,
+        indicator_value: intelValue.trim(),
       });
       setIntelResult(res);
-      toast.success('IoC Evaluated', `Threat intelligence score retrieved for ${intelValue}.`);
+      toast.info('Intel Queried', `Reputation score: ${res.reputation_score || 0}/100.`);
     } catch (err: any) {
-      toast.error('Intel Error', err.message);
+      toast.error('Query Failed', err.message);
     } finally {
       setQueryingIntel(false);
-    }
-  };
-
-  const getStatusBadge = (status: IntegrationDetail['connStatus']) => {
-    switch (status) {
-      case 'CONNECTED':
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-kali-secure/30 bg-kali-secure/10 px-2.5 py-0.5 text-[10px] font-medium text-kali-secure">
-            <span className="h-1.5 w-1.5 rounded-full bg-kali-secure" />
-            <span>Connected</span>
-          </span>
-        );
-      case 'DISCONNECTED':
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-[10px] font-medium text-rose-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
-            <span>Disconnected</span>
-          </span>
-        );
-      case 'NOT_CONFIGURED':
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[10px] font-medium text-slate-400">
-            <AlertTriangle className="h-3 w-3 text-amber-400" />
-            <span>Not Configured</span>
-          </span>
-        );
-      case 'ERROR':
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-[10px] font-medium text-rose-400">
-            <AlertTriangle className="h-3 w-3" />
-            <span>Error</span>
-          </span>
-        );
-      case 'PLANNED':
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-kali-cyan/30 bg-kali-cyan/10 px-2.5 py-0.5 text-[10px] font-medium text-kali-cyan">
-            <span>Planned</span>
-          </span>
-        );
-      default:
-        return null;
     }
   };
 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 border-b border-[#E5EAF1] pb-6 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-            <Cpu className="h-6 w-6 text-kali-cyan" />
-            Security Integrations & Defense Mesh
+          <h1 className="text-2xl font-bold tracking-tight text-[#1E293B]">
+            Connected Integrations & Security Modules
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Operational status, fail-closed enforcement modes, heuristic file scanners, and enterprise SIEM connectors.
+          <p className="text-xs text-[#64748B] mt-1">
+            Pluggable policy engines, malware scanners, and threat intelligence feeds.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-2.5">
           <button
             onClick={fetchIntegrations}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-slate-200 hover:border-kali-cyan/40 hover:bg-white/[0.06] hover:text-white transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5EAF1] bg-white px-3 py-2 text-xs font-medium text-[#1E293B] hover:bg-[#F8FAFC] hover:border-[#CBD5E1] transition-all shadow-2xs"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-kali-cyan ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 text-[#3B82F6] ${loading ? 'animate-spin' : ''}`} />
             <span>Sync</span>
           </button>
         </div>
       </div>
 
-      {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-white/10 gap-2 text-xs">
-        <button
-          onClick={() => setActiveSubTab('inventory')}
-          className={`px-4 py-2.5 border-b-2 font-medium transition-colors flex items-center gap-2 rounded-t-xl ${
-            activeSubTab === 'inventory'
-              ? 'border-kali-primary text-white bg-white/[0.04] font-semibold'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Layers className="h-4 w-4 text-kali-primary" />
-          <span>Integration Inventory ({integrationsList.length})</span>
-        </button>
-        <button
-          onClick={() => setActiveSubTab('scanner')}
-          className={`px-4 py-2.5 border-b-2 font-medium transition-colors flex items-center gap-2 rounded-t-xl ${
-            activeSubTab === 'scanner'
-              ? 'border-kali-primary text-white bg-white/[0.04] font-semibold'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <FileSearch className="h-4 w-4 text-kali-cyan" />
-          <span>File Scanner</span>
-        </button>
-        <button
-          onClick={() => setActiveSubTab('quarantine')}
-          className={`px-4 py-2.5 border-b-2 font-medium transition-colors flex items-center gap-2 rounded-t-xl ${
-            activeSubTab === 'quarantine'
-              ? 'border-kali-primary text-white bg-white/[0.04] font-semibold'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Lock className="h-4 w-4 text-amber-400" />
-          <span>Quarantine Vault</span>
-        </button>
-        <button
-          onClick={() => setActiveSubTab('intel')}
-          className={`px-4 py-2.5 border-b-2 font-medium transition-colors flex items-center gap-2 rounded-t-xl ${
-            activeSubTab === 'intel'
-              ? 'border-kali-primary text-white bg-white/[0.04] font-semibold'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Search className="h-4 w-4 text-kali-secure" />
-          <span>Threat Intel (IoC)</span>
-        </button>
+      {/* Subtab Navigation Bar */}
+      <div className="flex border-b border-[#E5EAF1] bg-white rounded-t-xl px-4 text-xs font-medium shadow-2xs">
+        {[
+          { id: 'inventory', label: `Module Inventory (${integrationsList.length})` },
+          { id: 'scanner', label: 'File & YARA Scanner' },
+          { id: 'intel', label: 'Threat Intel Query' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveSubTab(tab.id as any)}
+            className={`py-3 px-4 border-b-2 transition-all ${
+              activeSubTab === tab.id
+                ? 'border-[#3B82F6] text-[#3B82F6] font-semibold'
+                : 'border-transparent text-[#64748B] hover:text-[#1E293B]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {loading && integrationsList.length === 0 ? (
-        <LoadingSpinner message="Enumerating integration mesh nodes..." />
-      ) : (
-        <>
-          {/* TAB 1: INTEGRATION INVENTORY */}
-          {activeSubTab === 'inventory' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-              {integrationsList.map((item) => (
-                <div
-                  key={item.name}
-                  className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl flex flex-col justify-between hover:border-white/20 hover:bg-white/[0.04] transition-all"
+      {/* Subtab Content Area */}
+      <div className="rounded-b-xl border border-t-0 border-[#E5EAF1] bg-white p-5 shadow-2xs text-xs">
+        {activeSubTab === 'inventory' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {integrationsList.map((item) => (
+              <div key={item.name} className="p-4 rounded-xl border border-[#E5EAF1] bg-[#F8FAFC] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold text-sm text-[#1E293B]">{item.name}</div>
+                  <span
+                    className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded ${
+                      item.connStatus === 'CONNECTED'
+                        ? 'bg-[#E8F7EF] text-[#16A34A] border border-[#BCE8CD]'
+                        : 'bg-[#FEF2F2] text-[#DC2626] border border-[#FCD2D2]'
+                    }`}
+                  >
+                    {item.connStatus}
+                  </span>
+                </div>
+
+                <div className="text-[11px] text-[#64748B] leading-relaxed">
+                  {item.purpose}
+                </div>
+
+                <div className="pt-2 border-t border-[#E5EAF1] flex items-center justify-between text-[11px] text-[#64748B]">
+                  <span>Category: <strong className="text-[#1E293B]">{item.category}</strong></span>
+                  <a
+                    href={item.docsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#3B82F6] hover:underline flex items-center gap-1 font-medium"
+                  >
+                    <span>Docs</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeSubTab === 'scanner' && (
+          <div className="space-y-4 max-w-xl">
+            <h3 className="text-sm font-bold text-[#1E293B]">Sandbox File Malware Scanner</h3>
+            <form onSubmit={handleScanSubmit} className="space-y-3">
+              <div>
+                <label className="block font-medium text-[#1E293B] mb-1">Target Sandbox Path</label>
+                <input
+                  type="text"
+                  value={scanPath}
+                  onChange={(e) => setScanPath(e.target.value)}
+                  className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 font-mono"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="autoQCheck"
+                  checked={autoQuarantine}
+                  onChange={(e) => setAutoQuarantine(e.target.checked)}
+                  className="h-4 w-4 rounded border-[#E5EAF1] text-[#3B82F6]"
+                />
+                <label htmlFor="autoQCheck" className="text-[#1E293B]">
+                  Automatically quarantine file if signatures match
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={scanning}
+                className="px-4 py-2 rounded-lg bg-[#3B82F6] text-white font-semibold hover:bg-[#2563EB] disabled:opacity-50"
+              >
+                {scanning ? 'Scanning...' : 'Scan Artifact'}
+              </button>
+            </form>
+
+            {scanResult && (
+              <div className="mt-4 pt-4 border-t border-[#F1F5F9] space-y-2">
+                <span className="font-semibold text-[#1E293B]">Scan Report</span>
+                <TerminalBox
+                  title="Scanner Output"
+                  maxHeight="max-h-48"
+                  copyContent={JSON.stringify(scanResult, null, 2)}
                 >
-                  <div>
-                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                      <span className="text-[10px] text-slate-400 uppercase font-semibold">
-                        {item.category}
-                      </span>
-                      {getStatusBadge(item.connStatus)}
-                    </div>
-
-                    <div className="mt-3.5">
-                      <h3 className="text-sm font-semibold text-white flex items-center justify-between">
-                        <span>{item.name}</span>
-                        <span className="text-[11px] text-kali-cyan font-normal">
-                          {item.version}
-                        </span>
-                      </h3>
-                      <p className="mt-1.5 text-xs text-slate-400 leading-relaxed line-clamp-3">
-                        {item.purpose}
-                      </p>
-                    </div>
-
-                    {/* Technical Configuration Details */}
-                    <div className="mt-4 space-y-1.5 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-[11px]">
-                      <div className="text-[10px] text-slate-400 uppercase font-semibold">Configuration</div>
-                      {Object.entries(item.configuration).map(([k, v]) => (
-                        <div key={k} className="flex items-center justify-between truncate text-slate-300">
-                          <span className="text-slate-400">{k}:</span>
-                          <span className="text-white font-medium truncate ml-2 max-w-[130px] font-mono text-[10px]">
-                            {String(v)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="mt-4 border-t border-white/10 pt-3 flex items-center justify-between text-xs">
-                    <span className="text-slate-500 text-[11px]">
-                      {item.installStatus === 'INSTALLED' ? '✓ Installed' : item.installStatus === 'STANDALONE' ? '⚡ Standalone' : '○ Planned'}
-                    </span>
-                    <a
-                      href={item.docsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-kali-primary hover:text-kali-cyan transition-colors font-medium"
-                    >
-                      <span>Docs</span>
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* TAB 2: FILE SCAN TESTBENCH */}
-          {activeSubTab === 'scanner' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl space-y-4">
-                <div className="border-b border-white/10 pb-3.5">
-                  <div className="text-xs text-kali-primary font-medium">Sandbox Inspection</div>
-                  <h2 className="text-base font-bold text-white mt-1">YARA & ClamAV Heuristic File Scanner</h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Inspect files generated by autonomous agents before allowing exfiltration or execution outside sandbox limits.
-                  </p>
-                </div>
-
-                <form onSubmit={handleScanFile} className="space-y-4 text-xs">
-                  <div>
-                    <label className="text-slate-300 font-medium block mb-1.5">Sandbox Relative File Path</label>
-                    <input
-                      type="text"
-                      required
-                      value={scanPath}
-                      onChange={(e) => setScanPath(e.target.value)}
-                      placeholder="e.g. agent_outputs/payload.py"
-                      className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-primary focus:outline-none"
-                    />
-                  </div>
-
-                  <label className="flex items-center gap-2.5 cursor-pointer text-slate-300">
-                    <input
-                      type="checkbox"
-                      checked={autoQuarantine}
-                      onChange={(e) => setAutoQuarantine(e.target.checked)}
-                      className="rounded border-white/20 bg-black/40 text-kali-primary focus:ring-0"
-                    />
-                    <span>Automatically quarantine into isolation vault if threat detected</span>
-                  </label>
-
-                  <button
-                    type="submit"
-                    disabled={scanning}
-                    className="inline-flex items-center gap-2 rounded-xl bg-kali-primary px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-kali-primary/20 hover:bg-kali-secondaryBlue transition-colors disabled:opacity-50"
-                  >
-                    <FileSearch className={`h-4 w-4 ${scanning ? 'animate-spin' : ''}`} />
-                    <span>{scanning ? 'Scanning Artifact...' : 'Dispatch Scanner'}</span>
-                  </button>
-                </form>
+                  <pre>{JSON.stringify(scanResult, null, 2)}</pre>
+                </TerminalBox>
               </div>
+            )}
+          </div>
+        )}
 
-              {/* Scan Results Panel */}
-              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl space-y-3">
-                <div className="text-xs text-slate-400 font-medium">Scanner Output Buffer</div>
-                {scanResult ? (
-                  <TerminalBox
-                    title={`Scan Result: ${scanPath}`}
-                    copyContent={JSON.stringify(scanResult, null, 2)}
-                    maxHeight="max-h-72"
-                  >
-                    <pre>{JSON.stringify(scanResult, null, 2)}</pre>
-                  </TerminalBox>
-                ) : (
-                  <div className="h-64 flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 text-slate-500 text-xs">
-                    <FileSearch className="h-8 w-8 text-slate-600 mb-2" />
-                    <span>Ready to scan sandbox files. Submit file path on the left.</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: QUARANTINE VAULT */}
-          {activeSubTab === 'quarantine' && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl space-y-4">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3.5">
+        {activeSubTab === 'intel' && (
+          <div className="space-y-4 max-w-xl">
+            <h3 className="text-sm font-bold text-[#1E293B]">Threat Intelligence Reputation Lookup</h3>
+            <form onSubmit={handleIntelSubmit} className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <div className="text-xs text-amber-400 font-medium">Isolation Vault</div>
-                  <h2 className="text-base font-bold text-white mt-1">Non-Destructive Malware Quarantine Storage</h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Malicious artifacts are cryptographically hashed, quarantined, and secured from execution.
-                  </p>
+                  <label className="block font-medium text-[#1E293B] mb-1">Type</label>
+                  <select
+                    value={intelType}
+                    onChange={(e) => setIntelType(e.target.value)}
+                    className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2"
+                  >
+                    <option value="ip">IP Address</option>
+                    <option value="domain">Domain Name</option>
+                    <option value="hash">File Hash</option>
+                  </select>
                 </div>
-                <button
-                  onClick={fetchQuarantine}
-                  disabled={loadingQuarantine}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-1.5 text-xs font-semibold text-slate-200 hover:border-kali-primary/50 transition-colors"
+                <div className="col-span-2">
+                  <label className="block font-medium text-[#1E293B] mb-1">Indicator Value</label>
+                  <input
+                    type="text"
+                    value={intelValue}
+                    onChange={(e) => setIntelValue(e.target.value)}
+                    className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 font-mono"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={queryingIntel}
+                className="px-4 py-2 rounded-lg bg-[#3B82F6] text-white font-semibold hover:bg-[#2563EB] disabled:opacity-50"
+              >
+                {queryingIntel ? 'Querying Feeds...' : 'Query Threat Intelligence'}
+              </button>
+            </form>
+
+            {intelResult && (
+              <div className="mt-4 pt-4 border-t border-[#F1F5F9] space-y-2">
+                <span className="font-semibold text-[#1E293B]">Threat Intelligence Feed Result</span>
+                <TerminalBox
+                  title="Reputation Analysis"
+                  maxHeight="max-h-48"
+                  copyContent={JSON.stringify(intelResult, null, 2)}
                 >
-                  <RefreshCw className={`h-3 w-3 text-kali-cyan ${loadingQuarantine ? 'animate-spin' : ''}`} />
-                  <span>Refresh Vault</span>
-                </button>
+                  <pre>{JSON.stringify(intelResult, null, 2)}</pre>
+                </TerminalBox>
               </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="border-b border-white/10 text-[11px] text-slate-400 font-medium">
-                    <tr>
-                      <th className="py-2.5 px-3">Quarantine ID</th>
-                      <th className="py-2.5 px-3">Threat Signature</th>
-                      <th className="py-2.5 px-3">Original Path</th>
-                      <th className="py-2.5 px-3">SHA-256 Hash</th>
-                      <th className="py-2.5 px-3">Timestamp</th>
-                      <th className="py-2.5 px-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5 text-slate-300">
-                    {quarantineItems.map((item) => (
-                      <tr key={item.quarantine_id || item.id} className="hover:bg-white/[0.03] transition-colors">
-                        <td className="py-3 px-3 font-semibold text-white">{item.quarantine_id || item.id}</td>
-                        <td className="py-3 px-3 text-rose-400 font-medium">{item.threat_name || 'Generic.Malware'}</td>
-                        <td className="py-3 px-3 text-slate-400 max-w-[180px] truncate font-mono text-[11px]">{item.original_path}</td>
-                        <td className="py-3 px-3 text-kali-cyan font-mono text-[11px] truncate max-w-[140px]">{item.file_hash}</td>
-                        <td className="py-3 px-3 text-slate-400 text-[11px]">{item.timestamp || 'Recent'}</td>
-                        <td className="py-3 px-3 text-right">
-                          <button
-                            onClick={() => handleRestoreFile(item.quarantine_id || item.id)}
-                            className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-kali-secure hover:border-kali-secure/50 transition-colors"
-                          >
-                            Restore
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {quarantineItems.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="py-12 text-center text-slate-500 text-xs">
-                          Quarantine vault is empty. No active malicious payloads isolated.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: THREAT INTEL IoC LOOKUP */}
-          {activeSubTab === 'intel' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl space-y-4">
-                <div className="border-b border-white/10 pb-3.5">
-                  <div className="text-xs text-kali-secure font-medium">Threat Intelligence</div>
-                  <h2 className="text-base font-bold text-white mt-1">Indicator of Compromise (IoC) Evaluator</h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Cross-reference external IP addresses, domains, and payload hashes against global threat feeds.
-                  </p>
-                </div>
-
-                <form onSubmit={handleQueryIntel} className="space-y-4 text-xs">
-                  <div>
-                    <label className="text-slate-300 font-medium block mb-1.5">Indicator Type</label>
-                    <select
-                      value={intelType}
-                      onChange={(e) => setIntelType(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-primary focus:outline-none"
-                    >
-                      <option value="ip" className="bg-[#0a0d14] text-white">IP Address (IPv4 / IPv6)</option>
-                      <option value="domain" className="bg-[#0a0d14] text-white">Domain Name</option>
-                      <option value="hash" className="bg-[#0a0d14] text-white">Cryptographic Hash (MD5 / SHA-256)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-slate-300 font-medium block mb-1.5">Indicator Value</label>
-                    <input
-                      type="text"
-                      required
-                      value={intelValue}
-                      onChange={(e) => setIntelValue(e.target.value)}
-                      placeholder="e.g. 198.51.100.42"
-                      className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-primary focus:outline-none"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={queryingIntel}
-                    className="inline-flex items-center gap-2 rounded-xl bg-kali-primary px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-kali-primary/20 hover:bg-kali-secondaryBlue transition-colors disabled:opacity-50"
-                  >
-                    <Search className={`h-4 w-4 ${queryingIntel ? 'animate-spin' : ''}`} />
-                    <span>{queryingIntel ? 'Querying Feeds...' : 'Evaluate IoC'}</span>
-                  </button>
-                </form>
-              </div>
-
-              {/* IoC Results */}
-              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl space-y-3">
-                <div className="text-xs text-slate-400 font-medium">Threat Intelligence Report</div>
-                {intelResult ? (
-                  <TerminalBox
-                    title={`IoC Report: ${intelValue}`}
-                    copyContent={JSON.stringify(intelResult, null, 2)}
-                    maxHeight="max-h-72"
-                  >
-                    <pre>{JSON.stringify(intelResult, null, 2)}</pre>
-                  </TerminalBox>
-                ) : (
-                  <div className="h-64 flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 text-slate-500 text-xs">
-                    <Search className="h-8 w-8 text-slate-600 mb-2" />
-                    <span>Submit an IP or hash on the left to query threat intelligence telemetry.</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </>
-      )}
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

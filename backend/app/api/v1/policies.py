@@ -147,6 +147,22 @@ async def update_policy(
     return policy
 
 
+@router.delete("/{policy_id}", tags=["Policies"])
+async def delete_policy(
+    policy_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Deletes an existing policy and cascades to its version records."""
+    policy = await db.get(Policy, policy_id)
+    if not policy:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Policy not found")
+
+    await db.delete(policy)
+    await db.commit()
+    return {"status": "deleted", "policy_id": policy_id}
+
+
 @router.post("/test", tags=["Policies"])
 async def test_policy_evaluation(
     req: PolicyTestRequest,

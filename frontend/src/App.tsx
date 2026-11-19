@@ -74,11 +74,11 @@ const TabRouter: React.FC = () => {
 
 const DashboardLayout: React.FC = () => {
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-black text-slate-100 font-sans antialiased">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#F5F7FA] text-[#1E293B] font-sans antialiased">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopNavbar />
-        <main className="flex-1 overflow-y-auto p-5 md:p-8 bg-black">
+        <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#F5F7FA]">
           <div className="mx-auto max-w-[1600px] space-y-6">
             <ErrorBoundary>
               <TabRouter />
@@ -96,38 +96,37 @@ const NotFoundScreen: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
   return (
-    <div className="flex h-screen w-screen flex-col items-center justify-center bg-black text-slate-100 p-4 relative select-none">
-      <div className="absolute inset-0 soc-grid-bg opacity-20 pointer-events-none" />
-      <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl p-8 shadow-2xl text-center space-y-5">
+    <div className="flex h-screen w-screen flex-col items-center justify-center bg-[#F5F7FA] text-[#1E293B] p-4 relative select-none">
+      <div className="relative z-10 w-full max-w-md rounded-2xl border border-[#E5EAF1] bg-white p-8 shadow-xl text-center space-y-5">
         <div className="flex justify-center">
           <BrandLogo size="md" />
         </div>
         <div>
-          <div className="text-4xl font-bold text-white tracking-tight font-mono">404</div>
-          <h2 className="text-base font-semibold text-white mt-1">Page Not Found</h2>
+          <div className="text-4xl font-bold text-[#1E293B] tracking-tight font-mono">404</div>
+          <h2 className="text-base font-semibold text-[#1E293B] mt-1">Page Not Found</h2>
         </div>
-        <p className="text-slate-400 text-xs leading-relaxed">
-          The requested path <code className="text-kali-cyan bg-white/5 px-2 py-0.5 rounded border border-white/10">{pathname}</code> does not exist on this console.
+        <p className="text-[#64748B] text-xs leading-relaxed">
+          The requested path <code className="text-[#3B82F6] bg-[#EEF4FF] px-2 py-0.5 rounded border border-[#D4E5FF] font-mono">{pathname}</code> does not exist on this console.
         </p>
         <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 text-xs">
           {isAuthenticated ? (
             <button
               onClick={() => navigate('/dashboard')}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-kali-primary to-kali-secondaryBlue text-white font-medium hover:opacity-95 transition-all shadow-kali-glow"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-[#3B82F6] text-white font-medium hover:bg-[#2563EB] transition-all shadow-xs"
             >
-              Dashboard
+              Go to Dashboard
             </button>
           ) : (
             <button
               onClick={() => navigate('/login')}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-kali-primary to-kali-secondaryBlue text-white font-medium hover:opacity-95 transition-all shadow-kali-glow"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-[#3B82F6] text-white font-medium hover:bg-[#2563EB] transition-all shadow-xs"
             >
               Sign In
             </button>
           )}
           <button
             onClick={() => navigate('/')}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-white/10 bg-white/[0.03] text-slate-300 hover:text-white hover:border-white/20 transition-all"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-lg border border-[#E5EAF1] bg-[#F8FAFC] text-[#64748B] hover:text-[#1E293B] hover:border-[#CBD5E1] transition-all"
           >
             Landing Page
           </button>
@@ -150,11 +149,11 @@ const AppFlowRouter: React.FC = () => {
 
   if (isLoading && !isLandingPage) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-black text-slate-400 text-xs gap-4">
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-[#F5F7FA] text-[#64748B] text-xs gap-4">
         <BrandLogo size="lg" showSubtitle={false} />
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-kali-cyan animate-pulse" />
-          <span className="text-slate-400">Verifying session...</span>
+          <span className="h-2 w-2 rounded-full bg-[#3B82F6] animate-pulse" />
+          <span className="text-[#64748B]">Verifying session...</span>
         </div>
       </div>
     );

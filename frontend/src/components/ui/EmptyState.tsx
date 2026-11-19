@@ -22,19 +22,19 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
   return (
     <div
-      className={`flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.015] p-12 text-center ${className}`}
+      className={`flex flex-col items-center justify-center rounded-xl border border-dashed border-[#CBD5E1] bg-white p-10 text-center ${className}`}
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-kali-cyan mb-4 shadow-sm">
-        <Icon className="h-6 w-6" />
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#D4E5FF] bg-[#EEF4FF] text-[#3B82F6] mb-3">
+        <Icon className="h-5 w-5" />
       </div>
-      <h3 className="text-sm font-semibold text-white">{title}</h3>
-      <p className="mt-1.5 max-w-sm text-xs text-slate-400">{description}</p>
+      <h3 className="text-sm font-semibold text-[#1E293B]">{title}</h3>
+      <p className="mt-1 max-w-sm text-xs text-[#64748B] leading-relaxed">{description}</p>
       {action && (
         <button
           onClick={action.onClick}
-          className="mt-5 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-medium text-white hover:border-kali-cyan/40 hover:bg-white/[0.08] transition-all"
+          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#3B82F6] px-3.5 py-2 text-xs font-medium text-white hover:bg-[#2563EB] shadow-2xs transition-all"
         >
-          {action.icon && React.createElement(action.icon, { className: 'h-3.5 w-3.5 text-kali-cyan' })}
+          {action.icon && React.createElement(action.icon, { className: 'h-3.5 w-3.5' })}
           <span>{action.label}</span>
         </button>
       )}

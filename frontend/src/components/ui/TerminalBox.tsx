@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Terminal, Copy, Check } from 'lucide-react';
+import { Code, Copy, Check } from 'lucide-react';
 
 interface TerminalBoxProps {
   title?: string;
@@ -11,7 +11,7 @@ interface TerminalBoxProps {
 }
 
 export const TerminalBox: React.FC<TerminalBoxProps> = ({
-  title = 'Console Output',
+  title = 'Output',
   command,
   children,
   maxHeight = 'max-h-72',
@@ -29,36 +29,29 @@ export const TerminalBox: React.FC<TerminalBoxProps> = ({
 
   return (
     <div
-      className={`overflow-hidden rounded-xl border border-white/10 bg-black/80 font-mono shadow-sm ${className}`}
+      className={`overflow-hidden rounded-xl border border-[#E5EAF1] bg-[#F8FAFC] shadow-2xs ${className}`}
     >
       {/* Title Bar */}
-      <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.02] px-4 py-2.5">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-rose-500/80 inline-block" />
-            <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80 inline-block" />
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80 inline-block" />
-          </div>
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-300">
-            <Terminal className="h-3.5 w-3.5 text-kali-cyan" />
-            <span>{title}</span>
-          </div>
+      <div className="flex items-center justify-between border-b border-[#E5EAF1] bg-white px-4 py-2">
+        <div className="flex items-center gap-2 text-xs font-medium text-[#1E293B]">
+          <Code className="h-3.5 w-3.5 text-[#3B82F6]" />
+          <span>{title}</span>
         </div>
 
         {copyContent && (
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-slate-300 hover:border-kali-cyan/40 hover:text-white transition-all"
+            className="flex items-center gap-1.5 rounded-md border border-[#E5EAF1] bg-[#F8FAFC] px-2 py-0.5 text-[11px] text-[#64748B] hover:text-[#1E293B] hover:bg-[#F1F5F9] transition-all"
             title="Copy buffer"
           >
             {copied ? (
               <>
-                <Check className="h-3 w-3 text-emerald-400" />
-                <span className="text-emerald-400 font-medium">Copied</span>
+                <Check className="h-3 w-3 text-[#16A34A]" />
+                <span className="text-[#16A34A] font-medium">Copied</span>
               </>
             ) : (
               <>
-                <Copy className="h-3 w-3 text-kali-cyan" />
+                <Copy className="h-3 w-3 text-[#64748B]" />
                 <span>Copy</span>
               </>
             )}
@@ -68,15 +61,15 @@ export const TerminalBox: React.FC<TerminalBoxProps> = ({
 
       {/* Optional Command Prompt line */}
       {command && (
-        <div className="border-b border-white/5 bg-white/[0.015] px-4 py-2 text-xs text-kali-cyan flex items-center gap-2">
-          <span className="text-kali-primary font-semibold">$</span>
-          <span className="text-white font-medium">{command}</span>
+        <div className="border-b border-[#E5EAF1] bg-[#F1F5F9] px-4 py-1.5 text-xs text-[#3B82F6] font-mono flex items-center gap-2">
+          <span className="text-[#64748B] font-semibold">$</span>
+          <span className="text-[#1E293B] font-medium">{command}</span>
         </div>
       )}
 
       {/* Body */}
       <div
-        className={`p-4 overflow-y-auto text-xs leading-relaxed text-slate-300 font-mono-tech ${maxHeight}`}
+        className={`p-4 overflow-y-auto text-xs leading-relaxed text-[#1E293B] font-mono ${maxHeight}`}
       >
         {children}
       </div>

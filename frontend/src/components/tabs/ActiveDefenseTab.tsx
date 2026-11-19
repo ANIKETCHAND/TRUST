@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Skull,
-  Terminal,
   RefreshCw,
   Plus,
   AlertTriangle,
@@ -9,13 +7,13 @@ import {
   Archive,
   Activity,
   Cpu,
-  CheckCircle,
 } from 'lucide-react';
 import { useSecurityPlatform } from '../../context/SecurityPlatformContext';
 import { useToast } from '../../context/ToastContext';
 import { StatCard } from '../ui/StatCard';
 import { Modal } from '../ui/Modal';
 import { api } from '../../services/api.client';
+import { formatTimestamp } from '../../utils/formatters';
 
 interface ProcessInfo {
   pid: number;
@@ -65,7 +63,7 @@ interface CountermeasureEvent {
 
 export const ActiveDefenseTab: React.FC = () => {
   const { refreshTrigger } = useSecurityPlatform();
-  const { showToast } = useToast();
+  const toast = useToast();
 
   const [processes, setProcesses] = useState<ProcessInfo[]>([]);
   const [sinkholes, setSinkholes] = useState<SinkholeRecord[]>([]);
@@ -117,11 +115,11 @@ export const ActiveDefenseTab: React.FC = () => {
         reason: killReason,
         force: true,
       });
-      showToast('success', 'Process Terminated', `PID ${selectedPidToKill} forcefully neutralized.`);
+      toast.success('Process Terminated', `PID ${selectedPidToKill} neutralized.`);
       setIsKillModalOpen(false);
       loadData();
     } catch (err: any) {
-      showToast('error', 'Termination Failed', err.message);
+      toast.error('Termination Failed', err.message);
     }
   };
 
@@ -134,55 +132,54 @@ export const ActiveDefenseTab: React.FC = () => {
         reason: sinkholeReasonInput,
         duration_seconds: 7200,
       });
-      showToast('success', 'Sinkhole Created', `IP ${sinkholeIpInput} blocked at OS firewall.`);
+      toast.success('Sinkhole Created', `IP ${sinkholeIpInput} blocked at OS firewall.`);
       setIsSinkholeModalOpen(false);
       setSinkholeIpInput('');
       loadData();
     } catch (err: any) {
-      showToast('error', 'Sinkhole Failed', err.message);
+      toast.error('Sinkhole Failed', err.message);
     }
   };
 
   const handleReleaseSinkhole = async (ip: string) => {
     try {
       await api.releaseSinkhole(ip);
-      showToast('info', 'Sinkhole Removed', `Perimeter filter released for IP ${ip}.`);
+      toast.info('Sinkhole Released', `Firewall rule removed for IP ${ip}.`);
       loadData();
     } catch (err: any) {
-      showToast('error', 'Release Failed', err.message);
+      toast.error('Release Failed', err.message);
     }
   };
 
   const handleRestoreQuarantine = async (id: string) => {
     try {
       await api.restoreActiveDefenseQuarantine(id);
-      showToast('success', 'File Restored', `File ${id} restored to its original path.`);
+      toast.success('File Restored', `File ${id} restored to its original path.`);
       loadData();
     } catch (err: any) {
-      showToast('error', 'Restore Failed', err.message);
+      toast.error('Restore Failed', err.message);
     }
   };
 
   const handlePurgeQuarantine = async (id: string) => {
     try {
       await api.purgeActiveDefenseQuarantine(id);
-      showToast('info', 'File Purged', `Quarantine entry ${id} permanently wiped.`);
+      toast.info('File Purged', `Quarantine entry ${id} permanently wiped.`);
       loadData();
     } catch (err: any) {
-      showToast('error', 'Purge Failed', err.message);
+      toast.error('Purge Failed', err.message);
     }
   };
 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 border-b border-[#E5EAF1] pb-6 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-            <Skull className="h-6 w-6 text-rose-400" />
+          <h1 className="text-2xl font-bold tracking-tight text-[#1E293B]">
             Active Defense & Containment
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-[#64748B] mt-1">
             Real-time process inspection, network sinkholing, and automated file quarantine.
           </p>
         </div>
@@ -190,7 +187,7 @@ export const ActiveDefenseTab: React.FC = () => {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setIsSinkholeModalOpen(true)}
-            className="flex items-center gap-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 text-xs font-semibold transition-all shadow-sm"
+            className="flex items-center gap-1.5 rounded-lg bg-[#3B82F6] hover:bg-[#2563EB] text-white px-3.5 py-2 text-xs font-semibold transition-all shadow-xs"
           >
             <Plus className="h-4 w-4" />
             <span>New Sinkhole</span>
@@ -198,457 +195,305 @@ export const ActiveDefenseTab: React.FC = () => {
 
           <button
             onClick={loadData}
-            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-slate-200 hover:border-kali-cyan/40 hover:bg-white/[0.06] hover:text-white transition-all"
+            className="flex items-center gap-1.5 rounded-lg border border-[#E5EAF1] bg-white px-3 py-2 text-xs font-medium text-[#1E293B] hover:bg-[#F8FAFC] hover:border-[#CBD5E1] transition-all shadow-2xs"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-kali-cyan ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 text-[#3B82F6] ${loading ? 'animate-spin' : ''}`} />
             <span>Sync</span>
           </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* Summary KPI Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Monitored Processes"
+          label="Tracked Processes"
           value={processes.length}
-          icon={<Cpu className="h-4 w-4 text-kali-cyan" />}
+          icon={<Cpu className="h-4 w-4" />}
+          subValue="Active host sentry"
         />
         <StatCard
-          label="Active IP Sinkholes"
+          label="Active Sinkholes"
           value={sinkholes.length}
-          icon={<Lock className="h-4 w-4 text-rose-400" />}
-          subValue="Active"
-          subValueColor="text-rose-400"
+          icon={<Lock className="h-4 w-4" />}
+          subValue="Firewall enforced"
+          subValueColor="text-[#16A34A]"
         />
         <StatCard
           label="Quarantined Files"
-          value={quarantine.filter((q) => !q.is_restored && !q.is_purged).length}
-          icon={<Archive className="h-4 w-4 text-amber-400" />}
+          value={quarantine.length}
+          icon={<Archive className="h-4 w-4" />}
+          subValue="Sandbox vault"
         />
         <StatCard
           label="Countermeasures"
           value={history.length}
-          icon={<Activity className="h-4 w-4 text-emerald-400" />}
+          icon={<Activity className="h-4 w-4" />}
+          subValue="Automated actions"
         />
       </div>
 
-      {/* Navigation Sub-tabs */}
-      <div className="flex border-b border-white/10 gap-2 text-xs">
-        <button
-          onClick={() => setActiveSubTab('processes')}
-          className={`px-4 py-2.5 border-b-2 font-medium transition-all ${
-            activeSubTab === 'processes'
-              ? 'border-kali-cyan text-white font-semibold'
-              : 'border-transparent text-slate-400 hover:text-white'
-          }`}
-        >
-          Processes ({processes.length})
-        </button>
-        <button
-          onClick={() => setActiveSubTab('sinkholes')}
-          className={`px-4 py-2.5 border-b-2 font-medium transition-all ${
-            activeSubTab === 'sinkholes'
-              ? 'border-kali-cyan text-white font-semibold'
-              : 'border-transparent text-slate-400 hover:text-white'
-          }`}
-        >
-          Firewall Sinkholes ({sinkholes.length})
-        </button>
-        <button
-          onClick={() => setActiveSubTab('quarantine')}
-          className={`px-4 py-2.5 border-b-2 font-medium transition-all ${
-            activeSubTab === 'quarantine'
-              ? 'border-kali-cyan text-white font-semibold'
-              : 'border-transparent text-slate-400 hover:text-white'
-          }`}
-        >
-          Quarantine Vault ({quarantine.length})
-        </button>
-        <button
-          onClick={() => setActiveSubTab('history')}
-          className={`px-4 py-2.5 border-b-2 font-medium transition-all ${
-            activeSubTab === 'history'
-              ? 'border-kali-cyan text-white font-semibold'
-              : 'border-transparent text-slate-400 hover:text-white'
-          }`}
-        >
-          Audit Ledger ({history.length})
-        </button>
+      {/* Subtab Navigation Bar */}
+      <div className="flex border-b border-[#E5EAF1] bg-white rounded-t-xl px-4 text-xs font-medium shadow-2xs">
+        {[
+          { id: 'processes', label: `Processes (${processes.length})` },
+          { id: 'sinkholes', label: `Network Sinkholes (${sinkholes.length})` },
+          { id: 'quarantine', label: `Quarantine Vault (${quarantine.length})` },
+          { id: 'history', label: `Audit Log (${history.length})` },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveSubTab(tab.id as any)}
+            className={`py-3 px-4 border-b-2 transition-all ${
+              activeSubTab === tab.id
+                ? 'border-[#3B82F6] text-[#3B82F6] font-semibold'
+                : 'border-transparent text-[#64748B] hover:text-[#1E293B]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* Tab 1: Running Process Monitor & 1-Click Kill Switch */}
-      {activeSubTab === 'processes' && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 space-y-4 backdrop-blur-md">
-          <div>
-            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Terminal className="h-4 w-4 text-kali-cyan" />
-              Running Agent Processes
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Live execution telemetry. Terminate suspicious or rogue processes immediately.
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+      {/* Subtab Content Area */}
+      <div className="rounded-b-xl border border-t-0 border-[#E5EAF1] bg-white overflow-hidden shadow-2xs p-4">
+        {activeSubTab === 'processes' && (
+          <div className="overflow-x-auto text-xs">
+            <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-white/10 text-slate-400">
-                  <th className="py-3 px-4 font-medium">PID</th>
-                  <th className="py-3 px-4 font-medium">Process Name</th>
-                  <th className="py-3 px-4 font-medium">User</th>
-                  <th className="py-3 px-4 font-medium">CPU %</th>
-                  <th className="py-3 px-4 font-medium">Memory</th>
-                  <th className="py-3 px-4 font-medium">Command Line</th>
-                  <th className="py-3 px-4 font-medium text-right">Action</th>
+                <tr className="border-b border-[#E5EAF1] text-[#64748B] text-[11px] uppercase tracking-wider font-semibold">
+                  <th className="py-2.5 px-3">PID</th>
+                  <th className="py-2.5 px-3">Process Name</th>
+                  <th className="py-2.5 px-3">User</th>
+                  <th className="py-2.5 px-3">CPU / Memory</th>
+                  <th className="py-2.5 px-3">Command Line</th>
+                  <th className="py-2.5 px-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-slate-300">
-                {processes.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-8 text-center text-slate-500">
-                      No active agent processes detected.
+              <tbody className="divide-y divide-[#F1F5F9]">
+                {processes.map((p) => (
+                  <tr key={p.pid} className="hover:bg-[#F8FAFC]">
+                    <td className="py-2.5 px-3 font-mono text-[#64748B]">{p.pid}</td>
+                    <td className="py-2.5 px-3 font-semibold text-[#1E293B]">{p.name}</td>
+                    <td className="py-2.5 px-3 text-[#64748B]">{p.user}</td>
+                    <td className="py-2.5 px-3 text-[#64748B]">
+                      {p.cpu_percent}% / {p.memory_mb.toFixed(1)}MB
+                    </td>
+                    <td className="py-2.5 px-3 font-mono text-[11px] text-[#64748B] truncate max-w-xs">
+                      {p.cmdline}
+                    </td>
+                    <td className="py-2.5 px-3 text-right">
+                      <button
+                        onClick={() => {
+                          setSelectedPidToKill(p.pid);
+                          setIsKillModalOpen(true);
+                        }}
+                        className="px-2.5 py-1 rounded bg-[#FEF2F2] text-[#DC2626] font-medium border border-[#FCD2D2] hover:bg-[#FDE2E2]"
+                      >
+                        Kill
+                      </button>
                     </td>
                   </tr>
-                ) : (
-                  processes.map((proc) => (
-                    <tr key={proc.pid} className="hover:bg-white/[0.03]">
-                      <td className="py-3 px-4 font-mono font-medium text-kali-cyan">{proc.pid}</td>
-                      <td className="py-3 px-4 text-white font-medium">{proc.name}</td>
-                      <td className="py-3 px-4 text-slate-400">{proc.user}</td>
-                      <td className="py-3 px-4 text-slate-200">{proc.cpu_percent}%</td>
-                      <td className="py-3 px-4 text-slate-200">{proc.memory_mb} MB</td>
-                      <td className="py-3 px-4 text-slate-400 font-mono max-w-[280px] truncate" title={proc.cmdline}>
-                        {proc.cmdline || '-'}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => {
-                            setSelectedPidToKill(proc.pid);
-                            setIsKillModalOpen(true);
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500 hover:text-white px-3 py-1 text-xs font-semibold transition-all"
-                        >
-                          <Skull className="h-3.5 w-3.5" />
-                          <span>Kill</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeSubTab === 'sinkholes' && (
+          <div className="overflow-x-auto text-xs">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-[#E5EAF1] text-[#64748B] text-[11px] uppercase tracking-wider font-semibold">
+                  <th className="py-2.5 px-3">Blocked IP</th>
+                  <th className="py-2.5 px-3">Reason</th>
+                  <th className="py-2.5 px-3">Enacted</th>
+                  <th className="py-2.5 px-3">Blocked Hits</th>
+                  <th className="py-2.5 px-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F1F5F9]">
+                {sinkholes.map((s) => (
+                  <tr key={s.ip} className="hover:bg-[#F8FAFC]">
+                    <td className="py-2.5 px-3 font-mono font-semibold text-[#DC2626]">{s.ip}</td>
+                    <td className="py-2.5 px-3 text-[#1E293B]">{s.reason}</td>
+                    <td className="py-2.5 px-3 text-[#64748B]">{formatTimestamp(s.created_at)}</td>
+                    <td className="py-2.5 px-3 font-mono text-[#64748B]">{s.blocked_hits}</td>
+                    <td className="py-2.5 px-3 text-right">
+                      <button
+                        onClick={() => handleReleaseSinkhole(s.ip)}
+                        className="px-2.5 py-1 rounded border border-[#E5EAF1] text-[#64748B] hover:text-[#1E293B]"
+                      >
+                        Release
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {sinkholes.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-[#64748B]">
+                      No active sinkholes. All ingress allowed by default.
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Tab 2: OS Firewall Sinkholes */}
-      {activeSubTab === 'sinkholes' && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 space-y-4 backdrop-blur-md">
-          <div>
-            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Lock className="h-4 w-4 text-rose-400" />
-              Dynamic Firewall Sinkholes
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Traffic from these IP addresses is dropped at the firewall layer.
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+        {activeSubTab === 'quarantine' && (
+          <div className="overflow-x-auto text-xs">
+            <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-white/10 text-slate-400">
-                  <th className="py-3 px-4 font-medium">Blocked IP</th>
-                  <th className="py-3 px-4 font-medium">Reason</th>
-                  <th className="py-3 px-4 font-medium">Created</th>
-                  <th className="py-3 px-4 font-medium">Expires</th>
-                  <th className="py-3 px-4 font-medium">Blocked Hits</th>
-                  <th className="py-3 px-4 font-medium">Scope</th>
-                  <th className="py-3 px-4 font-medium text-right">Actions</th>
+                <tr className="border-b border-[#E5EAF1] text-[#64748B] text-[11px] uppercase tracking-wider font-semibold">
+                  <th className="py-2.5 px-3">Original Filename</th>
+                  <th className="py-2.5 px-3">Threat Type</th>
+                  <th className="py-2.5 px-3">Quarantined At</th>
+                  <th className="py-2.5 px-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-slate-300">
-                {sinkholes.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-8 text-center text-slate-500">
-                      No active IP sinkholes.
+              <tbody className="divide-y divide-[#F1F5F9]">
+                {quarantine.map((q) => (
+                  <tr key={q.quarantine_id} className="hover:bg-[#F8FAFC]">
+                    <td className="py-2.5 px-3 font-mono font-medium text-[#1E293B]">
+                      {q.original_filename}
+                    </td>
+                    <td className="py-2.5 px-3 text-[#DC2626] font-semibold">{q.threat_name}</td>
+                    <td className="py-2.5 px-3 text-[#64748B]">{formatTimestamp(q.quarantined_at)}</td>
+                    <td className="py-2.5 px-3 text-right space-x-2">
+                      <button
+                        onClick={() => handleRestoreQuarantine(q.quarantine_id)}
+                        className="px-2 py-1 rounded border border-[#BCE8CD] bg-[#E8F7EF] text-[#16A34A]"
+                      >
+                        Restore
+                      </button>
+                      <button
+                        onClick={() => handlePurgeQuarantine(q.quarantine_id)}
+                        className="px-2 py-1 rounded border border-[#FCD2D2] bg-[#FEF2F2] text-[#DC2626]"
+                      >
+                        Purge
+                      </button>
                     </td>
                   </tr>
-                ) : (
-                  sinkholes.map((s) => (
-                    <tr key={s.ip} className="hover:bg-white/[0.03]">
-                      <td className="py-3 px-4 font-mono font-medium text-rose-400">{s.ip}</td>
-                      <td className="py-3 px-4 text-slate-200">{s.reason}</td>
-                      <td className="py-3 px-4 text-slate-400">{s.created_at.slice(0, 19)}</td>
-                      <td className="py-3 px-4 text-slate-400">{s.expires_at.slice(0, 19)}</td>
-                      <td className="py-3 px-4 font-mono text-amber-400 font-semibold">{s.blocked_hits}</td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            s.firewall_rule_applied
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                          }`}
-                        >
-                          {s.firewall_rule_applied ? 'Firewall Applied' : 'Gateway Only'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handleReleaseSinkhole(s.ip)}
-                          className="rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-slate-300 px-3 py-1 text-xs font-medium transition-all"
-                        >
-                          Release
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                ))}
+                {quarantine.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-[#64748B]">
+                      Quarantine vault is empty. No infected files held.
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Tab 3: Quarantine Vault */}
-      {activeSubTab === 'quarantine' && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 space-y-4 backdrop-blur-md">
-          <div>
-            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Archive className="h-4 w-4 text-amber-400" />
-              Quarantine Vault
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Isolated storage for malicious files and suspicious agent payloads.
-            </p>
+        {activeSubTab === 'history' && (
+          <div className="space-y-2 text-xs">
+            {history.map((h, i) => (
+              <div key={i} className="p-3 rounded-lg border border-[#E5EAF1] bg-[#F8FAFC] flex items-center justify-between">
+                <div>
+                  <span className="font-semibold text-[#1E293B]">{h.countermeasure}</span>
+                  <span className="text-[#64748B] ml-2">Reason: {h.reason}</span>
+                </div>
+                <span className="font-mono text-[#94A3B8]">{formatTimestamp(h.timestamp)}</span>
+              </div>
+            ))}
+            {history.length === 0 && (
+              <div className="py-8 text-center text-[#64748B]">
+                No automated countermeasure events recorded.
+              </div>
+            )}
           </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-white/10 text-slate-400">
-                  <th className="py-3 px-4 font-medium">Quarantine ID</th>
-                  <th className="py-3 px-4 font-medium">Filename</th>
-                  <th className="py-3 px-4 font-medium">Threat Name</th>
-                  <th className="py-3 px-4 font-medium">SHA-256 Hash</th>
-                  <th className="py-3 px-4 font-medium">Quarantined At</th>
-                  <th className="py-3 px-4 font-medium">Status</th>
-                  <th className="py-3 px-4 font-medium text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5 text-slate-300">
-                {quarantine.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-8 text-center text-slate-500">
-                      Quarantine vault is empty.
-                    </td>
-                  </tr>
-                ) : (
-                  quarantine.map((q) => (
-                    <tr key={q.quarantine_id} className="hover:bg-white/[0.03]">
-                      <td className="py-3 px-4 font-mono text-kali-cyan">{q.quarantine_id}</td>
-                      <td className="py-3 px-4 text-white font-medium">{q.original_filename}</td>
-                      <td className="py-3 px-4 text-rose-400">{q.threat_name}</td>
-                      <td className="py-3 px-4 text-slate-400 font-mono max-w-[160px] truncate" title={q.hashes?.sha256}>
-                        {q.hashes?.sha256 || '-'}
-                      </td>
-                      <td className="py-3 px-4 text-slate-400">{q.quarantined_at.slice(0, 19)}</td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            q.is_purged
-                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                              : q.is_restored
-                              ? 'bg-white/5 text-slate-400 border border-white/10'
-                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                          }`}
-                        >
-                          {q.is_purged ? 'Purged' : q.is_restored ? 'Restored' : 'Isolated'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right space-x-2">
-                        {!q.is_restored && !q.is_purged && (
-                          <>
-                            <button
-                              onClick={() => handleRestoreQuarantine(q.quarantine_id)}
-                              className="rounded-lg border border-kali-cyan/30 bg-kali-cyan/10 text-kali-cyan hover:bg-kali-cyan hover:text-white px-3 py-1 text-xs font-medium transition-all"
-                            >
-                              Restore
-                            </button>
-                            <button
-                              onClick={() => handlePurgeQuarantine(q.quarantine_id)}
-                              className="rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white px-3 py-1 text-xs font-medium transition-all"
-                            >
-                              Purge
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 4: Countermeasures History Log */}
-      {activeSubTab === 'history' && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 space-y-4 backdrop-blur-md">
-          <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-            <Activity className="h-4 w-4 text-kali-cyan" />
-            Countermeasure Audit Ledger
-          </h2>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-white/10 text-slate-400">
-                  <th className="py-3 px-4 font-medium">Timestamp</th>
-                  <th className="py-3 px-4 font-medium">Countermeasure</th>
-                  <th className="py-3 px-4 font-medium">Target</th>
-                  <th className="py-3 px-4 font-medium">Reason</th>
-                  <th className="py-3 px-4 font-medium">Outcome</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5 text-slate-300">
-                {history.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-500">
-                      No active defense actions logged yet.
-                    </td>
-                  </tr>
-                ) : (
-                  history.map((h, idx) => (
-                    <tr key={idx} className="hover:bg-white/[0.03]">
-                      <td className="py-3 px-4 text-slate-400">{h.timestamp.slice(0, 19)}</td>
-                      <td className="py-3 px-4 font-medium text-rose-400">{h.countermeasure}</td>
-                      <td className="py-3 px-4 text-white">
-                        {h.target_pid ? `PID ${h.target_pid} (${h.process_name || 'proc'})` : h.target_ip || '-'}
-                      </td>
-                      <td className="py-3 px-4 text-slate-400">{h.reason}</td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            h.success
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                          }`}
-                        >
-                          {h.success ? (
-                            <>
-                              <CheckCircle className="h-3 w-3" /> Neutralized
-                            </>
-                          ) : (
-                            <>
-                              <AlertTriangle className="h-3 w-3" /> Failed
-                            </>
-                          )}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Kill Process Modal */}
-      <Modal
-        isOpen={isKillModalOpen}
-        onClose={() => setIsKillModalOpen(false)}
-        title="Confirm Process Termination"
-      >
-        <div className="space-y-4 text-xs">
-          <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-4 flex items-start gap-3 text-rose-400">
-            <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
+      {isKillModalOpen && (
+        <Modal
+          isOpen={isKillModalOpen}
+          onClose={() => setIsKillModalOpen(false)}
+          title="Terminate Process"
+          subtitle={`Neutralize PID ${selectedPidToKill}`}
+          icon={<AlertTriangle className="h-4 w-4 text-[#DC2626]" />}
+        >
+          <div className="space-y-4 text-xs">
             <div>
-              <div className="font-semibold text-sm text-white">Terminate Process PID {selectedPidToKill}</div>
-              <p className="mt-1 text-slate-300 text-xs">
-                This will immediately kill the process and all child subprocesses.
-              </p>
+              <label className="block font-medium text-[#1E293B] mb-1">Termination Justification</label>
+              <input
+                type="text"
+                value={killReason}
+                onChange={(e) => setKillReason(e.target.value)}
+                className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 text-[#1E293B]"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsKillModalOpen(false)}
+                className="px-4 py-2 rounded-lg border border-[#E5EAF1] text-[#64748B]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteKill}
+                className="px-4 py-2 rounded-lg bg-[#DC2626] text-white font-semibold"
+              >
+                Terminate Process
+              </button>
             </div>
           </div>
+        </Modal>
+      )}
 
-          <div>
-            <label className="block text-slate-300 font-medium mb-1.5">Reason for Termination:</label>
-            <input
-              type="text"
-              value={killReason}
-              onChange={(e) => setKillReason(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-white text-xs focus:outline-none focus:border-rose-500"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-white/10">
-            <button
-              onClick={() => setIsKillModalOpen(false)}
-              className="rounded-xl px-4 py-2 text-slate-400 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleExecuteKill}
-              className="flex items-center gap-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-semibold px-4 py-2 text-xs transition-all"
-            >
-              <Skull className="h-3.5 w-3.5" />
-              <span>Terminate Process</span>
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Create Sinkhole Modal */}
-      <Modal
-        isOpen={isSinkholeModalOpen}
-        onClose={() => setIsSinkholeModalOpen(false)}
-        title="Create IP Sinkhole"
-      >
-        <form onSubmit={handleCreateSinkhole} className="space-y-4 text-xs">
-          <div>
-            <label className="block text-slate-300 font-medium mb-1.5">IP Address to Block:</label>
-            <input
-              type="text"
-              value={sinkholeIpInput}
-              onChange={(e) => setSinkholeIpInput(e.target.value)}
-              placeholder="e.g. 198.51.100.1"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-white text-xs focus:outline-none focus:border-kali-cyan font-mono"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-slate-300 font-medium mb-1.5">Justification:</label>
-            <input
-              type="text"
-              value={sinkholeReasonInput}
-              onChange={(e) => setSinkholeReasonInput(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-white text-xs focus:outline-none focus:border-kali-cyan"
-              required
-            />
-          </div>
-
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-white/10">
-            <button
-              type="button"
-              onClick={() => setIsSinkholeModalOpen(false)}
-              className="rounded-xl px-4 py-2 text-slate-400 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex items-center gap-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-semibold px-4 py-2 text-xs transition-all"
-            >
-              <Lock className="h-3.5 w-3.5" />
-              <span>Block IP</span>
-            </button>
-          </div>
-        </form>
-      </Modal>
+      {/* New Sinkhole Modal */}
+      {isSinkholeModalOpen && (
+        <Modal
+          isOpen={isSinkholeModalOpen}
+          onClose={() => setIsSinkholeModalOpen(false)}
+          title="Create Perimeter Sinkhole"
+          subtitle="Enact instant OS firewall rule blocking target IP"
+          icon={<Lock className="h-4 w-4 text-[#3B82F6]" />}
+        >
+          <form onSubmit={handleCreateSinkhole} className="space-y-4 text-xs">
+            <div>
+              <label className="block font-medium text-[#1E293B] mb-1">Target IP Address *</label>
+              <input
+                type="text"
+                required
+                value={sinkholeIpInput}
+                onChange={(e) => setSinkholeIpInput(e.target.value)}
+                placeholder="e.g. 192.168.1.150"
+                className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 font-mono text-[#1E293B]"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[#1E293B] mb-1">Block Justification</label>
+              <input
+                type="text"
+                value={sinkholeReasonInput}
+                onChange={(e) => setSinkholeReasonInput(e.target.value)}
+                className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 text-[#1E293B]"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsSinkholeModalOpen(false)}
+                className="px-4 py-2 rounded-lg border border-[#E5EAF1] text-[#64748B]"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-lg bg-[#3B82F6] text-white font-semibold"
+              >
+                Enact Sinkhole
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 };

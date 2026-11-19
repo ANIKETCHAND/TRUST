@@ -1,24 +1,22 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  ShieldCheck,
   RefreshCw,
   Play,
   Save,
-  Check,
   Code2,
-  FileCode,
   Shield,
   Plus,
-  Power,
-  History,
+  Trash2,
+  ArrowUpDown,
+  AlertTriangle,
 } from 'lucide-react';
 import { api } from '../../services/api.client';
 import type { Policy, Agent, PolicyTestResult } from '../../types';
 import { DecisionBadge } from '../ui/Badge';
 import { Modal } from '../ui/Modal';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
-import { formatTimestamp, safeJsonParse } from '../../utils/formatters';
+import { SearchInput } from '../ui/SearchInput';
 import { useToast } from '../../context/ToastContext';
+import { formatTimestamp } from '../../utils/formatters';
 
 export const PoliciesTab: React.FC = () => {
   const [policies, setPolicies] = useState<Policy[]>([]);
@@ -26,43 +24,45 @@ export const PoliciesTab: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const toast = useToast();
 
+  // Search & Filter state
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [sortBy, setSortBy] = useState<'updated_at' | 'name' | 'priority'>('updated_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Deletion modal state
+  const [policyToDelete, setPolicyToDelete] = useState<Policy | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Policy Editor state
   const [selectedPolicy, setSelectedPolicy] = useState<Policy | null>(null);
   const [editorRules, setEditorRules] = useState('');
   const [editorDesc, setEditorDesc] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isValidJson, setIsValidJson] = useState<boolean | null>(null);
-  const [activeTabMode, setActiveTabMode] = useState<'editor' | 'history'>('editor');
 
   // Policy Simulator / Test state
   const [testAgentId, setTestAgentId] = useState('');
   const [testTool, setTestTool] = useState('filesystem_tool');
   const [testOp, setTestOp] = useState('read_file');
-  const [testRes, setTestRes] = useState('confidential/keys.pem');
+  const [testRes, setTestRes] = useState('reports/confidential.pem');
   const [testSimulationResult, setTestSimulationResult] = useState<PolicyTestResult | null>(null);
   const [testing, setTesting] = useState(false);
 
-  // Policy Creation Modal state
+  // Multi-Step Policy Builder Modal state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createStep, setCreateStep] = useState<1 | 2 | 3>(1);
   const [newPolicyName, setNewPolicyName] = useState('');
   const [newPolicyDesc, setNewPolicyDesc] = useState('');
+  const [newPolicyCategory, setNewPolicyCategory] = useState('filesystem');
+  const [newPolicyAgentScope, setNewPolicyAgentScope] = useState('*');
+  const [newPolicyResourcePattern, setNewPolicyResourcePattern] = useState('reports/*');
+  const [newPolicyBlockedExtensions, setNewPolicyBlockedExtensions] = useState('.pem, .key, .env');
   const [newPolicyDefaultEffect, setNewPolicyDefaultEffect] = useState<'DENY' | 'ALLOW'>('DENY');
-  const [newPolicyRules, setNewPolicyRules] = useState(
-    JSON.stringify(
-      {
-        sandbox_filesystem: {
-          allowed_prefixes: ['reports/', 'public/', 'temp/'],
-          blocked_extensions: ['.pem', '.key', '.env'],
-        },
-        database_access: {
-          max_rows_per_query: 500,
-          forbidden_statements: ['DROP', 'TRUNCATE', 'ALTER'],
-        },
-      },
-      null,
-      2
-    )
-  );
+  const [newPolicyPriority, setNewPolicyPriority] = useState(100);
+  const [newPolicyEnabled, setNewPolicyEnabled] = useState(true);
   const [creatingPolicy, setCreatingPolicy] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -98,103 +98,91 @@ export const PoliciesTab: React.FC = () => {
     setEditorRules(JSON.stringify(p.rules || {}, null, 2));
     setEditorDesc(p.description || '');
     setIsValidJson(null);
-    setActiveTabMode('editor');
   };
 
-  const handleValidateJson = () => {
-    try {
-      JSON.parse(editorRules);
-      setIsValidJson(true);
-      toast.success('JSON Validation', 'Policy rules syntax is valid.');
-    } catch {
-      setIsValidJson(false);
-      toast.error('JSON Syntax Error', 'Invalid JSON syntax in rules definition.');
-    }
-  };
-
-  const handleFormatJson = () => {
+  const handleSavePolicy = async () => {
+    if (!selectedPolicy) return;
     try {
       const parsed = JSON.parse(editorRules);
-      setEditorRules(JSON.stringify(parsed, null, 2));
       setIsValidJson(true);
-      toast.info('Rules Formatted', 'JSON pretty-printed successfully.');
-    } catch {
-      setIsValidJson(false);
-      toast.error('Cannot Format', 'Fix syntax errors before auto-formatting.');
-    }
-  };
-
-  const handleSavePolicy = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedPolicy) return;
-    setIsSaving(true);
-    const parsedRules = safeJsonParse(editorRules, null);
-    if (!parsedRules) {
-      toast.error('Syntax Error', 'Invalid JSON in policy rules definition.');
-      setIsSaving(false);
-      setIsValidJson(false);
-      return;
-    }
-
-    try {
+      setIsSaving(true);
       const updated = await api.updatePolicy(selectedPolicy.id, {
         description: editorDesc,
-        rules: parsedRules,
-        change_summary: `Rule revision committed via CrossX SOC Console at ${new Date().toISOString()}`,
+        rules: parsed,
       });
       setSelectedPolicy(updated);
-      toast.success('Policy Committed', `Policy incremented to revision v${updated.version}.`);
-      fetchData();
+      setPolicies((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      toast.success('Policy Updated', `Rule changes saved for ${selectedPolicy.name}.`);
     } catch (err: any) {
-      toast.error('Policy Update Failed', err.message);
+      setIsValidJson(false);
+      toast.error('Invalid JSON', err.message || 'Check rule syntax.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleTogglePolicyActive = async () => {
-    if (!selectedPolicy) return;
-    const newActive = selectedPolicy.is_active === false ? true : false;
+  const handleTogglePolicyStatus = async (p: Policy, e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
-      const updated = await api.updatePolicy(selectedPolicy.id, {
-        is_active: newActive,
-        change_summary: `Policy state toggled to ${newActive ? 'ACTIVE' : 'DISABLED'}`,
-      });
-      setSelectedPolicy(updated);
-      toast.success(
-        newActive ? 'Policy Activated' : 'Policy Disabled',
-        `Policy '${selectedPolicy.name}' enforcement is now ${newActive ? 'ACTIVE' : 'DISABLED'}.`
-      );
-      fetchData();
+      const newActive = !p.is_active;
+      await api.updatePolicy(p.id, { is_active: newActive });
+      setPolicies((prev) => prev.map((item) => (item.id === p.id ? { ...item, is_active: newActive } : item)));
+      if (selectedPolicy?.id === p.id) {
+        setSelectedPolicy((prev) => (prev ? { ...prev, is_active: newActive } : null));
+      }
+      toast.info('Policy Status Changed', `${p.name} is now ${newActive ? 'Enforcing' : 'Disabled'}.`);
     } catch (err: any) {
       toast.error('Toggle Failed', err.message);
     }
   };
 
-  const handleCreatePolicySubmit = async (e: React.FormEvent) => {
+  const handleRunSimulation = async (e: React.FormEvent) => {
     e.preventDefault();
-    const parsedRules = safeJsonParse(newPolicyRules, null);
-    if (!parsedRules) {
-      toast.error('Invalid JSON', 'Policy rules must be valid JSON.');
-      return;
+    setTesting(true);
+    setTestSimulationResult(null);
+    try {
+      const res = await api.testPolicy({
+        agent_id: testAgentId,
+        tool: testTool,
+        operation: testOp,
+        resource: testRes,
+      });
+      setTestSimulationResult(res);
+      if (res.decision === 'ALLOWED') {
+        toast.success('Simulation Passed', 'Request permitted by active policy.');
+      } else {
+        toast.warning('Simulation Denied', `Denied: ${res.reason || 'Guardrail blocked'}`);
+      }
+    } catch (err: any) {
+      toast.error('Simulation Failed', err.message);
+    } finally {
+      setTesting(false);
     }
+  };
 
+  const handleCreatePolicySubmit = async () => {
     setCreatingPolicy(true);
     try {
+      const rulesPayload = {
+        [newPolicyCategory]: {
+          allowed_prefixes: [newPolicyResourcePattern],
+          blocked_extensions: newPolicyBlockedExtensions.split(',').map((s) => s.trim()),
+          priority: newPolicyPriority,
+        },
+      };
+
       const created = await api.createPolicy({
         name: newPolicyName,
-        description: newPolicyDesc || undefined,
-        default_effect: newPolicyDefaultEffect,
-        rules: parsedRules,
+        description: newPolicyDesc,
+        is_enabled: newPolicyEnabled,
+        rules: rulesPayload,
       });
-      toast.success('Policy Created', `Policy '${created.name}' initialized as v1.`);
-      setIsCreateOpen(false);
-      setNewPolicyName('');
-      setNewPolicyDesc('');
+
+      setPolicies((prev) => [created, ...prev]);
       setSelectedPolicy(created);
-      setEditorRules(JSON.stringify(created.rules || {}, null, 2));
-      setEditorDesc(created.description || '');
-      fetchData();
+      setIsCreateOpen(false);
+      setCreateStep(1);
+      toast.success('Policy Enacted', `Policy ${newPolicyName} created successfully.`);
     } catch (err: any) {
       toast.error('Creation Failed', err.message);
     } finally {
@@ -202,516 +190,667 @@ export const PoliciesTab: React.FC = () => {
     }
   };
 
-  const handleTestPolicy = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!testAgentId) {
-      toast.warning('Input Required', 'Please select a subject agent to test.');
-      return;
-    }
-    setTesting(true);
-    setTestSimulationResult(null);
-
+  const handleDeleteConfirm = async () => {
+    if (!policyToDelete) return;
+    setIsDeleting(true);
     try {
-      const res = await api.testPolicy({
-        agent_id: testAgentId,
-        tool_name: testTool,
-        operation: testOp,
-        resource: testRes,
-      });
-      setTestSimulationResult(res);
-      if (res.is_allowed) {
-        toast.success('Simulation Result', 'Request conforms with active ALLOW rule.');
-      } else {
-        toast.warning('Simulation Result', 'Request denied by policy fail-closed boundary.');
+      await api.deletePolicy(policyToDelete.id);
+      setPolicies((prev) => prev.filter((p) => p.id !== policyToDelete.id));
+      if (selectedPolicy?.id === policyToDelete.id) {
+        setSelectedPolicy(null);
       }
+      toast.success('Policy Deleted', `${policyToDelete.name} was successfully removed.`);
+      setDeleteConfirmOpen(false);
+      setPolicyToDelete(null);
     } catch (err: any) {
-      toast.error('Simulator Error', err.message);
+      toast.error('Delete Failed', err.message || 'Failed to delete policy');
     } finally {
-      setTesting(false);
+      setIsDeleting(false);
     }
   };
+
+  // Filtered and sorted policies
+  const filteredPolicies = useMemo(() => {
+    return policies
+      .filter((p) => {
+        if (search.trim()) {
+          const q = search.toLowerCase();
+          if (!p.name.toLowerCase().includes(q) && !(p.description || '').toLowerCase().includes(q)) {
+            return false;
+          }
+        }
+        if (statusFilter === 'ENABLED' && !p.is_active) return false;
+        if (statusFilter === 'DISABLED' && p.is_active) return false;
+
+        if (categoryFilter !== 'ALL') {
+          const cat = (Object.keys(p.rules || {})[0] || '').toLowerCase();
+          if (!cat.includes(categoryFilter.toLowerCase())) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'name') {
+          const comp = a.name.localeCompare(b.name);
+          return sortOrder === 'asc' ? comp : -comp;
+        }
+        if (sortBy === 'priority') {
+          const pA = 100;
+          const pB = 100;
+          return sortOrder === 'asc' ? pA - pB : pB - pA;
+        }
+        const tA = new Date(a.updated_at || a.created_at).getTime();
+        const tB = new Date(b.updated_at || b.created_at).getTime();
+        return sortOrder === 'asc' ? tA - tB : tB - tA;
+      });
+  }, [policies, search, statusFilter, categoryFilter, sortBy, sortOrder]);
 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 border-b border-[#E5EAF1] pb-6 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-            <ShieldCheck className="h-6 w-6 text-kali-cyan" />
-            Deterministic Policy Engine & Simulator
+          <h1 className="text-2xl font-bold tracking-tight text-[#1E293B]">
+            Security Policies
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Declarative security policies, syntax validation, and offline pre-flight simulation testbench.
+          <p className="text-xs text-[#64748B] mt-1">
+            Deterministic security guardrails and pre-flight policy evaluation engine.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-400 font-medium">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Fail-Closed Enforcing</span>
-          </div>
+
+        <div className="flex items-center gap-2.5">
           <button
             onClick={fetchData}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-slate-200 hover:border-kali-cyan/40 hover:bg-white/[0.06] hover:text-white transition-all"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5EAF1] bg-white px-3 py-2 text-xs font-medium text-[#1E293B] hover:bg-[#F8FAFC] hover:border-[#CBD5E1] transition-all shadow-2xs"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-kali-cyan ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 text-[#3B82F6] ${loading ? 'animate-spin' : ''}`} />
             <span>Sync</span>
           </button>
           <button
-            onClick={() => setIsCreateOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-kali-primary to-kali-secondaryBlue px-4 py-2 text-xs font-semibold text-white shadow-kali-glow hover:opacity-95 transition-all"
+            onClick={() => {
+              setCreateStep(1);
+              setNewPolicyName('');
+              setNewPolicyDesc('');
+              setIsCreateOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#3B82F6] px-4 py-2 text-xs font-semibold text-white hover:bg-[#2563EB] transition-all shadow-xs"
           >
             <Plus className="h-4 w-4" />
-            <span>New Policy</span>
+            <span>Create Policy</span>
           </button>
         </div>
       </div>
 
-      {loading && policies.length === 0 ? (
-        <LoadingSpinner message="Parsing declarative policy trees..." />
-      ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Left Column: Policy Inventory */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
-              <span className="text-white font-semibold">Active Policies ({policies.length})</span>
-              <span className="text-kali-cyan text-[11px]">OPA Engine</span>
+      {/* Main Grid: Policy Table / List + Editor / Simulator */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Policies Table & Filters (7 cols) */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-[#E5EAF1] shadow-2xs">
+            <div className="flex-1">
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder="Search policies by name or rule..."
+              />
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Category Filter */}
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="rounded-lg border border-[#E5EAF1] bg-white px-3 py-1.5 text-xs text-[#1E293B]"
+              >
+                <option value="ALL">All Categories</option>
+                <option value="filesystem">Filesystem</option>
+                <option value="database">Database</option>
+                <option value="http">HTTP API</option>
+                <option value="sandbox">Sandbox</option>
+              </select>
 
-            <div className="space-y-2.5">
-              {policies.map((p) => {
-                const isSelected = selectedPolicy?.id === p.id;
-                const isActive = p.is_active !== false;
+              {/* Status Filter */}
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="rounded-lg border border-[#E5EAF1] bg-white px-3 py-1.5 text-xs text-[#1E293B]"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="ENABLED">Enforcing</option>
+                <option value="DISABLED">Disabled</option>
+              </select>
 
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => handleSelectPolicy(p)}
-                    className={`cursor-pointer rounded-2xl border p-4 transition-all ${
-                      isSelected
-                        ? 'border-kali-primary/70 bg-kali-primary/[0.08] shadow-lg shadow-kali-primary/10'
-                        : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-kali-primary/20 text-kali-primary' : 'bg-white/[0.04] text-slate-400'}`}>
-                          <Shield className="h-4 w-4" />
-                        </div>
-                        <span className="font-semibold text-white text-xs">{p.name}</span>
-                      </div>
-                      <span className="rounded-md bg-white/[0.05] px-2 py-0.5 text-[10px] font-medium text-kali-cyan border border-white/10">
-                        v{p.version}
-                      </span>
-                    </div>
+              {/* Sort By */}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="rounded-lg border border-[#E5EAF1] bg-white px-2.5 py-1.5 text-xs text-[#1E293B]"
+              >
+                <option value="updated_at">Updated</option>
+                <option value="name">Name</option>
+                <option value="priority">Priority</option>
+              </select>
 
-                    <p className="mt-2 text-xs text-slate-400 line-clamp-2 leading-relaxed">{p.description}</p>
-
-                    <div className="mt-3 flex items-center justify-between text-[11px] border-t border-white/10 pt-2.5">
-                      <span className="text-slate-400">
-                        Default: <span className="text-rose-400 font-semibold">{p.default_effect}</span>
-                      </span>
-                      {isActive ? (
-                        <span className="inline-flex items-center gap-1.5 text-kali-secure font-medium">
-                          <span className="h-1.5 w-1.5 rounded-full bg-kali-secure" /> Enforcing
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 text-amber-400 font-medium">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> Disabled
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+              <button
+                type="button"
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="p-1.5 rounded-lg border border-[#E5EAF1] bg-white text-[#64748B] hover:text-[#1E293B]"
+                title={`Sort order: ${sortOrder}`}
+              >
+                <ArrowUpDown className="h-3.5 w-3.5" />
+              </button>
             </div>
           </div>
 
-          {/* Right Column: Policy Editor & History */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-xl lg:col-span-2 flex flex-col justify-between">
-            {selectedPolicy ? (
-              <form onSubmit={handleSavePolicy} className="flex flex-col h-full justify-between space-y-4">
-                <div>
-                  {/* Editor Header Bar */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-4 gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-kali-cyan">
-                        <FileCode className="h-4.5 w-4.5" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-semibold text-white">{selectedPolicy.name}</h3>
-                          <span className="text-[10px] text-kali-primary bg-kali-primary/10 px-2 py-0.5 rounded-md border border-kali-primary/20 font-medium">
-                            Revision v{selectedPolicy.version}
-                          </span>
-                          {selectedPolicy.is_active === false && (
-                            <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 font-medium">
-                              Disabled
-                            </span>
-                          )}
-                        </div>
-                        <span className="font-mono text-[11px] text-slate-400">ID: {selectedPolicy.id}</span>
-                      </div>
-                    </div>
+          {/* Policy Table */}
+          <div className="rounded-xl border border-[#E5EAF1] bg-white overflow-hidden shadow-2xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-[#E5EAF1] bg-[#F8FAFC] text-[#64748B] text-[11px] uppercase tracking-wider font-semibold">
+                    <th className="py-3 px-4">Policy Name</th>
+                    <th className="py-3 px-4">Category</th>
+                    <th className="py-3 px-4">Scope</th>
+                    <th className="py-3 px-4">Enforcement</th>
+                    <th className="py-3 px-4">Priority</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Updated</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E5EAF1]">
+                  {filteredPolicies.length > 0 ? (
+                    filteredPolicies.map((p) => {
+                      const isSelected = selectedPolicy?.id === p.id;
+                      const categoryName = Object.keys(p.rules || {})[0] || 'GENERAL';
+                      const defaultEffect = p.default_effect || 'DENY';
 
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      {/* Active/Disable toggle */}
-                      <button
-                        type="button"
-                        onClick={handleTogglePolicyActive}
-                        className={`rounded-xl border px-3 py-1.5 font-medium transition-colors flex items-center gap-1.5 ${
-                          selectedPolicy.is_active === false
-                            ? 'border-kali-secure/40 bg-kali-secure/10 text-kali-secure hover:bg-kali-secure/20'
-                            : 'border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
-                        }`}
-                        title="Toggle policy enforcement status"
-                      >
-                        <Power className="h-3.5 w-3.5" />
-                        <span>{selectedPolicy.is_active === false ? 'Activate' : 'Disable'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleValidateJson}
-                        className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-slate-300 hover:border-kali-cyan/50 hover:text-white transition-colors"
-                        title="Validate JSON Syntax"
-                      >
-                        <Check className="inline h-3 w-3 mr-1 text-kali-cyan" />
-                        Validate
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleFormatJson}
-                        className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-slate-300 hover:border-kali-primary/50 hover:text-white transition-colors"
-                        title="Pretty Print JSON"
-                      >
-                        <Code2 className="inline h-3 w-3 mr-1 text-kali-primary" />
-                        Format
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={isSaving}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-kali-primary px-3.5 py-1.5 font-semibold text-white hover:bg-kali-secondaryBlue shadow-lg shadow-kali-primary/20 transition-colors disabled:opacity-50"
-                      >
-                        <Save className="h-3.5 w-3.5" />
-                        <span>{isSaving ? 'Saving...' : 'Commit Version'}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Sub-Tabs: Editor vs History */}
-                  <div className="flex border-b border-white/10 gap-4 text-xs mt-3.5">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTabMode('editor')}
-                      className={`pb-2 border-b-2 font-medium transition-colors ${
-                        activeTabMode === 'editor'
-                          ? 'border-kali-primary text-white font-semibold'
-                          : 'border-transparent text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      Rule Definition (JSON)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTabMode('history')}
-                      className={`pb-2 border-b-2 font-medium transition-colors flex items-center gap-1.5 ${
-                        activeTabMode === 'history'
-                          ? 'border-kali-primary text-white font-semibold'
-                          : 'border-transparent text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      <History className="h-3.5 w-3.5 text-kali-cyan" />
-                      <span>Revision Metadata</span>
-                    </button>
-                  </div>
-
-                  {activeTabMode === 'editor' ? (
-                    <>
-                      {/* Description Input */}
-                      <div className="mt-3.5">
-                        <label className="text-xs font-medium text-slate-300 block mb-1.5">
-                          Policy Scope Description
-                        </label>
-                        <input
-                          type="text"
-                          value={editorDesc}
-                          onChange={(e) => setEditorDesc(e.target.value)}
-                          className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs text-white focus:border-kali-primary focus:outline-none transition-colors"
-                        />
-                      </div>
-
-                      {/* Code Editor Frame */}
-                      <div className="mt-3.5">
-                        <div className="flex items-center justify-between border-t border-x border-white/10 bg-white/[0.03] px-3.5 py-2 rounded-t-xl text-xs text-slate-400">
-                          <span className="flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-kali-primary" />
-                            <span className="font-medium text-slate-300">Declarative JSON Specification</span>
-                          </span>
-                          {isValidJson !== null && (
-                            <span className={`font-semibold ${isValidJson ? 'text-kali-secure' : 'text-rose-400'}`}>
-                              {isValidJson ? '✓ Valid JSON' : '✗ Syntax Error'}
-                            </span>
-                          )}
-                        </div>
-                        <textarea
-                          rows={12}
-                          value={editorRules}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setEditorRules(val);
-                            if (!val.trim()) {
-                              setIsValidJson(null);
-                            } else {
-                              try {
-                                JSON.parse(val);
-                                setIsValidJson(true);
-                              } catch {
-                                setIsValidJson(false);
-                              }
-                            }
-                          }}
-                          className={`w-full rounded-b-xl border border-white/10 bg-black/60 p-3.5 font-mono text-xs focus:outline-none leading-relaxed ${
-                            isValidJson === false
-                              ? 'border-rose-500/50 text-rose-300 focus:border-rose-500'
-                              : 'text-emerald-400 focus:border-kali-cyan/50'
+                      return (
+                        <tr
+                          key={p.id}
+                          onClick={() => handleSelectPolicy(p)}
+                          className={`transition-colors cursor-pointer ${
+                            isSelected ? 'bg-[#EEF4FF]/50 font-medium' : 'hover:bg-[#F8FAFC]'
                           }`}
-                          spellCheck={false}
-                        />
-                      </div>
-                    </>
+                        >
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-[#1E293B]">{p.name}</div>
+                            <div className="text-[11px] text-[#64748B] truncate max-w-xs">
+                              {p.description || 'Pre-flight rule guardrail'}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-[#F1F5F9] text-[#64748B] uppercase">
+                              {categoryName}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="font-mono text-[11px] text-[#64748B]">
+                              {categoryName.toLowerCase().includes('file') ? 'reports/*' : '*'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span
+                              className={`font-mono text-[10px] px-2 py-0.5 rounded font-semibold ${
+                                defaultEffect === 'ALLOW'
+                                  ? 'bg-[#E8F7EF] text-[#16A34A] border border-[#BCE8CD]'
+                                  : 'bg-[#FEF2F2] text-[#DC2626] border border-[#FCD2D2]'
+                              }`}
+                            >
+                              {defaultEffect}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 font-mono text-[#64748B] whitespace-nowrap">100</td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span
+                              onClick={(e) => handleTogglePolicyStatus(p, e)}
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-medium text-[11px] cursor-pointer transition-colors ${
+                                p.is_active !== false
+                                  ? 'bg-[#E8F7EF] text-[#16A34A] border border-[#BCE8CD]'
+                                  : 'bg-[#F1F5F9] text-[#94A3B8] border border-[#E2E8F0]'
+                              }`}
+                              title="Click to toggle enforcement"
+                            >
+                              <span
+                                className={`h-1.5 w-1.5 rounded-full ${
+                                  p.is_active !== false ? 'bg-[#16A34A]' : 'bg-[#94A3B8]'
+                                }`}
+                              />
+                              <span>{p.is_active !== false ? 'Enforcing' : 'Disabled'}</span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-[#64748B] whitespace-nowrap text-[11px]">
+                            {formatTimestamp(p.updated_at || p.created_at)}
+                          </td>
+                          <td className="py-3 px-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => handleSelectPolicy(p)}
+                                className="px-2.5 py-1 text-xs rounded border border-[#E5EAF1] bg-white text-[#3B82F6] hover:bg-[#EEF4FF] transition-colors"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setPolicyToDelete(p);
+                                  setDeleteConfirmOpen(true);
+                                }}
+                                className="p-1 rounded text-[#94A3B8] hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-colors"
+                                title="Delete policy"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
-                    /* Policy Revision History Tab */
-                    <div className="mt-4 space-y-3 text-xs">
-                      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2.5">
-                        <div className="text-xs font-semibold text-kali-cyan">Revision Dossier</div>
-                        <div className="flex items-center justify-between border-b border-white/5 pb-2 text-slate-300">
-                          <span className="text-slate-400">Current Version:</span>
-                          <span className="text-white font-semibold">v{selectedPolicy.version}</span>
-                        </div>
-                        <div className="flex items-center justify-between border-b border-white/5 pb-2 text-slate-300">
-                          <span className="text-slate-400">Default Fallback Effect:</span>
-                          <span className="text-rose-400 font-semibold">{selectedPolicy.default_effect}</span>
-                        </div>
-                        <div className="flex items-center justify-between border-b border-white/5 pb-2 text-slate-300">
-                          <span className="text-slate-400">Enforcement Status:</span>
-                          <span className={selectedPolicy.is_active !== false ? 'text-kali-secure font-semibold' : 'text-amber-400 font-semibold'}>
-                            {selectedPolicy.is_active !== false ? 'Active & Enforcing' : 'Disabled'}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-slate-300">
-                          <span className="text-slate-400">Enrolled At:</span>
-                          <span className="text-slate-300">{formatTimestamp(selectedPolicy.created_at)}</span>
-                        </div>
-                      </div>
+                    <tr>
+                      <td colSpan={8} className="py-10 text-center text-[#64748B]">
+                        No policies found matching criteria.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
 
-                      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-                        <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-1">Commit Notes</span>
-                        <p className="text-slate-300 text-xs leading-relaxed">
-                          {selectedPolicy.description || 'Enterprise baseline policy configuration.'}
-                        </p>
-                      </div>
-                    </div>
+        {/* Right Column: Policy Configuration Editor & Interactive Simulator (5 cols) */}
+        <div className="lg:col-span-5 space-y-6">
+          {/* Policy JSON Rule Editor */}
+          {selectedPolicy && (
+            <div className="rounded-xl border border-[#E5EAF1] bg-white p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-[#EEF4FF] text-[#3B82F6]">
+                    <Code2 className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[#1E293B]">{selectedPolicy.name}</h3>
+                    <span className="text-[11px] text-[#64748B]">Deterministic Guardrail Rules</span>
+                  </div>
+                </div>
+                <button
+                  onClick={handleSavePolicy}
+                  disabled={isSaving}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#3B82F6] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#2563EB] disabled:opacity-50 transition-all shadow-xs"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  <span>{isSaving ? 'Saving...' : 'Save Rules'}</span>
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#1E293B] mb-1">Description</label>
+                <input
+                  type="text"
+                  value={editorDesc}
+                  onChange={(e) => setEditorDesc(e.target.value)}
+                  className="w-full rounded-lg border border-[#E5EAF1] bg-white px-3 py-1.5 text-xs text-[#1E293B]"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1 text-xs">
+                  <span className="font-medium text-[#1E293B]">JSON Rules Specification</span>
+                  {isValidJson === false && (
+                    <span className="text-[#DC2626] font-medium text-[11px]">Invalid JSON</span>
+                  )}
+                  {isValidJson === true && (
+                    <span className="text-[#16A34A] font-medium text-[11px]">Valid JSON</span>
                   )}
                 </div>
+                <textarea
+                  rows={8}
+                  value={editorRules}
+                  onChange={(e) => {
+                    setEditorRules(e.target.value);
+                    setIsValidJson(null);
+                  }}
+                  className="w-full rounded-lg border border-[#E5EAF1] bg-[#F8FAFC] p-3 font-mono text-xs text-[#1E293B] focus:border-[#3B82F6] focus:bg-white focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
 
-                <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-white/10 pt-3.5">
-                  <span>Changes are versioned immutably on commit</span>
-                  <span className="text-kali-cyan font-medium">Zero-Trust Guardrail Active</span>
+          {/* Policy Simulation Bench */}
+          <div className="rounded-xl border border-[#E5EAF1] bg-white p-5 shadow-2xs space-y-4">
+            <div className="border-b border-[#F1F5F9] pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-[#1E293B]">Policy Simulator</h3>
+                <p className="text-xs text-[#64748B] mt-0.5">
+                  Evaluate sample invocation inputs against active rules
+                </p>
+              </div>
+              <span className="font-mono text-[10px] text-[#3B82F6] bg-[#EEF4FF] px-2 py-0.5 rounded border border-[#D4E5FF]">
+                PRE-FLIGHT TEST
+              </span>
+            </div>
+
+            <form onSubmit={handleRunSimulation} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-medium text-[#1E293B] mb-1">Agent Context</label>
+                <select
+                  value={testAgentId}
+                  onChange={(e) => setTestAgentId(e.target.value)}
+                  className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 text-[#1E293B]"
+                >
+                  {agents.map((ag) => (
+                    <option key={ag.id} value={ag.id}>
+                      {ag.name} ({ag.role})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block font-medium text-[#1E293B] mb-1">Target Tool</label>
+                  <input
+                    type="text"
+                    value={testTool}
+                    onChange={(e) => setTestTool(e.target.value)}
+                    className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 font-mono"
+                  />
                 </div>
-              </form>
-            ) : (
-              <div className="h-full flex items-center justify-center text-xs text-slate-500">
-                Select a security policy to inspect or modify rules.
+                <div>
+                  <label className="block font-medium text-[#1E293B] mb-1">Operation</label>
+                  <input
+                    type="text"
+                    value={testOp}
+                    onChange={(e) => setTestOp(e.target.value)}
+                    className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-medium text-[#1E293B] mb-1">Target Resource</label>
+                <input
+                  type="text"
+                  value={testRes}
+                  onChange={(e) => setTestRes(e.target.value)}
+                  className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 font-mono"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={testing}
+                className="w-full py-2.5 rounded-lg bg-[#3B82F6] text-white font-semibold flex items-center justify-center gap-2 hover:bg-[#2563EB] disabled:opacity-50 transition-colors shadow-xs"
+              >
+                <Play className="h-3.5 w-3.5 fill-current" />
+                <span>{testing ? 'Evaluating Rules...' : 'Simulate Pre-Flight Evaluation'}</span>
+              </button>
+            </form>
+
+            {/* Simulation Result */}
+            {testSimulationResult && (
+              <div
+                className={`rounded-xl border p-4 text-xs space-y-2 ${
+                  testSimulationResult.decision === 'ALLOWED'
+                    ? 'border-[#BCE8CD] bg-[#E8F7EF]'
+                    : 'border-[#FCD2D2] bg-[#FEF2F2]'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <DecisionBadge decision={testSimulationResult.decision} />
+                    <span className="text-[#1E293B]">Simulation Evaluation</span>
+                  </div>
+                </div>
+                <div className="text-[#1E293B] leading-relaxed">
+                  <strong>Evaluated Rule: </strong>
+                  <span>{testSimulationResult.reason || 'Matched explicit security policy constraints.'}</span>
+                </div>
               </div>
             )}
           </div>
         </div>
-      )}
-
-      {/* SECTION B: OFFLINE PRE-FLIGHT SIMULATION TESTBENCH (TEST MODE) */}
-      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 backdrop-blur-md">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-4 gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-white">
-              Policy Simulator Testbench
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Dry-run agent tool calls against deterministic policies in isolated simulation mode.
-            </p>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs text-amber-400 font-medium">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-            <span>Dry-Run Simulation</span>
-          </div>
-        </div>
-
-        <form onSubmit={handleTestPolicy} className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
-          <div>
-            <label className="text-slate-400 font-medium block mb-1.5">Subject Agent</label>
-            <select
-              value={testAgentId}
-              onChange={(e) => setTestAgentId(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
-            >
-              {agents.map((a) => (
-                <option key={a.id} value={a.id} className="bg-[#0a0d14] text-white">
-                  {a.name} ({a.role})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-slate-400 font-medium block mb-1.5">Target Tool</label>
-            <input
-              type="text"
-              value={testTool}
-              onChange={(e) => setTestTool(e.target.value)}
-              placeholder="filesystem_tool"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="text-slate-400 font-medium block mb-1.5">Operation</label>
-            <input
-              type="text"
-              value={testOp}
-              onChange={(e) => setTestOp(e.target.value)}
-              placeholder="read_file"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="text-slate-400 font-medium block mb-1.5">Resource Path</label>
-            <input
-              type="text"
-              value={testRes}
-              onChange={(e) => setTestRes(e.target.value)}
-              placeholder="confidential/keys.pem"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white focus:border-kali-primary focus:outline-none"
-            />
-          </div>
-
-          <div className="flex items-end">
-            <button
-              type="submit"
-              disabled={testing}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-kali-cyan px-4 py-2 font-semibold text-black shadow-lg shadow-kali-cyan/20 hover:bg-cyan-400 transition-colors disabled:opacity-50"
-            >
-              <Play className="h-3.5 w-3.5 fill-current" />
-              <span>{testing ? 'Evaluating...' : 'Run Simulation'}</span>
-            </button>
-          </div>
-        </form>
-
-        {/* Simulation Output Card */}
-        {testSimulationResult && (
-          <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs space-y-2.5">
-            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-              <span className="font-semibold text-white">Evaluation Outcome</span>
-              <DecisionBadge decision={testSimulationResult.decision} />
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-slate-300 text-[11px]">
-              <div>
-                <span className="text-slate-400 block font-medium">Agent</span>
-                <span className="text-white font-semibold mt-0.5 block">{testSimulationResult.agent.name}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block font-medium">Target</span>
-                <span className="text-kali-cyan font-mono mt-0.5 block">{testSimulationResult.target.tool}:{testSimulationResult.target.operation}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block font-medium">Decision</span>
-                <span className={`font-semibold mt-0.5 block ${testSimulationResult.is_allowed ? 'text-kali-secure' : 'text-rose-400'}`}>
-                  {testSimulationResult.decision}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 block font-medium">Matched Rule</span>
-                <span className="text-slate-300 font-mono truncate mt-0.5 block">{testSimulationResult.matched_rule_id || 'DEFAULT_FAIL_CLOSED'}</span>
-              </div>
-            </div>
-            <div className="text-xs text-slate-400 pt-2 border-t border-white/5">
-              Reasoning: <span className="text-slate-200">{testSimulationResult.reason}</span>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* CREATE POLICY MODAL */}
-      <Modal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        title="Create Security Policy"
-        subtitle="Initializes an immutable declarative authorization policy record"
-      >
-        <form onSubmit={handleCreatePolicySubmit} className="space-y-3.5 text-xs">
-          <div>
-            <label className="text-slate-300 font-medium block mb-1.5">Policy Identifier Name</label>
-            <input
-              type="text"
-              required
-              value={newPolicyName}
-              onChange={(e) => setNewPolicyName(e.target.value)}
-              placeholder="e.g. Database-Egress-Boundary-Policy"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-primary focus:outline-none"
-            />
-          </div>
+      {/* Multi-Step Policy Builder Modal */}
+      {isCreateOpen && (
+        <Modal
+          isOpen={isCreateOpen}
+          onClose={() => setIsCreateOpen(false)}
+          title="Create Security Policy"
+          subtitle={`Step ${createStep} of 3: ${
+            createStep === 1
+              ? 'Basic Information'
+              : createStep === 2
+              ? 'Condition Configuration'
+              : 'Enforcement & Priority'
+          }`}
+          icon={<Shield className="h-4 w-4 text-[#3B82F6]" />}
+        >
+          <div className="space-y-5 text-xs">
+            {/* Step Progress Indicator */}
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5EAF1]">
+              {[1, 2, 3].map((step) => (
+                <div key={step} className="flex items-center gap-2">
+                  <span
+                    className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-semibold ${
+                      createStep === step
+                        ? 'bg-[#3B82F6] text-white'
+                        : createStep > step
+                        ? 'bg-[#E8F7EF] text-[#16A34A] border border-[#BCE8CD]'
+                        : 'bg-[#F1F5F9] text-[#94A3B8]'
+                    }`}
+                  >
+                    {step}
+                  </span>
+                  <span className={`font-medium ${createStep === step ? 'text-[#1E293B]' : 'text-[#94A3B8]'}`}>
+                    {step === 1 ? 'Metadata' : step === 2 ? 'Conditions' : 'Enforcement'}
+                  </span>
+                </div>
+              ))}
+            </div>
 
-          <div>
-            <label className="text-slate-300 font-medium block mb-1.5">Scope Description</label>
-            <input
-              type="text"
-              value={newPolicyDesc}
-              onChange={(e) => setNewPolicyDesc(e.target.value)}
-              placeholder="Enforces maximum query limits and prevents schema alterations..."
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-primary focus:outline-none"
-            />
-          </div>
+            {/* Step 1: Basic Info */}
+            {createStep === 1 && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block font-medium text-[#1E293B] mb-1">Policy Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newPolicyName}
+                    onChange={(e) => setNewPolicyName(e.target.value)}
+                    placeholder="e.g. StrictSandboxFilesystemGuard"
+                    className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 text-[#1E293B]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-[#1E293B] mb-1">Description</label>
+                  <textarea
+                    rows={3}
+                    value={newPolicyDesc}
+                    onChange={(e) => setNewPolicyDesc(e.target.value)}
+                    placeholder="Describe purpose of guardrail..."
+                    className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 text-[#1E293B]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-[#1E293B] mb-1">Category</label>
+                  <select
+                    value={newPolicyCategory}
+                    onChange={(e) => setNewPolicyCategory(e.target.value)}
+                    className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 text-[#1E293B]"
+                  >
+                    <option value="filesystem">Filesystem Sandboxing</option>
+                    <option value="database">Database Query Guard</option>
+                    <option value="network">Network & SSRF Guard</option>
+                    <option value="custom">Custom Agent Rules</option>
+                  </select>
+                </div>
+              </div>
+            )}
 
-          <div>
-            <label className="text-slate-300 font-medium block mb-1.5">Default Fallback Effect</label>
-            <select
-              value={newPolicyDefaultEffect}
-              onChange={(e) => setNewPolicyDefaultEffect(e.target.value as any)}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-white focus:border-kali-primary focus:outline-none"
-            >
-              <option value="DENY" className="bg-[#0a0d14] text-white">DENY (Fail-Closed Zero Trust)</option>
-              <option value="ALLOW" className="bg-[#0a0d14] text-white">ALLOW (Permissive Default)</option>
-            </select>
-          </div>
+            {/* Step 2: Conditions */}
+            {createStep === 2 && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block font-medium text-[#1E293B] mb-1">Agent Scope</label>
+                  <input
+                    type="text"
+                    value={newPolicyAgentScope}
+                    onChange={(e) => setNewPolicyAgentScope(e.target.value)}
+                    placeholder="* or specific agent ID"
+                    className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 text-[#1E293B]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-[#1E293B] mb-1">Allowed Resource Prefix Pattern</label>
+                  <input
+                    type="text"
+                    value={newPolicyResourcePattern}
+                    onChange={(e) => setNewPolicyResourcePattern(e.target.value)}
+                    placeholder="e.g. reports/*, public/*"
+                    className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 text-[#1E293B]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-[#1E293B] mb-1">Blocked File Extensions / Keywords</label>
+                  <input
+                    type="text"
+                    value={newPolicyBlockedExtensions}
+                    onChange={(e) => setNewPolicyBlockedExtensions(e.target.value)}
+                    placeholder=".pem, .key, .env, DROP, TRUNCATE"
+                    className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 text-[#1E293B]"
+                  />
+                </div>
+              </div>
+            )}
 
-          <div>
-            <label className="text-slate-300 font-medium block mb-1.5">Policy Rules (JSON)</label>
-            <textarea
-              rows={6}
-              value={newPolicyRules}
-              onChange={(e) => setNewPolicyRules(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-black/60 p-3 font-mono text-emerald-400 focus:border-kali-primary focus:outline-none leading-relaxed"
-              spellCheck={false}
-            />
-          </div>
+            {/* Step 3: Enforcement */}
+            {createStep === 3 && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-medium text-[#1E293B] mb-1">Default Enforcement Effect</label>
+                    <select
+                      value={newPolicyDefaultEffect}
+                      onChange={(e) => setNewPolicyDefaultEffect(e.target.value as any)}
+                      className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 text-[#1E293B]"
+                    >
+                      <option value="DENY">DENY (Fail-Closed)</option>
+                      <option value="ALLOW">ALLOW</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-medium text-[#1E293B] mb-1">Evaluation Priority</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="1000"
+                      value={newPolicyPriority}
+                      onChange={(e) => setNewPolicyPriority(Number(e.target.value))}
+                      className="w-full rounded-lg border border-[#E5EAF1] bg-white p-2 text-[#1E293B]"
+                    />
+                  </div>
+                </div>
 
-          <div className="flex justify-end gap-2.5 border-t border-white/10 pt-4">
-            <button
-              type="button"
-              onClick={() => setIsCreateOpen(false)}
-              className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-slate-400 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={creatingPolicy}
-              className="rounded-xl bg-kali-primary px-4 py-2 font-semibold text-white shadow-lg shadow-kali-primary/20 hover:bg-kali-secondaryBlue transition-colors disabled:opacity-50"
-            >
-              {creatingPolicy ? 'Creating...' : 'Initialize Policy'}
-            </button>
+                <div className="flex items-center gap-3 pt-2">
+                  <input
+                    type="checkbox"
+                    id="enforceCheck"
+                    checked={newPolicyEnabled}
+                    onChange={(e) => setNewPolicyEnabled(e.target.checked)}
+                    className="h-4 w-4 rounded border-[#E5EAF1] text-[#3B82F6]"
+                  />
+                  <label htmlFor="enforceCheck" className="text-[#1E293B] font-medium">
+                    Enable and enforce policy immediately on zero-trust gateway
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Step Navigation Controls */}
+            <div className="flex items-center justify-between pt-4 border-t border-[#E5EAF1]">
+              <button
+                type="button"
+                onClick={() => {
+                  if (createStep > 1) setCreateStep((s) => (s - 1) as any);
+                  else setIsCreateOpen(false);
+                }}
+                className="px-4 py-2 rounded-lg border border-[#E5EAF1] text-[#64748B] hover:text-[#1E293B]"
+              >
+                {createStep === 1 ? 'Cancel' : 'Back'}
+              </button>
+
+              {createStep < 3 ? (
+                <button
+                  type="button"
+                  disabled={createStep === 1 && !newPolicyName.trim()}
+                  onClick={() => setCreateStep((s) => (s + 1) as any)}
+                  className="px-4 py-2 rounded-lg bg-[#3B82F6] text-white font-semibold hover:bg-[#2563EB] disabled:opacity-50"
+                >
+                  Continue
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={creatingPolicy}
+                  onClick={handleCreatePolicySubmit}
+                  className="px-4 py-2 rounded-lg bg-[#3B82F6] text-white font-semibold hover:bg-[#2563EB] disabled:opacity-50"
+                >
+                  {creatingPolicy ? 'Enacting...' : 'Enact Policy'}
+                </button>
+              )}
+            </div>
           </div>
-        </form>
-      </Modal>
+        </Modal>
+      )}
+
+      {/* Delete Policy Confirmation Modal */}
+      {deleteConfirmOpen && policyToDelete && (
+        <Modal
+          isOpen={deleteConfirmOpen}
+          onClose={() => {
+            setDeleteConfirmOpen(false);
+            setPolicyToDelete(null);
+          }}
+          title="Delete Security Policy"
+          subtitle="This action permanently revokes deterministic policy enforcement"
+          icon={<AlertTriangle className="h-4 w-4 text-[#DC2626]" />}
+        >
+          <div className="space-y-4">
+            <p className="text-xs text-[#64748B] leading-relaxed">
+              Are you sure you want to delete policy{' '}
+              <strong className="text-[#1E293B] font-semibold">{policyToDelete.name}</strong>?
+              This policy rule will be permanently deleted and will no longer protect gateway operations.
+            </p>
+
+            <div className="rounded-lg bg-[#FEF2F2] border border-[#FCD2D2] p-3 text-xs text-[#DC2626]">
+              <strong className="block font-semibold">Warning:</strong>
+              <span>Any agent requests relying on this policy will fallback to default-deny rules.</span>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteConfirmOpen(false);
+                  setPolicyToDelete(null);
+                }}
+                className="px-4 py-2 text-xs rounded-lg border border-[#E5EAF1] text-[#64748B] hover:text-[#1E293B]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 text-xs rounded-lg bg-[#DC2626] text-white font-semibold hover:bg-[#B91C1C] disabled:opacity-50 transition-colors"
+              >
+                {isDeleting ? 'Deleting...' : 'Confirm Delete Policy'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

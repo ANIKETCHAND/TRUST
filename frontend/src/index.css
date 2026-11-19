@@ -3,36 +3,50 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
-  --kali-bg: #000000;
-  --kali-secondary: #080C14;
-  --kali-sidebar: #03060C;
-  --kali-card: #090D18;
-  --kali-elevated: #0F1523;
-  --kali-border: rgba(255, 255, 255, 0.08);
-  --kali-border-light: rgba(255, 255, 255, 0.15);
-  --kali-primary: #367BF5;
+  color-scheme: light;
+  --brand-bg: #F5F7FA;
+  --brand-sidebar: #FFFFFF;
+  --brand-surface: #FFFFFF;
+  --brand-text: #1E293B;
+  --brand-secondary: #64748B;
+  --brand-muted: #94A3B8;
+  --brand-border: #E5EAF1;
+  --brand-primary: #3B82F6;
+  --brand-blue-light: #EEF4FF;
+  --brand-success: #16A36A;
+  --brand-warning: #F59E0B;
+  --brand-danger: #DC2626;
+
+  /* Legacy aliases mapped to clean light tones */
+  --kali-bg: #F5F7FA;
+  --kali-secondary: #F8FAFC;
+  --kali-sidebar: #FFFFFF;
+  --kali-card: #FFFFFF;
+  --kali-elevated: #FFFFFF;
+  --kali-border: #E5EAF1;
+  --kali-border-light: #F1F5F9;
+  --kali-primary: #3B82F6;
   --kali-secondary-blue: #2563EB;
-  --kali-cyan: #22B8CF;
-  --kali-secure: #16A36A;
+  --kali-cyan: #0284C7;
+  --kali-secure: #16A34A;
   --kali-warning: #F59E0B;
-  --kali-critical: #EF4444;
+  --kali-critical: #DC2626;
 }
 
 body {
   margin: 0;
-  background-color: #000000;
-  color: #F1F5F9;
+  background-color: #F5F7FA;
+  color: #1E293B;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Minimal sleek scrollbars */
+/* Minimal sleek scrollbars for enterprise light mode */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -40,40 +54,17 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: #CBD5E1;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* Minimal subtle ambient grid background */
-.soc-grid-bg {
-  background-size: 32px 32px;
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-}
-
-/* Clean glassmorphism utility classes */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.025);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.glass-panel-elevated {
-  background: rgba(10, 13, 20, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #94A3B8;
 }
 
 /* Accessible focus ring */
 :focus-visible {
-  outline: 2px solid #22B8CF;
+  outline: 2px solid #3B82F6;
   outline-offset: 1px;
 }
 
@@ -82,7 +73,15 @@ body {
   font-family: 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
 }
 
-/* ThreeUI SparkBadge Frame Container - Immersive Fullscreen Mode */
+/* Subtle clean card container */
+.card-clean {
+  background-color: #FFFFFF;
+  border: 1px solid #E5EAF1;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
+}
+
+/* ThreeUI SparkBadge Frame Container - Immersive Fullscreen Mode (Used by Landing) */
 .shader-frame {
   position: fixed;
   inset: 0;
