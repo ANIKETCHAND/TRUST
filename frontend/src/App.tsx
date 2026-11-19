@@ -290,7 +290,7 @@ const ContinuousDashboard: React.FC = () => {
   return (
     <main
       ref={mainRef}
-      className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8 bg-[var(--bg)] text-[var(--ink)] scroll-smooth"
+      className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8 bg-transparent text-[var(--ink)] scroll-smooth"
     >
       <div className="mx-auto max-w-[1600px] space-y-16 pb-28">
         {DASHBOARD_CHAPTERS.map((chapter) => {
@@ -331,7 +331,7 @@ const ContinuousDashboard: React.FC = () => {
               </div>
 
               {/* Tab Component Inside Card Container */}
-              <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 md:p-6 shadow-[0_4px_20px_rgba(160,172,192,0.16),inset_0_1px_0_rgba(255,255,255,0.9)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]">
+              <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 md:p-6 shadow-[0_4px_20px_rgba(90,105,130,0.14),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]">
                 <ErrorBoundary>
                   <TabComponent />
                 </ErrorBoundary>
@@ -346,7 +346,7 @@ const ContinuousDashboard: React.FC = () => {
 
 const DashboardLayout: React.FC = () => {
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg)] text-[var(--ink)] font-sans antialiased">
+    <div className="flex h-screen w-screen overflow-hidden bg-transparent text-[var(--ink)] font-sans antialiased">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopNavbar />
@@ -362,8 +362,8 @@ const NotFoundScreen: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
   return (
-    <div className="flex h-screen w-screen flex-col items-center justify-center bg-[var(--bg)] text-[var(--ink)] p-4 relative select-none">
-      <div className="relative z-10 w-full max-w-md rounded-2xl border border-[var(--line)] bg-[var(--card)] p-8 shadow-[0_10px_30px_rgba(140,150,170,0.2),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)] text-center space-y-5">
+    <div className="flex h-screen w-screen flex-col items-center justify-center bg-transparent text-[var(--ink)] p-4 relative select-none">
+      <div className="relative z-10 w-full max-w-md rounded-2xl border border-[var(--line)] bg-[var(--card)] p-8 shadow-[0_10px_30px_rgba(90,105,130,0.16),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)] text-center space-y-5">
         <div className="flex justify-center">
           <BrandLogo size="md" />
         </div>

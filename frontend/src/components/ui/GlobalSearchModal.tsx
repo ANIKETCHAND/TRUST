@@ -142,37 +142,37 @@ export const GlobalSearchModal: React.FC = () => {
       onClick={() => setIsSearchOpen(false)}
     >
       <div
-        className="w-full max-w-xl rounded-2xl border border-[#E5EAF1] bg-white shadow-2xl overflow-hidden animate-fade-in"
+        className="w-full max-w-xl rounded-2xl border border-[var(--line)] bg-[var(--card)] shadow-[0_20px_50px_rgba(90,105,130,0.22),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden animate-fade-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Bar */}
-        <div className="flex items-center gap-3 border-b border-[#E5EAF1] px-4 py-3 bg-[#F8FAFC]">
-          <Search className="h-4 w-4 text-[#3B82F6]" />
+        <div className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3 bg-[var(--bg)]">
+          <Search className="h-4 w-4 text-[var(--accent)]" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search agents, tools, policies, incidents, or jump to..."
-            className="flex-1 bg-transparent text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none"
+            className="flex-1 bg-transparent text-sm text-[var(--ink)] placeholder-[var(--ink-3)] focus:outline-none"
           />
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="p-1 text-[#94A3B8] hover:text-[#1E293B]"
+              className="p-1 text-[var(--ink-3)] hover:text-[var(--ink)]"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           )}
-          <kbd className="rounded border border-[#E5EAF1] bg-white px-2 py-0.5 font-mono text-[10px] text-[#64748B]">
+          <kbd className="rounded border border-[var(--line-2)] bg-[var(--card)] px-2 py-0.5 font-mono text-[10px] text-[var(--ink-3)]">
             ESC
           </kbd>
         </div>
 
         {/* Results List */}
-        <div className="max-h-96 overflow-y-auto p-2 divide-y divide-[#F1F5F9]">
+        <div className="max-h-96 overflow-y-auto p-2 divide-y divide-[var(--line-2)]">
           {filteredItems.length === 0 ? (
-            <div className="py-12 text-center text-xs text-[#64748B]">
+            <div className="py-12 text-center text-xs text-[var(--ink-2)]">
               No results found for &ldquo;{query}&rdquo;
             </div>
           ) : (
@@ -182,26 +182,26 @@ export const GlobalSearchModal: React.FC = () => {
                 <button
                   key={item.id}
                   onClick={() => handleSelect(item.tab)}
-                  className="flex w-full items-center justify-between rounded-xl p-3 text-left hover:bg-[#F8FAFC] transition-colors group"
+                  className="flex w-full items-center justify-between rounded-xl p-3 text-left hover:bg-[var(--bg-2)] transition-colors group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#E5EAF1] bg-[#EEF4FF] text-[#3B82F6]">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--line-2)] bg-[var(--tint)] text-[var(--accent)]">
                       <Icon className="h-4 w-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-[#1E293B] group-hover:text-[#3B82F6] transition-colors">
+                      <div className="text-xs font-semibold text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors">
                         {item.title}
                       </div>
-                      <div className="text-[11px] text-[#64748B] mt-0.5 truncate max-w-sm">
+                      <div className="text-[11px] text-[var(--ink-2)] mt-0.5 truncate max-w-sm">
                         {item.subtitle}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-[9px] uppercase px-1.5 py-0.5 rounded border border-[#E5EAF1] bg-[#F8FAFC] text-[#64748B]">
+                    <span className="font-mono text-[9px] uppercase px-1.5 py-0.5 rounded border border-[var(--line-2)] bg-[var(--bg-2)] text-[var(--ink-2)]">
                       {item.category}
                     </span>
-                    <ArrowRight className="h-3.5 w-3.5 text-[#94A3B8] group-hover:text-[#3B82F6] group-hover:translate-x-0.5 transition-all" />
+                    <ArrowRight className="h-3.5 w-3.5 text-[var(--ink-3)] group-hover:text-[var(--accent)] group-hover:translate-x-0.5 transition-all" />
                   </div>
                 </button>
               );
@@ -210,15 +210,15 @@ export const GlobalSearchModal: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-[#E5EAF1] bg-[#F8FAFC] px-4 py-2.5 text-[11px] text-[#64748B]">
+        <div className="flex items-center justify-between border-t border-[var(--line)] bg-[var(--bg)] px-4 py-2.5 text-[11px] text-[var(--ink-2)]">
           <span>Type to filter live security entities</span>
           <div className="flex items-center gap-3">
             <span>
-              <kbd className="rounded border border-[#E5EAF1] bg-white px-1.5 py-0.5 font-mono text-[9px] mr-1">↑</kbd>
-              <kbd className="rounded border border-[#E5EAF1] bg-white px-1.5 py-0.5 font-mono text-[9px]">↓</kbd> Navigate
+              <kbd className="rounded border border-[var(--line-2)] bg-[var(--card)] px-1.5 py-0.5 font-mono text-[9px] mr-1">↑</kbd>
+              <kbd className="rounded border border-[var(--line-2)] bg-[var(--card)] px-1.5 py-0.5 font-mono text-[9px]">↓</kbd> Navigate
             </span>
             <span>
-              <kbd className="rounded border border-[#E5EAF1] bg-white px-1.5 py-0.5 font-mono text-[9px]">↵</kbd> Select
+              <kbd className="rounded border border-[var(--line-2)] bg-[var(--card)] px-1.5 py-0.5 font-mono text-[9px]">↵</kbd> Select
             </span>
           </div>
         </div>

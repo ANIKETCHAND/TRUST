@@ -16,28 +16,28 @@
 }
 
 :root {
-  --bg: #E6EAF0;
-  --bg-2: #DCE1EA;
-  --bg-3: #D0D6E2;
+  --bg: #EEF1F6;
+  --bg-2: #E2E7F0;
+  --bg-3: #D5DBE5;
   --card: #FFFFFF;
-  --card-soft: #F1F4F8;
-  --card-tactile: #ECEFF4;
-  --ink: #2A2E35;
-  --ink-2: #69707D;
-  --ink-3: #8C94A0;
-  --line: #D5DAE3;
-  --line-2: #E4E8F0;
-  --accent: #2A2E35;
-  --accent-ink: #1E2228;
-  --tint: #E2E7EF;
+  --card-soft: #F6F8FB;
+  --card-tactile: #EAEEF5;
+  --ink: #333842;
+  --ink-2: #6E7684;
+  --ink-3: #929AA8;
+  --line: #D5DBE5;
+  --line-2: #E5EAF1;
+  --accent: #333842;
+  --accent-ink: #1F232B;
+  --tint: #E7ECF4;
   --warn: #D97706;
-  --btn: #2A2E35;
+  --btn: #333842;
   --btn-ink: #FFFFFF;
-  --band: #1E2228;
-  --band-2: #272B33;
-  --band-ink: #ECEFF4;
-  --band-ink-2: #9DA6B5;
-  --band-line: #363C47;
+  --band: #1E222A;
+  --band-2: #282D36;
+  --band-ink: #EEF1F6;
+  --band-ink-2: #A2ABB8;
+  --band-line: #383F4C;
 
   --sans: "Inter", "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
   --serif: "Playfair Display", Georgia, serif;
@@ -65,46 +65,62 @@
   --ease: cubic-bezier(.23, 1, .32, 1);
 
   --illos-ground: var(--bg);
-  --illos-ink: #2A2E35;
-  --illos-accent: #2A2E35;
+  --illos-ink: #333842;
+  --illos-accent: #333842;
   --illos-dark: 0;
   color-scheme: light;
 }
 
 [data-theme="dark"],
 html.dark {
-  --bg: #16181D;
-  --bg-2: #1E2127;
-  --bg-3: #262B33;
-  --card: #22262E;
-  --card-soft: #282C36;
-  --card-tactile: #1C1F26;
-  --ink: #ECEFF4;
-  --ink-2: #A0A8B6;
+  --bg: #14171C;
+  --bg-2: #1B1E25;
+  --bg-3: #242832;
+  --card: #1D2129;
+  --card-soft: #242933;
+  --card-tactile: #181C23;
+  --ink: #EEF1F6;
+  --ink-2: #A2ABB8;
   --ink-3: #757F90;
-  --line: #2D323C;
-  --line-2: #383F4C;
-  --accent: #ECEFF4;
+  --line: #2B313D;
+  --line-2: #373E4D;
+  --accent: #EEF1F6;
   --accent-ink: #FFFFFF;
-  --tint: #252B35;
+  --tint: #232833;
   --warn: #F59E0B;
-  --btn: #ECEFF4;
-  --btn-ink: #16181D;
-  --band: #121418;
-  --band-2: #1A1C22;
-  --band-line: #2E333D;
+  --btn: #EEF1F6;
+  --btn-ink: #14171C;
+  --band: #101216;
+  --band-2: #171A20;
+  --band-line: #2B313D;
 
-  --illos-ink: #DADADC;
-  --illos-accent: #ECEFF4;
+  --illos-ink: #DCE1EB;
+  --illos-accent: #EEF1F6;
   --illos-dark: 1;
   color-scheme: dark;
 }
 
 .on-dark {
   --illos-ground: var(--band);
-  --illos-ink: #DADADC;
-  --illos-accent: #ECEFF4;
+  --illos-ink: #DCE1EB;
+  --illos-accent: #EEF1F6;
   --illos-dark: 1;
+}
+
+/* Tactile Display Headline */
+.tactile-hero-heading {
+  font-family: -apple-system, BlinkMacSystemFont, "Franklin Gothic Heavy", "Impact", "Inter", "Geist", system-ui, sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+  color: #404652;
+  text-shadow: 0 1.5px 0 rgba(255, 255, 255, 0.95), 0 2.5px 1px rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="dark"] .tactile-hero-heading,
+html.dark .tactile-hero-heading {
+  color: #EEF1F6;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 /* Base typography */

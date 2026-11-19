@@ -15,7 +15,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   label,
   value,
   subValue,
-  subValueColor = 'text-[#64748B]',
+  subValueColor = 'text-[var(--ink-2)]',
   description,
   icon,
   tag,
@@ -26,7 +26,7 @@ export const StatCard: React.FC<StatCardProps> = ({
       onClick={onClick}
       className={`relative overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--card)] p-4.5 transition-all duration-150 ${
         onClick ? 'cursor-pointer hover:border-[var(--accent)]/50 hover:shadow-xs' : 'hover:border-[var(--line)]'
-      } shadow-[0_4px_16px_rgba(160,172,192,0.14),inset_0_1px_0_rgba(255,255,255,0.9)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.05)]`}
+      } shadow-[0_4px_16px_rgba(90,105,130,0.12),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.05)]`}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">

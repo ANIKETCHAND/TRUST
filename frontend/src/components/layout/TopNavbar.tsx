@@ -118,7 +118,7 @@ export const TopNavbar: React.FC = () => {
   ).length;
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-[var(--line)] bg-[var(--card)] px-6 shrink-0 z-30 select-none text-[var(--ink)] shadow-[0_2px_10px_rgba(160,172,192,0.12)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.3)]">
+    <header className="flex h-16 items-center justify-between border-b border-[var(--line)] bg-[var(--card)] px-6 shrink-0 z-30 select-none text-[var(--ink)] shadow-[0_2px_10px_rgba(90,105,130,0.10)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.3)]">
       {/* Left: Mobile Toggle & Active Section Breadcrumb */}
       <div className="flex items-center gap-4">
         <button
@@ -145,7 +145,7 @@ export const TopNavbar: React.FC = () => {
         {/* Search Bar Trigger */}
         <button
           onClick={() => setIsSearchOpen(true)}
-          className="hidden sm:flex items-center gap-2 rounded-full border border-[var(--line-2)] bg-[var(--bg)] px-3 py-1.5 text-xs text-[var(--ink-2)] hover:border-[var(--line)] hover:text-[var(--ink)] transition-colors"
+          className="hidden sm:flex items-center gap-2 rounded-full border border-[var(--line-2)] bg-[var(--bg)] px-3 py-1.5 text-xs text-[var(--ink-2)] hover:border-[var(--line)] hover:text-[var(--ink)] shadow-[inset_0_1px_2px_rgba(90,105,130,0.06)] transition-colors"
           title="Search telemetry and commands [Ctrl+K]"
         >
           <Search className="h-3.5 w-3.5 text-[var(--ink-3)]" />
@@ -159,7 +159,7 @@ export const TopNavbar: React.FC = () => {
         <div className="relative hidden lg:block">
           <button
             onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-            className="flex items-center gap-2 rounded-lg border border-[var(--line-2)] bg-[var(--bg)] px-2.5 py-1.5 text-xs font-medium text-[var(--ink)] hover:border-[var(--line)] transition-colors"
+            className="flex items-center gap-2 rounded-lg border border-[var(--line-2)] bg-[var(--bg)] px-2.5 py-1.5 text-xs font-medium text-[var(--ink)] hover:border-[var(--line)] shadow-[inset_0_1px_2px_rgba(90,105,130,0.06)] transition-colors"
             title="Active Security Cluster"
           >
             <Building className="h-3.5 w-3.5 text-[var(--accent)]" />
@@ -173,7 +173,7 @@ export const TopNavbar: React.FC = () => {
                 className="fixed inset-0 z-40"
                 onClick={() => setShowOrgDropdown(false)}
               />
-              <div className="absolute right-0 mt-1 w-64 rounded-xl border border-[var(--line)] bg-[var(--card)] p-1.5 shadow-lg z-50 text-xs">
+              <div className="absolute right-0 mt-1 w-64 rounded-xl border border-[var(--line)] bg-[var(--card)] p-1.5 shadow-[0_12px_32px_rgba(90,105,130,0.18),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.45)] z-50 text-xs">
                 <div className="px-2 py-1 text-[10px] font-mono font-medium text-[var(--ink-3)] uppercase">
                   Active Defense Cluster
                 </div>
@@ -238,7 +238,7 @@ export const TopNavbar: React.FC = () => {
 
         {/* Real-time Health Status Pill */}
         <div
-          className="hidden md:flex items-center gap-1.5 rounded-full border border-[var(--line-2)] bg-[var(--bg)] px-2.5 py-1 text-xs"
+          className="hidden md:flex items-center gap-1.5 rounded-full border border-[var(--line-2)] bg-[var(--bg)] px-2.5 py-1 text-xs shadow-[inset_0_1px_2px_rgba(90,105,130,0.06)]"
           title={`Gateway Status: ${health?.status || 'Active'}`}
         >
           <span className="relative flex h-2 w-2">
@@ -260,7 +260,7 @@ export const TopNavbar: React.FC = () => {
         <div className="relative">
           <button
             onClick={() => setShowNotifDropdown(!showNotifDropdown)}
-            className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line-2)] bg-[var(--bg)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
+            className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line-2)] bg-[var(--bg)] text-[var(--ink-2)] hover:text-[var(--ink)] shadow-[inset_0_1px_2px_rgba(90,105,130,0.06)] transition-colors"
             title="Realtime Alerts Feed"
           >
             <Bell className="h-4 w-4" />
@@ -277,7 +277,7 @@ export const TopNavbar: React.FC = () => {
                 className="fixed inset-0 z-40"
                 onClick={() => setShowNotifDropdown(false)}
               />
-              <div className="absolute right-0 mt-2 w-80 rounded-xl border border-[var(--line)] bg-[var(--card)] p-3 shadow-xl z-50 text-xs space-y-2">
+              <div className="absolute right-0 mt-2 w-80 rounded-xl border border-[var(--line)] bg-[var(--card)] p-3 shadow-[0_12px_32px_rgba(90,105,130,0.18),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.45)] z-50 text-xs space-y-2">
                 <div className="flex items-center justify-between border-b border-[var(--line)] pb-2">
                   <span className="font-medium text-[var(--ink)]">Recent Security Alerts</span>
                   <span className="font-mono text-[10px] text-[var(--ink-3)]">
@@ -337,7 +337,7 @@ export const TopNavbar: React.FC = () => {
         <div className="relative">
           <button
             onClick={() => setShowUserDropdown(!showUserDropdown)}
-            className="flex items-center gap-2 rounded-lg border border-[var(--line-2)] bg-[var(--bg)] px-2.5 py-1.5 text-xs font-medium text-[var(--ink)] hover:border-[var(--line)] transition-colors"
+            className="flex items-center gap-2 rounded-lg border border-[var(--line-2)] bg-[var(--bg)] px-2.5 py-1.5 text-xs font-medium text-[var(--ink)] hover:border-[var(--line)] shadow-[inset_0_1px_2px_rgba(90,105,130,0.06)] transition-colors"
           >
             <div className="h-5 w-5 rounded-full bg-[var(--tint)] flex items-center justify-center text-[var(--accent-ink)] font-semibold text-[10px]">
               {user?.username ? user.username[0].toUpperCase() : 'A'}
@@ -354,7 +354,7 @@ export const TopNavbar: React.FC = () => {
                 className="fixed inset-0 z-40"
                 onClick={() => setShowUserDropdown(false)}
               />
-              <div className="absolute right-0 mt-1 w-56 rounded-xl border border-[var(--line)] bg-[var(--card)] p-2 shadow-xl z-50 text-xs space-y-1">
+              <div className="absolute right-0 mt-1 w-56 rounded-xl border border-[var(--line)] bg-[var(--card)] p-2 shadow-[0_12px_32px_rgba(90,105,130,0.18),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.45)] z-50 text-xs space-y-1">
                 <div className="px-2 py-1.5 border-b border-[var(--line)] mb-1">
                   <div className="font-medium text-[var(--ink)]">{user?.username || 'Operator'}</div>
                   <div className="text-[10px] font-mono text-[var(--ink-3)]">
