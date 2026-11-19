@@ -331,7 +331,7 @@ const ContinuousDashboard: React.FC = () => {
               </div>
 
               {/* Tab Component Inside Card Container */}
-              <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 md:p-6 shadow-xs">
+              <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 md:p-6 shadow-[0_4px_20px_rgba(160,172,192,0.16),inset_0_1px_0_rgba(255,255,255,0.9)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]">
                 <ErrorBoundary>
                   <TabComponent />
                 </ErrorBoundary>
@@ -363,7 +363,7 @@ const NotFoundScreen: React.FC = () => {
 
   return (
     <div className="flex h-screen w-screen flex-col items-center justify-center bg-[var(--bg)] text-[var(--ink)] p-4 relative select-none">
-      <div className="relative z-10 w-full max-w-md rounded-2xl border border-[var(--line)] bg-[var(--card)] p-8 shadow-sm text-center space-y-5">
+      <div className="relative z-10 w-full max-w-md rounded-2xl border border-[var(--line)] bg-[var(--card)] p-8 shadow-[0_10px_30px_rgba(140,150,170,0.2),inset_0_1px_0_rgba(255,255,255,0.95)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)] text-center space-y-5">
         <div className="flex justify-center">
           <BrandLogo size="md" />
         </div>

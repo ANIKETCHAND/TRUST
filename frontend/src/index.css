@@ -69,11 +69,18 @@ html.dark {
 body {
   margin: 0;
   background-color: var(--bg);
+  background-image: radial-gradient(ellipse at 50% 12%, #F1F4F8 0%, #E3E7EE 65%, #D4DAE3 100%);
+  background-attachment: fixed;
   color: var(--ink);
   font-family: var(--sans);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+[data-theme="dark"] body,
+html.dark body {
+  background-image: radial-gradient(ellipse at 50% 12%, #1E2127 0%, #16181D 65%, #101216 100%);
 }
 
 /* Ferrow minimal sleek scrollbars */
@@ -87,7 +94,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--line-2);
+  background: var(--line);
   border-radius: 4px;
 }
 
@@ -106,12 +113,82 @@ body {
   font-family: var(--mono);
 }
 
-/* Subtle clean card container matching Ferrow */
+/* Subtle clean card container matching Hushkey ceramic tactile aesthetic */
 .card-clean {
   background-color: var(--card);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
+  border-radius: 18px;
+  box-shadow: 0 4px 20px rgba(160, 172, 192, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* Tactile Soft Ceramic Surfaces & Elements */
+.tactile-surface {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(160, 172, 192, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.tactile-plate {
+  background: #E3E7EE;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: inset 2px 2px 4px rgba(255, 255, 255, 0.8),
+              inset -2px -2px 4px rgba(170, 180, 195, 0.45),
+              8px 14px 28px rgba(155, 168, 188, 0.38);
+}
+
+.tactile-pill {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 10px 30px rgba(140, 150, 170, 0.22),
+              0 1px 3px rgba(0, 0, 0, 0.05),
+              inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.tactile-btn {
+  background: #F0F3F7;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 3px 4px 10px rgba(150, 162, 180, 0.35),
+              -2px -2px 6px rgba(255, 255, 255, 0.9),
+              inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  color: var(--ink);
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: all 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.tactile-btn:hover {
+  background: #FFFFFF;
+  box-shadow: 2px 3px 8px rgba(150, 162, 180, 0.4),
+              -1px -1px 4px rgba(255, 255, 255, 0.95);
+}
+
+.tactile-btn:active {
+  box-shadow: inset 2px 2px 4px rgba(150, 162, 180, 0.5);
+  transform: translateY(1px);
+}
+
+.tactile-key {
+  background: linear-gradient(145deg, #FFFFFF 0%, #EFF2F7 100%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 6px 9px 18px rgba(150, 162, 180, 0.42),
+              -5px -5px 12px rgba(255, 255, 255, 0.95),
+              inset 1px 1px 2px rgba(255, 255, 255, 0.9);
+  transition: all 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.tactile-key:hover {
+  box-shadow: 4px 6px 14px rgba(150, 162, 180, 0.48),
+              -3px -3px 10px rgba(255, 255, 255, 0.95);
+}
+
+.tactile-key:active,
+.tactile-key.is-pressed {
+  box-shadow: inset 3px 3px 6px rgba(150, 162, 180, 0.55),
+              inset -2px -2px 4px rgba(255, 255, 255, 0.85);
+  transform: translateY(1.5px);
 }
 
 /* Ferrow Unified Component Tokens for Console Tabs and Modules */
@@ -220,12 +297,64 @@ html.dark {
   }
 }
 
+.tactile-key-cap {
+  background: linear-gradient(145deg, #FFFFFF 0%, #EEF2F7 100%);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 4px 7px 16px rgba(145, 158, 178, 0.42),
+              -3px -3px 8px rgba(255, 255, 255, 0.95),
+              inset 0 1px 1px rgba(255, 255, 255, 1);
+  color: #555E6D;
+  transition: all 0.12s cubic-bezier(0.2, 0.8, 0.2, 1);
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.tactile-key-cap:hover {
+  box-shadow: 3px 5px 12px rgba(145, 158, 178, 0.5),
+              -2px -2px 6px rgba(255, 255, 255, 1);
+  color: #2A2E35;
+}
+
+.tactile-key-cap:active,
+.tactile-key-cap.is-depressed {
+  box-shadow: inset 2px 3px 6px rgba(140, 153, 174, 0.55),
+              inset -1px -1px 3px rgba(255, 255, 255, 0.8);
+  transform: translateY(1.5px) scale(0.985);
+  color: #1E2228;
+}
+
+[data-theme="dark"] .tactile-key-cap,
+html.dark .tactile-key-cap {
+  background: linear-gradient(145deg, #2D333F 0%, #20252E 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 4px 7px 16px rgba(0, 0, 0, 0.5),
+              -2px -2px 6px rgba(255, 255, 255, 0.05),
+              inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  color: #A0A8B6;
+}
+
+[data-theme="dark"] .tactile-key-cap:hover,
+html.dark .tactile-key-cap:hover {
+  color: #ECEFF4;
+}
+
+[data-theme="dark"] .tactile-key-cap:active,
+html.dark .tactile-key-cap.is-depressed {
+  box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.7),
+              inset -1px -1px 2px rgba(255, 255, 255, 0.06);
+  transform: translateY(1.5px) scale(0.985);
+  color: #FFFFFF;
+}
+
 /* ThreeUI SparkBadge Frame Container */
 .shader-frame {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   margin: 0;
   padding: 0;
   border: none !important;

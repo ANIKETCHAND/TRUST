@@ -24,28 +24,28 @@ export const StatCard: React.FC<StatCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`relative overflow-hidden rounded-xl border border-[#E5EAF1] bg-white p-4.5 transition-all duration-150 ${
-        onClick ? 'cursor-pointer hover:border-[#3B82F6]/50 hover:shadow-xs' : 'hover:border-[#CBD5E1]'
-      } shadow-2xs`}
+      className={`relative overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--card)] p-4.5 transition-all duration-150 ${
+        onClick ? 'cursor-pointer hover:border-[var(--accent)]/50 hover:shadow-xs' : 'hover:border-[var(--line)]'
+      } shadow-[0_4px_16px_rgba(160,172,192,0.14),inset_0_1px_0_rgba(255,255,255,0.9)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.05)]`}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {tag && (
-            <span className="font-mono text-[10px] font-medium uppercase tracking-wide text-[#3B82F6] bg-[#EEF4FF] border border-[#D4E5FF] px-1.5 py-0.5 rounded">
+            <span className="font-mono text-[10px] font-medium uppercase tracking-wide text-[var(--accent-ink)] bg-[var(--tint)] border border-[var(--line)] px-1.5 py-0.5 rounded">
               {tag.replace(/[\[\]]/g, '')}
             </span>
           )}
-          <span className="text-[11px] font-semibold text-[#64748B] tracking-wider uppercase">
+          <span className="text-[11px] font-semibold text-[var(--ink-2)] tracking-wider uppercase">
             {label}
           </span>
         </div>
-        <div className="text-[#3B82F6] p-1.5 rounded-lg bg-[#EEF4FF] border border-[#E0EDFF]">
+        <div className="text-[var(--accent)] p-1.5 rounded-lg bg-[var(--tint)] border border-[var(--line-2)]">
           {icon}
         </div>
       </div>
 
       <div className="mt-2.5 flex items-baseline gap-2">
-        <span className="text-2xl font-bold tracking-tight text-[#1E293B]">
+        <span className="text-2xl font-bold tracking-tight text-[var(--ink)]">
           {value}
         </span>
         {subValue && (
@@ -56,7 +56,7 @@ export const StatCard: React.FC<StatCardProps> = ({
       </div>
 
       {description && (
-        <div className="mt-1 text-xs text-[#64748B] line-clamp-1">
+        <div className="mt-1 text-xs text-[var(--ink-2)] line-clamp-1">
           {description}
         </div>
       )}

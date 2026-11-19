@@ -118,7 +118,7 @@ export const TopNavbar: React.FC = () => {
   ).length;
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-[var(--line)] bg-[var(--card)] px-6 shrink-0 z-30 select-none text-[var(--ink)]">
+    <header className="flex h-16 items-center justify-between border-b border-[var(--line)] bg-[var(--card)] px-6 shrink-0 z-30 select-none text-[var(--ink)] shadow-[0_2px_10px_rgba(160,172,192,0.12)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.3)]">
       {/* Left: Mobile Toggle & Active Section Breadcrumb */}
       <div className="flex items-center gap-4">
         <button

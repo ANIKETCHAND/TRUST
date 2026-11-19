@@ -39,7 +39,7 @@ export const LoginScreen: React.FC = () => {
   if (isAuthenticated) {
     return (
       <div className="min-h-screen w-screen flex flex-col items-center justify-center bg-[var(--bg)] px-4 relative select-none text-[var(--ink)]">
-        <div className="relative w-full max-w-md rounded-2xl border border-[var(--line)] bg-[var(--card)] p-8 shadow-sm space-y-6">
+        <div className="relative w-full max-w-md rounded-2xl border border-[var(--line)] bg-[var(--card)] p-8 shadow-[0_10px_30px_rgba(140,150,170,0.2),inset_0_1px_0_rgba(255,255,255,0.95)] space-y-6">
           <div className="flex items-center justify-between border-b border-[var(--line)] pb-5">
             <BrandLogo size="md" />
             <div className="flex items-center gap-2 text-xs text-[var(--accent-ink)] bg-[var(--tint)] px-3 py-1 rounded-full border border-[var(--accent)]/30 font-medium font-mono">
@@ -95,7 +95,7 @@ export const LoginScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen w-screen flex flex-col items-center justify-center bg-[var(--bg)] px-4 relative select-none text-[var(--ink)]">
-      <div className="relative w-full max-w-md rounded-2xl border border-[var(--line)] bg-[var(--card)] p-8 shadow-sm space-y-6">
+      <div className="relative w-full max-w-md rounded-2xl border border-[var(--line)] bg-[var(--card)] p-8 shadow-[0_10px_30px_rgba(140,150,170,0.2),inset_0_1px_0_rgba(255,255,255,0.95)] space-y-6">
         {/* Header Bar */}
         <div className="flex items-center justify-between border-b border-[var(--line)] pb-5">
           <BrandLogo size="md" />

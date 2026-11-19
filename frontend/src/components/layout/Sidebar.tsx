@@ -187,10 +187,10 @@ export const Sidebar: React.FC = () => {
                             : undefined
                         }
                         aria-current={isActive ? 'page' : undefined}
-                        className={`group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs transition-all ${
+                        className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs transition-all ${
                           isActive
-                            ? 'bg-[var(--tint)] text-[var(--accent-ink)] font-semibold border-l-2 border-[var(--accent)]'
-                            : 'text-[var(--ink-2)] hover:bg-[var(--bg-2)] hover:text-[var(--ink)] border-l-2 border-transparent font-normal'
+                            ? 'bg-[#E2E7EF] dark:bg-[#282E38] text-[#2A2E35] dark:text-[#ECEFF4] font-semibold shadow-[inset_1px_1px_2px_rgba(255,255,255,0.9),inset_-1px_-1px_2px_rgba(160,172,192,0.3)]'
+                            : 'text-[var(--ink-2)] hover:bg-[var(--bg-2)] hover:text-[var(--ink)] font-normal'
                         } ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
                       >
                         <Icon

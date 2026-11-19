@@ -16,28 +16,32 @@
 }
 
 :root {
-  --bg: #f7f5f0;
-  --bg-2: #efebe3;
-  --card: #fffdf9;
-  --ink: #1c1814;
-  --ink-2: #5c544c;
-  --ink-3: #746b62;
-  --line: #e3ded4;
-  --line-2: #cec7bb;
-  --accent: #1daf9c;
-  --accent-ink: #0c6b5f;
-  --tint: #dcefea;
-  --warn: #c4561c;
-  --btn: #1c1814;
-  --btn-ink: #fffdf9;
-  --band: #1f1c19;
-  --band-2: #2a2622;
-  --band-ink: #f3f0ea;
-  --band-ink-2: #aea69c;
-  --band-line: #3d3833;
+  --bg: #E6EAF0;
+  --bg-2: #DCE1EA;
+  --bg-3: #D0D6E2;
+  --card: #FFFFFF;
+  --card-soft: #F1F4F8;
+  --card-tactile: #ECEFF4;
+  --ink: #2A2E35;
+  --ink-2: #69707D;
+  --ink-3: #8C94A0;
+  --line: #D5DAE3;
+  --line-2: #E4E8F0;
+  --accent: #2A2E35;
+  --accent-ink: #1E2228;
+  --tint: #E2E7EF;
+  --warn: #D97706;
+  --btn: #2A2E35;
+  --btn-ink: #FFFFFF;
+  --band: #1E2228;
+  --band-2: #272B33;
+  --band-ink: #ECEFF4;
+  --band-ink-2: #9DA6B5;
+  --band-line: #363C47;
 
-  --sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "Inter", "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: "Playfair Display", Georgia, serif;
+  --mono: "JetBrains Mono", "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Type scale, ratio 1.25 */
   --t-1: 13px;
@@ -61,42 +65,45 @@
   --ease: cubic-bezier(.23, 1, .32, 1);
 
   --illos-ground: var(--bg);
-  --illos-ink: #2a2622;
-  --illos-accent: #1daf9c;
+  --illos-ink: #2A2E35;
+  --illos-accent: #2A2E35;
   --illos-dark: 0;
   color-scheme: light;
 }
 
 [data-theme="dark"],
 html.dark {
-  --bg: #12110f;
-  --bg-2: #1a1816;
-  --card: #1d1b18;
-  --ink: #efebe5;
-  --ink-2: #aba398;
-  --ink-3: #91897f;
-  --line: #2a2724;
-  --line-2: #3b3732;
-  --accent: #3fdec9;
-  --accent-ink: #7fe3d4;
-  --tint: #10302b;
-  --warn: #f08a4b;
-  --btn: #efebe5;
-  --btn-ink: #12110f;
-  --band: #1b1917;
-  --band-2: #24211e;
-  --band-line: #34302b;
+  --bg: #16181D;
+  --bg-2: #1E2127;
+  --bg-3: #262B33;
+  --card: #22262E;
+  --card-soft: #282C36;
+  --card-tactile: #1C1F26;
+  --ink: #ECEFF4;
+  --ink-2: #A0A8B6;
+  --ink-3: #757F90;
+  --line: #2D323C;
+  --line-2: #383F4C;
+  --accent: #ECEFF4;
+  --accent-ink: #FFFFFF;
+  --tint: #252B35;
+  --warn: #F59E0B;
+  --btn: #ECEFF4;
+  --btn-ink: #16181D;
+  --band: #121418;
+  --band-2: #1A1C22;
+  --band-line: #2E333D;
 
-  --illos-ink: #dadadc;
-  --illos-accent: #3fdec9;
+  --illos-ink: #DADADC;
+  --illos-accent: #ECEFF4;
   --illos-dark: 1;
   color-scheme: dark;
 }
 
 .on-dark {
   --illos-ground: var(--band);
-  --illos-ink: #dadadc;
-  --illos-accent: #3fdec9;
+  --illos-ink: #DADADC;
+  --illos-accent: #ECEFF4;
   --illos-dark: 1;
 }
 
@@ -110,7 +117,7 @@ body {
 }
 
 .ferrow-root {
-  background: var(--bg);
+  background: transparent;
   color: var(--ink);
   font-family: var(--sans);
 }
