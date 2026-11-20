@@ -124,51 +124,51 @@ export const LandingPage: React.FC = () => {
       {/* Floating Pill Capsule Header matching Hushkey Reference Image Exactly */}
       <header className="fixed top-4 left-0 right-0 z-50 px-4 pointer-events-none">
         <div className="max-w-5xl mx-auto h-14 rounded-full bg-white/90 backdrop-blur-md px-6 flex items-center justify-between border border-[rgba(255,255,255,0.92)] shadow-[0_10px_30px_rgba(90,105,130,0.16),inset_0_1px_0_rgba(255,255,255,0.98)] pointer-events-auto transition-all">
-          {/* Logo matching Hushkey reference */}
+          {/* Logo matching CrossX identity */}
           <a
             className="text-base font-black tracking-widest text-[#333842] uppercase select-none cursor-pointer"
-            href="#keys"
+            href="#main"
             onClick={(e) => {
               e.preventDefault();
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           >
-            HUSHKEY
+            CrossX
           </a>
 
-          {/* Desktop Navigation Links matching Hushkey reference */}
+          {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-7 text-xs font-medium text-[#333842]" aria-label="Main">
-            <a href="#keys" className="hover:text-[#6E7684] transition-colors">
-              Keys
+            <a href="#overview" onClick={(e) => { e.preventDefault(); handleEnterConsole(); }} className="hover:text-[#6E7684] transition-colors">
+              Overview
             </a>
-            <a href="#modes" onClick={(e) => { e.preventDefault(); handleEnterConsole(); }} className="hover:text-[#6E7684] transition-colors">
-              Modes
+            <a href="#agents" onClick={(e) => { e.preventDefault(); handleEnterConsole(); }} className="hover:text-[#6E7684] transition-colors">
+              Agents
             </a>
-            <a href="#chords" onClick={(e) => { e.preventDefault(); handleEnterConsole(); }} className="hover:text-[#6E7684] transition-colors">
-              Chords
+            <a href="#gateway" onClick={(e) => { e.preventDefault(); handleEnterConsole(); }} className="hover:text-[#6E7684] transition-colors">
+              Gateway
             </a>
-            <a href="#finishes" onClick={(e) => { e.preventDefault(); handleEnterConsole(); }} className="hover:text-[#6E7684] transition-colors">
-              Finishes
+            <a href="#policies" onClick={(e) => { e.preventDefault(); handleEnterConsole(); }} className="hover:text-[#6E7684] transition-colors">
+              Policies
             </a>
             <a href="/docs" className="hover:text-[#6E7684] transition-colors">
-              FAQ
+              API Docs
             </a>
             <a href="/redoc" className="hover:text-[#6E7684] transition-colors">
-              Contact
+              Schema
             </a>
           </nav>
 
-          {/* Right Action Pill Buttons matching Hushkey reference */}
+          {/* Right Action Pill Buttons */}
           <div className="flex items-center gap-3">
             <button
               onClick={handleEnterConsole}
               id="sign-in-tab"
               className="px-5 py-2 rounded-full bg-gradient-to-b from-white to-[#EEF2F6] hover:from-white hover:to-white text-[#333842] font-semibold text-xs border border-[rgba(215,222,233,0.85)] shadow-[0_2px_6px_rgba(90,105,130,0.20),inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_1px_rgba(145,160,180,0.25)] active:shadow-[inset_0_1px_3px_rgba(90,105,130,0.3)] active:translate-y-[1px] transition-all cursor-pointer select-none"
             >
-              {isAuthenticated ? 'SOC Console' : 'Pre-order'}
+              {isAuthenticated ? 'SOC Console' : 'Launch Console'}
             </button>
 
-            {/* Tactile round button next to Pre-order matching reference image */}
+            {/* Tactile round menu button */}
             <button
               className="w-8 h-8 rounded-full bg-gradient-to-b from-white to-[#EEF2F6] hover:from-white hover:to-white text-[#333842] flex items-center justify-center border border-[rgba(215,222,233,0.85)] shadow-[0_2px_6px_rgba(90,105,130,0.20),inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_1px_rgba(145,160,180,0.25)] active:shadow-[inset_0_1px_3px_rgba(90,105,130,0.3)] active:translate-y-[1px] transition-all cursor-pointer select-none"
               onClick={() => setMenuOpen(!menuOpen)}
@@ -186,10 +186,10 @@ export const LandingPage: React.FC = () => {
         {menuOpen && (
           <div className="max-w-4xl mx-auto mt-2 rounded-3xl bg-white/95 backdrop-blur-md p-6 border border-white/85 shadow-[0_12px_36px_rgba(90,105,130,0.20),inset_0_1px_0_rgba(255,255,255,0.95)] space-y-4 pointer-events-auto">
             <nav className="flex flex-col space-y-3 text-sm font-medium text-[#333842]">
-              <a href="#keys" onClick={() => setMenuOpen(false)}>Keys</a>
-              <button onClick={() => { setMenuOpen(false); handleEnterConsole(); }} className="text-left">Modes</button>
-              <button onClick={() => { setMenuOpen(false); handleEnterConsole(); }} className="text-left">Chords</button>
-              <button onClick={() => { setMenuOpen(false); handleEnterConsole(); }} className="text-left">Finishes</button>
+              <button onClick={() => { setMenuOpen(false); handleEnterConsole(); }} className="text-left">Overview</button>
+              <button onClick={() => { setMenuOpen(false); handleEnterConsole(); }} className="text-left">Agents</button>
+              <button onClick={() => { setMenuOpen(false); handleEnterConsole(); }} className="text-left">Gateway</button>
+              <button onClick={() => { setMenuOpen(false); handleEnterConsole(); }} className="text-left">Policies</button>
               <a href="/docs" onClick={() => setMenuOpen(false)}>API Documentation</a>
               <a href="/redoc" onClick={() => setMenuOpen(false)}>ReDoc Schema</a>
             </nav>
@@ -201,60 +201,51 @@ export const LandingPage: React.FC = () => {
                 }}
                 className="w-full py-2.5 rounded-full bg-[#333842] text-white font-semibold text-xs text-center cursor-pointer"
               >
-                {isAuthenticated ? 'Open SOC Console' : 'Launch Console / Pre-order'}
+                {isAuthenticated ? 'Open SOC Console' : 'Launch Console'}
               </button>
             </div>
           </div>
         )}
       </header>
 
-      {/* Main Single-Portion Hero Section matching Reference Layout Exactly */}
+      {/* Main Single-Portion Hero Section */}
       <main id="main" className="flex-1 flex items-center justify-center pt-24 pb-12 sm:pt-28 sm:pb-16 px-4 sm:px-6">
-        <section className="hero w-full max-w-6xl mx-auto" id="keys">
+        <section className="hero w-full max-w-6xl mx-auto" id="overview">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             {/* Left Column: Bold Typography & Actions */}
             <div className="lg:col-span-6 space-y-6">
-              <h1 className="tactile-hero-heading text-5xl sm:text-6xl md:text-7xl lg:text-[76px] font-black tracking-tight text-[#383E49] leading-[0.95]">
-                Eleven keys
-                <br />
-                for the whole
-                <br />
-                house.
+              <h1 className="tactile-hero-heading text-6xl sm:text-7xl md:text-8xl lg:text-[92px] font-black tracking-tight text-[#383E49] leading-[0.95]">
+                CrossX
               </h1>
 
               <p className="text-[11px] sm:text-xs font-mono tracking-[0.22em] text-[#6E7684] uppercase font-semibold">
-                TACTILE HOME CONTROLS
+                AUTONOMOUS AI AGENT SECURITY PLATFORM
               </p>
 
               <p className="text-sm sm:text-base text-[#363C47] max-w-md leading-relaxed font-normal">
-                A palm-sized slab of soft keys for the lights, the music, the blinds and the heat. No screen to wake, no app to
-                open. Press, and the room answers.
+                Autonomous threat defense and zero-trust security gateway for AI agents. Intercepts malicious tool calls, blocks prompt injections, and guarantees deterministic policy execution.
               </p>
 
-              {/* Action Buttons matching Reference Image */}
+              {/* Action Buttons */}
               <div className="pt-2 flex flex-wrap items-center gap-5">
                 <button
                   type="button"
                   onClick={handleEnterConsole}
                   className="px-7 py-3 rounded-full bg-gradient-to-b from-white to-[#EEF2F6] hover:from-white hover:to-white text-[#333842] font-semibold text-xs sm:text-sm border border-[rgba(215,222,233,0.9)] shadow-[0_4px_12px_rgba(90,105,130,0.22),inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_1px_rgba(145,160,180,0.25)] active:shadow-[inset_0_2px_4px_rgba(90,105,130,0.35)] active:translate-y-[1px] transition-all cursor-pointer select-none"
                 >
-                  {isAuthenticated ? 'Open SOC Console' : 'Pre-order · €189'}
+                  {isAuthenticated ? 'Open SOC Console' : 'Launch Console'}
                 </button>
                 <a
-                  href="#keys"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleKeyPress('OK', 320);
-                  }}
+                  href="/docs"
                   className="text-xs sm:text-sm font-medium text-[#333842] underline underline-offset-4 decoration-[#B0BAC8] hover:text-[#6E7684] transition-colors"
                 >
-                  Meet the keys
+                  API Documentation
                 </a>
               </div>
 
               {/* Micro Footnote */}
               <p className="text-[11px] text-[#6E7684] pt-1">
-                Ships in March. Joins the hub your home already has.
+                Fail-closed zero-trust gateway · Sub-4ms ML inference · 6 compliance frameworks.
               </p>
             </div>
 
@@ -475,7 +466,7 @@ export const LandingPage: React.FC = () => {
 
       {/* Subtle minimal single-line footer */}
       <footer className="w-full py-4 px-6 text-center text-[11px] text-[#6E7684] border-t border-[rgba(215,222,233,0.5)]">
-        <span>&copy; 2026 Hushkey. All rights reserved.</span>
+        <span>&copy; 2026 CrossX. All rights reserved.</span>
       </footer>
     </div>
   );
