@@ -27,7 +27,7 @@ export const LiveMonitoringTab: React.FC = () => {
   const [sortBy, setSortBy] = useState<'time' | 'latency'>('time');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const { events, loading, refresh } = useMonitoring(isAutoPolling, decisionFilter);
+  const { events, loading, isRefreshing, refresh } = useMonitoring(isAutoPolling, decisionFilter);
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
 
   const allowedCount = events.filter((e) => e.decision === 'ALLOWED').length;
@@ -109,10 +109,10 @@ export const LiveMonitoringTab: React.FC = () => {
           </button>
 
           <button
-            onClick={refresh}
+            onClick={() => refresh()}
             className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5EAF1] bg-white px-3 py-2 text-xs font-medium text-[#1E293B] hover:bg-[#F8FAFC] hover:border-[#CBD5E1] transition-all shadow-2xs"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-[#3B82F6] ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 text-[#3B82F6] ${isRefreshing || loading ? 'animate-spin' : ''}`} />
             <span>Sync</span>
           </button>
         </div>

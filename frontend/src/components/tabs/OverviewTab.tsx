@@ -30,7 +30,7 @@ import { api } from '../../services/api.client';
 import type { Agent, Incident } from '../../types';
 
 export const OverviewTab: React.FC = () => {
-  const { data, loading, error, refresh } = useOverview();
+  const { data, loading, isRefreshing, error, refresh } = useOverview();
   const { setActiveTab, health } = useSecurityPlatform();
 
   // Auxiliary live backend telemetry
@@ -177,10 +177,10 @@ export const OverviewTab: React.FC = () => {
           {/* Sync Button */}
           <button
             onClick={handleManualRefresh}
-            disabled={loading || auxLoading}
+            disabled={loading}
             className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5EAF1] bg-white px-3 py-1.5 text-xs font-medium text-[#1E293B] hover:bg-[#F8FAFC] hover:border-[#CBD5E1] transition-all disabled:opacity-50 shadow-2xs"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-[#3B82F6] ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 text-[#3B82F6] ${isRefreshing || loading ? 'animate-spin' : ''}`} />
             <span>Sync</span>
           </button>
         </div>

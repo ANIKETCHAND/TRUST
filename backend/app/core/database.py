@@ -1,3 +1,4 @@
+import asyncio
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from app.core.config import settings
@@ -32,20 +33,11 @@ async_session_maker = async_sessionmaker(
     autoflush=False
 )
 
-
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    async with async_session_maker() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+_db_bootstrapped = False
+_db_bootstrap_lock = asyncio.Lock()
 
 
-async def _ensure_agent_columns(sync_conn):
+def _ensure_agent_columns(sync_conn):
     try:
         from sqlalchemy import text
         res = sync_conn.execute(text("PRAGMA table_info(agents)"))
@@ -67,3 +59,71 @@ async def init_db() -> None:
         await conn.run_sync(Base.metadata.create_all)
         if is_sqlite:
             await conn.run_sync(_ensure_agent_columns)
+
+
+async def ensure_db_bootstrapped() -> None:
+    """
+    Guarantees that every execution context (including ephemeral serverless containers)
+    has tables created, tools synced, test agent registered, and baseline telemetry
+    populated, eliminating empty-database race conditions across serverless instances.
+    """
+    global _db_bootstrapped
+    if _db_bootstrapped:
+        return
+    async with _db_bootstrap_lock:
+        if _db_bootstrapped:
+            return
+        await init_db()
+        async with async_session_maker() as session:
+            try:
+                import uuid
+                from sqlalchemy import select, func
+                from app.services.tool_registry import tool_registry
+                from app.services.test_agent_service import test_agent_service
+                from app.services.simulation_engine import simulation_engine
+                from app.models.audit import AuditEvent
+                from app.models.user import User, UserRole
+                from app.core.security import get_password_hash
+
+                await tool_registry.sync_tools_to_db(session)
+                await test_agent_service.ensure_test_agent_registered(session)
+
+                # Ensure admin user exists
+                admin_stmt = select(User).where(User.username == "admin")
+                admin_res = await session.execute(admin_stmt)
+                if not admin_res.scalars().first():
+                    admin_user = User(
+                        id=str(uuid.uuid4()),
+                        username="admin",
+                        email="admin@agenttrust.corp",
+                        hashed_password=get_password_hash("admin123"),
+                        role=UserRole.ADMIN,
+                        is_active=True
+                    )
+                    session.add(admin_user)
+                    await session.commit()
+
+                # Ensure baseline telemetry exists
+                event_count = await session.scalar(select(func.count(AuditEvent.id))) or 0
+                if event_count == 0:
+                    await simulation_engine.run_all_simulations(session)
+            except Exception as e:
+                import logging
+                logging.getLogger("agenttrust.database").warning(f"Database bootstrap warning: {e}")
+            finally:
+                _db_bootstrapped = True
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    if not _db_bootstrapped:
+        await ensure_db_bootstrapped()
+    async with async_session_maker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+

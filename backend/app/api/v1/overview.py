@@ -80,33 +80,36 @@ async def get_overview_statistics(
     # 6. Real Timeline of events (bucketed over the past 24 hours)
     now = datetime.now(timezone.utc)
     twenty_four_hours_ago = now - timedelta(hours=24)
+    cutoff = twenty_four_hours_ago.replace(tzinfo=None)
     timeline_stmt = (
         select(AuditEvent)
-        .where(AuditEvent.created_at >= twenty_four_hours_ago)
+        .where(AuditEvent.created_at >= cutoff)
         .order_by(AuditEvent.created_at.asc())
     )
     timeline_res = await db.execute(timeline_stmt)
     recent_events_records = list(timeline_res.scalars().all())
 
-    # Bucket by 4-hour intervals
-    hourly_buckets: Dict[str, Dict[str, int]] = {}
+    # Bucket by 4-hour intervals covering the 24h window
+    bucket_slots = []
     for i in range(6):
-        bucket_time = now - timedelta(hours=(5 - i) * 4)
-        label = bucket_time.strftime("%H:00")
-        hourly_buckets[label] = {"allowed": 0, "blocked": 0}
+        start = (now - timedelta(hours=(5 - i) * 4)).replace(tzinfo=None)
+        end = start + timedelta(hours=4)
+        label = start.strftime("%H:00")
+        bucket_slots.append((start, end, label))
 
-    for ev in recent_events_records:
-        ev_hour = ev.created_at.strftime("%H:00")
-        if ev_hour in hourly_buckets:
-            if ev.decision == PolicyDecision.ALLOWED:
-                hourly_buckets[ev_hour]["allowed"] += 1
-            else:
-                hourly_buckets[ev_hour]["blocked"] += 1
-
-    timeline_data = [
-        {"time": k, "allowed": v["allowed"], "blocked": v["blocked"]}
-        for k, v in hourly_buckets.items()
-    ]
+    timeline_data = []
+    for start, end, label in bucket_slots:
+        allowed = sum(
+            1 for ev in recent_events_records
+            if start <= (ev.created_at.replace(tzinfo=None) if hasattr(ev.created_at, "replace") else ev.created_at) < end
+            and ev.decision == PolicyDecision.ALLOWED
+        )
+        blocked = sum(
+            1 for ev in recent_events_records
+            if start <= (ev.created_at.replace(tzinfo=None) if hasattr(ev.created_at, "replace") else ev.created_at) < end
+            and ev.decision == PolicyDecision.BLOCKED
+        )
+        timeline_data.append({"time": label, "allowed": allowed, "blocked": blocked})
 
     # 7. Agent Risk Distribution
     risk_stmt = select(Agent.risk_classification, func.count(Agent.id)).group_by(Agent.risk_classification)
