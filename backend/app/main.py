@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.core.database import async_session_maker, init_db
 from app.core.exceptions import AgentTrustException
 from app.services.tool_registry import tool_registry
+from app.services.test_agent_service import test_agent_service
 
 logger = logging.getLogger("agenttrust")
 
@@ -21,6 +22,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     async with async_session_maker() as session:
         await tool_registry.sync_tools_to_db(session)
+        await test_agent_service.ensure_test_agent_registered(session)
         # Seed default development admin if not present
         if settings.ENVIRONMENT.lower() != "production":
             import uuid

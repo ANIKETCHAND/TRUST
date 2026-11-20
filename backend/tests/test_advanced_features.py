@@ -90,7 +90,7 @@ async def test_ssrf_protection_on_http_tool(client: AsyncClient):
         }
     )
     # SSRF protection must reject internal IP access
-    assert loopback_res.json()["execution_status"] == "FAILED"
+    assert loopback_res.json()["execution_status"] in ["FAILED", "BLOCKED"]
     assert "ssrf" in loopback_res.json()["error"].lower() or "blocked" in loopback_res.json()["error"].lower()
 
 

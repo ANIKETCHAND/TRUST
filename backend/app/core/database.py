@@ -45,6 +45,25 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+async def _ensure_agent_columns(sync_conn):
+    try:
+        from sqlalchemy import text
+        res = sync_conn.execute(text("PRAGMA table_info(agents)"))
+        cols = {row[1] for row in res.fetchall()}
+        if cols and "agent_type" not in cols:
+            sync_conn.execute(text("ALTER TABLE agents ADD COLUMN agent_type VARCHAR(64) DEFAULT 'custom_python' NOT NULL"))
+            sync_conn.execute(text("ALTER TABLE agents ADD COLUMN owner VARCHAR(128) DEFAULT 'security_admin'"))
+            sync_conn.execute(text("ALTER TABLE agents ADD COLUMN environment VARCHAR(64) DEFAULT 'production' NOT NULL"))
+            sync_conn.execute(text("ALTER TABLE agents ADD COLUMN risk_classification VARCHAR(32) DEFAULT 'LOW' NOT NULL"))
+            sync_conn.execute(text("ALTER TABLE agents ADD COLUMN security_score FLOAT DEFAULT 100.0 NOT NULL"))
+            sync_conn.execute(text("ALTER TABLE agents ADD COLUMN agent_version VARCHAR(32) DEFAULT '1.0.0' NOT NULL"))
+            sync_conn.execute(text("ALTER TABLE agents ADD COLUMN last_activity_at DATETIME"))
+    except Exception:
+        pass
+
+
 async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        if is_sqlite:
+            await conn.run_sync(_ensure_agent_columns)

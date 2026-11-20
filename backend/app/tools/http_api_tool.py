@@ -47,7 +47,11 @@ class SandboxedHttpApiTool(BaseTool):
 
         hostname_lower = hostname.lower().strip("[]")
 
-        if hostname_lower in self.BLOCKED_HOSTNAMES or hostname_lower.endswith(".internal") or hostname_lower.endswith(".local"):
+        ALLOWED_LAB_DOMAINS = {"testlab.crossx.internal", "synthetic-sink.agenttrust.internal"}
+        if hostname_lower in self.BLOCKED_HOSTNAMES or (
+            (hostname_lower.endswith(".internal") or hostname_lower.endswith(".local"))
+            and hostname_lower not in ALLOWED_LAB_DOMAINS
+        ):
             raise PermissionError(f"SSRF Protection: Access to restricted destination '{hostname}' is strictly blocked.")
 
         # If hostname is directly an IP literal

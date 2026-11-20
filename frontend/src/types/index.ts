@@ -6,3 +6,4 @@ export * from './delegation';
 export * from './policy';
 export * from './provenance';
 export * from './overview';
+export * from './simulation';

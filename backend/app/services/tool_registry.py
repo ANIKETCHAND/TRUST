@@ -7,6 +7,12 @@ from app.tools.filesystem_tool import SandboxFilesystemTool
 from app.tools.db_tool import SandboxedDatabaseTool
 from app.tools.http_api_tool import SandboxedHttpApiTool
 from app.tools.mcp_tool import MCPIntegrationTool
+from app.tools.test_lab_tools import (
+    SafeCalculatorTool,
+    WebSearchTool,
+    SecurityEventAnalyzerTool,
+    TestEnvDataTool,
+)
 
 
 class ToolRegistryService:
@@ -17,13 +23,30 @@ class ToolRegistryService:
         self.register_builtin_tool(SandboxedDatabaseTool())
         self.register_builtin_tool(SandboxedHttpApiTool())
         self.register_builtin_tool(MCPIntegrationTool())
+        # Register security test lab tools
+        self.register_builtin_tool(SafeCalculatorTool())
+        self.register_builtin_tool(WebSearchTool())
+        self.register_builtin_tool(SecurityEventAnalyzerTool())
+        self.register_builtin_tool(TestEnvDataTool())
 
     def register_builtin_tool(self, tool_instance: BaseTool) -> None:
         self._tools[tool_instance.name] = tool_instance
 
     def get_tool_handler(self, tool_name: str) -> Optional[BaseTool]:
-        if tool_name == "db_tool":
+        if tool_name in ("db_tool", "postgres", "sql_tool"):
             return self._tools.get("postgres_tool")
+        if tool_name in ("filesystem", "fs_tool", "sandbox_filesystem"):
+            return self._tools.get("filesystem_tool")
+        if tool_name in ("http_api", "http_tool", "rest_tool"):
+            return self._tools.get("http_api_tool")
+        if tool_name in ("calculator", "safe_calculator_tool", "safe_calc"):
+            return self._tools.get("safe_calculator")
+        if tool_name in ("web_search", "search_tool", "search"):
+            return self._tools.get("web_search_tool")
+        if tool_name in ("event_analyzer", "threat_analyzer", "security_analyzer"):
+            return self._tools.get("security_event_analyzer")
+        if tool_name in ("test_env", "test_env_data", "test_data"):
+            return self._tools.get("test_env_data_tool")
         return self._tools.get(tool_name)
 
     async def sync_tools_to_db(self, db: AsyncSession) -> None:

@@ -25,6 +25,7 @@ from app.api.v1 import (
     analytics,
     incidents,
     security_events,
+    simulations,
 )
 
 api_router = APIRouter()
@@ -55,3 +56,4 @@ api_router.include_router(compliance.router)
 api_router.include_router(analytics.router)
 api_router.include_router(incidents.router)
 api_router.include_router(security_events.router)
+api_router.include_router(simulations.router)

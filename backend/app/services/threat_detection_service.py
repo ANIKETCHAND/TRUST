@@ -137,8 +137,13 @@ class ThreatDetectionService:
                 recommended_response="BLOCK_ACTION"
             )
 
-        # 4. Check SSRF (Server-Side Request Forgery) & Metadata Infiltration (for external generic tools)
-        if tool_name not in ["http_api_tool"] and ("http" in tool_name or tool_name in ["web_search", "rest_client"]):
+        # 4. Check SSRF (Server-Side Request Forgery) & Metadata Infiltration
+        if (
+            tool_name in ["http_api_tool", "web_search_tool", "web_search", "rest_client", "http_client"]
+            or "http" in tool_name
+            or resource.startswith("http://")
+            or resource.startswith("https://")
+        ):
             target_url = resource
             if not target_url and "url" in parameters:
                 target_url = str(parameters["url"])
@@ -149,7 +154,10 @@ class ThreatDetectionService:
                     hostname = parsed.hostname or ""
                     if hostname:
                         # Check cloud metadata endpoints
-                        if hostname.lower() in self.METADATA_IPS or hostname.endswith(".internal"):
+                        if hostname.lower() in self.METADATA_IPS or (
+                            hostname.endswith(".internal")
+                            and hostname.lower() not in {"testlab.crossx.internal", "synthetic-sink.agenttrust.internal"}
+                        ):
                             return self._build_threat(
                                 agent=agent,
                                 category=ThreatCategory.SSRF,
@@ -186,7 +194,7 @@ class ThreatDetectionService:
 
         # 5. Check SQL Injection Vectors
         if tool_name in ["db_tool", "postgres_tool", "sql_executor"] or "sql" in tool_name:
-            query_str = str(parameters.get("query", "")) + " " + resource
+            query_str = str(parameters.get("sql") or parameters.get("query") or " ".join(str(v) for v in parameters.values())) + " " + resource
             for pattern in self.SQLI_PATTERNS:
                 if pattern.search(query_str):
                     return self._build_threat(

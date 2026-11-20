@@ -842,7 +842,7 @@ class GatewayService:
                 trust_level = TrustLevel.UNTRUSTED
             elif tool_name == "filesystem_tool":
                 node_type = NodeType.DOCUMENT
-                if operation in ("read_file", "read_lines") and any(s in resource.lower() for s in ["untrusted", "temp", "external", "incoming"]):
+                if operation in ("read_file", "read_lines") and any(s in resource.lower() for s in ["untrusted", "temp", "external", "incoming", "malicious", "poisoned"]):
                     trust_level = TrustLevel.UNTRUSTED
 
             # Propagate taint if context is already tainted

@@ -83,7 +83,7 @@ async def list_policies(
     if not policies:
         baseline_rules = {
             "sandbox_filesystem": {
-                "allowed_prefixes": ["reports/", "public/", "temp/", "data/"],
+                "allowed_prefixes": ["reports/", "public/", "temp/", "data/", "test_lab/"],
                 "blocked_extensions": [".pem", ".key", ".env", ".bashrc"]
             },
             "database_access": {

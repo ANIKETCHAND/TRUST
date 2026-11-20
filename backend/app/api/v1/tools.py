@@ -23,6 +23,36 @@ async def list_tools(
     return result.scalars().all()
 
 
+@router.post("", response_model=ToolResponse, status_code=status.HTTP_201_CREATED, tags=["Tools"])
+async def register_tool(
+    payload: ToolCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Registers a new tool into the Tool Registry."""
+    stmt = select(Tool).where(Tool.name == payload.name)
+    existing = (await db.execute(stmt)).scalars().first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Tool with name '{payload.name}' already registered."
+        )
+
+    new_tool = Tool(
+        name=payload.name,
+        display_name=payload.display_name,
+        description=payload.description,
+        category=payload.category,
+        supported_operations=payload.supported_operations,
+        configuration=payload.configuration,
+        is_protected=payload.is_protected,
+    )
+    db.add(new_tool)
+    await db.commit()
+    await db.refresh(new_tool)
+    return new_tool
+
+
 @router.get("/{tool_id}", response_model=ToolResponse, tags=["Tools"])
 async def get_tool(
     tool_id: str,

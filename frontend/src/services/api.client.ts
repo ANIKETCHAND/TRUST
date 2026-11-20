@@ -264,4 +264,12 @@ export const api = {
   getAnalyticsOverview: () => apiClient.get<any>('/analytics/overview'),
   getAgentAnalyticsProfile: (id: string) => apiClient.get<any>(`/analytics/agents/${id}`),
   getSystemDiagnostics: () => apiClient.get<any>('/system/diagnostics'),
+
+  // AI Agent Simulation Lab APIs
+  listSimulationScenarios: () => apiClient.get<any>('/simulations/scenarios'),
+  runSimulation: (scenarioId?: string) => apiClient.post<any>('/simulations/run', { scenario_id: scenarioId || null }),
+  getSimulationResults: () => apiClient.get<any>('/simulations/results'),
+  getTestAgentStatus: () => apiClient.get<any>('/simulations/agent/status'),
+  performAgentAction: (action: string, reason?: string) => apiClient.post<any>('/simulations/agent/action', { action, reason }),
+  executeTestAgentTask: (taskPrompt: string, context?: any) => apiClient.post<any>('/simulations/agent/execute', { task_prompt: taskPrompt, context: context || {} }),
 };
